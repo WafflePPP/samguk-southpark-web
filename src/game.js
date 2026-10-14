@@ -15,16 +15,16 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false;
 let armyIdx = 0, tblOpen = true, tblAbility = false, speedIdx = 0, padLarge = true;
-let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null;
+let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null, stick = null;   // stick: 모바일 가상 조이스틱 {id, ox, oy, kx, ky}
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
 function layout() { tblH = mobile ? 0 : (tblOpen ? 236 : 64); vh = VH - TB_H - tblH; }
 function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 패널·하단 표 없음(맵 전체), 글자 확대
-  mobile = on; TB_H = on ? 64 : 44; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); padDir = null; layout(); if (S) snapCam();
+  mobile = on; TB_H = on ? 64 : 44; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
 function startBattle() {
   S = Sim.createBattle((Date.now() % 100000) + 1); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
-  state = 'play'; overAt = 0; paused = false; menuOpen = false; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); padDir = null;
+  state = 'play'; overAt = 0; paused = false; menuOpen = false; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
 }
 const army = () => S.armies[armyIdx];
@@ -133,6 +133,14 @@ function drawSpellPanel() {
   label(locked ? `마법 잠금 ${Math.ceil(S.lock.player)}초` : `${u.name} 마법 (Space)`, x + 8, y + 15, 16, locked ? COLORS.danger : COLORS.gold);
   u.spells.forEach((k, i) => { const sp = SPELL[k], ok = u.mp >= sp.mp && !locked; label(`${i + 1} ${sp.name}  ${sp.mp}MP`, x + 8, y + 44 + i * 28, 16, u.spellSel === i ? COLORS.gold : ok ? COLORS.silver : COLORS.dim); if (u.spellSel === i) label('◀', x + 196, y + 44 + i * 28, 16, COLORS.gold, 'right'); btns.push({ id: 'spell:' + i, x, y: y + 30 + i * 28, w: 210, h: 28 }); });
 }
+function drawStick() {   // 모바일 가상 조이스틱: 평상시엔 시작 위치 안내, 누르면 그 자리에 생기고 노브가 손가락을 따라간다
+  const a = !!stick, ox = a ? stick.ox : STICK_DEF[0], oy = a ? stick.oy : STICK_DEF[1], R = STICK_R;
+  ctx.save(); ctx.globalAlpha = a ? 1 : 0.55;
+  ctx.fillStyle = 'rgba(20,24,40,.45)'; ctx.beginPath(); ctx.arc(ox, oy, R + 22, 0, TAU); ctx.fill(); ctx.strokeStyle = a ? COLORS.silver : COLORS.silver2; ctx.lineWidth = 3; ctx.stroke();
+  for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4, on = a && stick.dir && stick.dir[0] === D8[i][0] && stick.dir[1] === D8[i][1]; ctx.strokeStyle = on ? COLORS.gold : 'rgba(207,211,230,.5)'; ctx.lineWidth = on ? 6 : 2; ctx.beginPath(); ctx.arc(ox, oy, R + 22, an - 0.28, an + 0.28); ctx.stroke(); if (on) { ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.arc(ox + Math.cos(an) * (R + 22), oy + Math.sin(an) * (R + 22), 8, 0, TAU); ctx.fill(); } }
+  const kx = a ? stick.kx : 0, ky = a ? stick.ky : 0; ctx.fillStyle = a && stick.dir ? 'rgba(255,211,77,.85)' : 'rgba(207,211,230,.7)'; ctx.beginPath(); ctx.arc(ox + kx, oy + ky, 38, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(10,12,20,.8)'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.restore(); if (!a) label('이동', ox, oy + R + 44, 16, COLORS.silver2, 'center');
+}
 function drawPad() {   // 보조키 윈도우: 마우스·터치로 누르는 숫자패드 (누르고 있으면 계속 이동, 가운데 = 행동). 모바일은 왼쪽 아래에 크게
   const bs = mobile ? 84 : padLarge ? 52 : 34, g = mobile ? 4 : 3, head = mobile ? 0 : 24, w = bs * 3 + g * 4 + (mobile ? 0 : 6), h = bs * 3 + g * 4 + head;
   const x0 = mobile ? 14 : VW - w - 10, y0 = mobile ? VH - h - 14 : TB_H + vh - h - 10;
@@ -199,7 +207,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: 130 }));
   label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('퍼스트퀸4 식 실시간 군단 전투 프로토', VW / 2, 225, 28, COLORS.moon, 'center');
-  (mobile ? ['왼쪽 패드: 조작 캐릭터 이동 (적에게 부딪치면 공격)', '오른쪽 행동 버튼: 특수기·마법 · 적을 탭: 집중 공격', '위 ◀▶: 캐릭터 변경 · 군단 명령 · ≡ 메뉴'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  (mobile ? ['왼쪽 아래를 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼: 특수기·마법 · 적을 탭: 집중 공격', '위 ◀▶: 캐릭터 변경 · 군단 명령 · ≡ 메뉴'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function draw() {
@@ -209,11 +217,11 @@ function draw() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
   if (mobile) {
-    drawToolbarMobile(); drawPad(); drawActionsMobile();
+    drawToolbarMobile(); drawStick(); drawActionsMobile();
     const u = ctrlOf(); if (u) { panel(8, TB_H + 8, 230, 54, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.6)'); label(`${CLS_NAME[u.cls]} Lv${u.lv}  ${Math.ceil(u.hp)}/${u.maxHp}`, 16, TB_H + 26, 16, COLORS.silver); label(`FT ${Math.round(u.ft)}${u.maxMp ? `  MP ${Math.floor(u.mp)}` : ''}  ${stText(u)}`, 16, TB_H + 48, 16, COLORS.silver2); }
   } else { drawToolbar(); drawLeftPanel(); drawSpellPanel(); drawPad(); drawTable(); }
   if (S.auto) label('자동 전투', VW - 10, TB_H + 18, 18, COLORS.gold, 'right');
-  if (S.t < 14 && !S.over) label(mobile ? '왼쪽 패드로 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 30 : 16), 16, COLORS.silver2, 'center');
+  if (S.t < 14 && !S.over) label(mobile ? '왼쪽 아래를 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 30 : 16), 16, COLORS.silver2, 'center');
   if (menuOpen) drawMenu();
   if (S.over === 'win') drawOverlay('승 리', ['적 군단을 모두 물리쳤다!', `${Math.round(S.t)}초 · 격파 ${S.stats.kills} · 도주 ${S.stats.fled} · 전사 ${S.stats.lost} · 레벨업 ${S.stats.levelups}`, mobile ? '화면을 탭하면 다시 시작' : '클릭 / R 로 다시 시작'], COLORS.gold);
   else if (S.over === 'lose') drawOverlay('패 배', ['총대장 관우가 쓰러졌다…', `${Math.round(S.t)}초 · 격파 ${S.stats.kills} · 전사 ${S.stats.lost}`, mobile ? '화면을 탭하면 다시 시작' : '클릭 / R 로 다시 시작'], COLORS.danger);
@@ -262,7 +270,13 @@ function mapClick(sx, sy, right) {   // 적을 클릭 = 군단이 그 적을 집
 function pos(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * VW / r.width, y: (e.clientY - r.top) * VH / r.height }; }
 const hitBtn = (x, y) => [...btns].reverse().find(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
 const padOf = id => { const [dx, dy] = id.slice(4).split(',').map(Number); return [dx, dy]; };
-const refreshPad = () => { const v = [...padPtrs.values()]; padDir = v.length ? v[v.length - 1] : null; };
+const STICK_R = 84, STICK_DEF = [170, VH - 170], D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+const inStickZone = (x, y) => mobile && x < 540 && y > TB_H + (VH - TB_H) * 0.35;   // 이 영역을 누르면 그 자리에 조이스틱이 생긴다 (플로팅)
+function stickMove(x, y) {   // 손가락 위치 → 노브 위치(반지름 제한) + 8방향
+  const dx = x - stick.ox, dy = y - stick.oy, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1; stick.kx = dx * k; stick.ky = dy * k;
+  stick.dir = d > STICK_R * 0.3 ? D8[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8] : null;
+}
+const refreshPad = () => { const v = [...padPtrs.values()]; padDir = stick && stick.dir ? stick.dir : v.length ? v[v.length - 1] : null; };
 function goFullscreen() { try { const d = document.documentElement, f = d.requestFullscreen || d.webkitRequestFullscreen; if (f && !document.fullscreenElement && !document.webkitFullscreenElement) { const p = f.call(d); if (p && p.catch) p.catch(() => {}); } const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) { /* 지원하지 않는 브라우저(iOS 사파리 등)는 무시 */ } }
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
@@ -274,15 +288,17 @@ cv.addEventListener('pointerdown', e => {
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
   const b = hitBtn(p.x, p.y);
   if (menuOpen) { if (b && b.id.startsWith('m:')) uiClick(b.id); return; }
+  if (!b && !stick && inStickZone(p.x, p.y)) { stick = { id: e.pointerId, ox: Math.max(STICK_R + 30, Math.min(500, p.x)), oy: Math.min(VH - STICK_R - 30, p.y), kx: 0, ky: 0, dir: null }; stickMove(p.x, p.y); refreshPad(); return; }
   if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) { padPtrs.set(e.pointerId, [dx, dy]); refreshPad(); } else if (!mobile) act(false); return; }
   if (b) { uiClick(b.id); return; }
   if (inView(p.x, p.y)) mapClick(p.x, p.y, e.button === 2);
 });
 cv.addEventListener('pointermove', e => {
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
+  if (stick && stick.id === e.pointerId) { stickMove(p.x, p.y); refreshPad(); return; }
   if (padPtrs.has(e.pointerId)) { const b = hitBtn(p.x, p.y); if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) padPtrs.set(e.pointerId, [dx, dy]); else padPtrs.delete(e.pointerId); } else padPtrs.delete(e.pointerId); refreshPad(); }   // 패드 위에서 손가락을 미끄러뜨리면 방향 전환
 });
-const endPtr = e => { padPtrs.delete(e.pointerId); refreshPad(); };
+const endPtr = e => { padPtrs.delete(e.pointerId); if (stick && stick.id === e.pointerId) stick = null; refreshPad(); };
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
 addEventListener('keydown', e => {
   if (e.repeat) return;
@@ -302,8 +318,8 @@ addEventListener('keydown', e => {
   else if (k === '1' || k === '2' || k === '3') { const u = ctrlOf(); if (u) Sim.selectSpell(u, +k - 1); }
 });
 addEventListener('keyup', e => { dirStack = dirStack.filter(c => c !== e.code); keys[e.key] = false; });
-addEventListener('blur', () => { dirStack = []; padPtrs.clear(); padDir = null; });
-document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play' && !S.over) { paused = true; padPtrs.clear(); padDir = null; } });   // 앱 전환·화면 꺼짐 시 자동 일시정지
+addEventListener('blur', () => { dirStack = []; padPtrs.clear(); stick = null; padDir = null; });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play' && !S.over) { paused = true; padPtrs.clear(); stick = null; padDir = null; } });   // 앱 전환·화면 꺼짐 시 자동 일시정지
 if (/[?&]m=1\b/.test(location.search) || (window.matchMedia && matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 900)) setMobile(true);
 
 // ---------- 루프 ----------
