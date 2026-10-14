@@ -118,7 +118,7 @@ function createBattle(seed = 1, opts = {}) {
         hp: T.hp * hb, maxHp: T.hp * hb, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, mat: T.mat || 0, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r, style: T.style,
         shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
-      u.spellSel = 0; u.ctrlIn = null;
+      u.spellSel = 0; u.ctrlIn = null; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
     });
     if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
@@ -146,7 +146,7 @@ function gainXp(S, u, n) {
   }
 }
 function die(S, u, killer) {
-  u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }); release(S, u);
+  u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   if (u.team === 'player') S.stats.lost++; else { S.stats.kills++; if (killer && killer.team === 'player') gainXp(S, killer, 18 + u.lv * 6); }
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
@@ -156,6 +156,8 @@ function die(S, u, killer) {
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
   t.hp -= dmg; t.flash = 0.12;
+  t.hitT = 0.35; t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;   // 맞은 방향으로 밀리는 피격 모션
+  S.fx.push({ kind: 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, t: 0.22, max: 0.22 });
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d');
   if (t.hp <= 0) die(S, t, from);
 }
@@ -287,7 +289,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   return false;
 }
 function updateUnit(S, u, dt) {
-  u.cdT -= dt; u.spT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.thinkT -= dt; u.moving = false;
+  u.cdT -= dt; u.spT -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.thinkT -= dt; u.moving = false;
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - 0.04 * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
