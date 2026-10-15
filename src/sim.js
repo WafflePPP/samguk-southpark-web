@@ -6,7 +6,7 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
-const SIZE = 0.35;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
+const SIZE = 0.5;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const MOVE_SPEED = 1.8;   // 한 칸 이동 속도 배율 (칸 단위 이동의 답답함 완화)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32, ENEMY_HP = 1.55, ENEMY_ATK = 1.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
