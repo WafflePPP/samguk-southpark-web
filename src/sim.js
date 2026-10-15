@@ -139,7 +139,7 @@ const ftDef = u => 1 - u.ft * 0.004;   // 피로도 100 이면 방어 -40% (설�
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 const phys = (u, t, mul = 1) => Math.max(1, u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u) - t.df * ftDef(t)) * DMG;
-function text(S, x, y, s, col) { S.texts.push({ x, y, s, col, t: 1.0 }); }
+function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   if (S.occ[ti(u.tx, u.ty)] === u.id) S.occ[ti(u.tx, u.ty)] = 0;
@@ -150,7 +150,7 @@ function gainXp(S, u, n) {
   if (!live(u)) return; u.xp += n;
   while (u.xp >= u.lv * 60) {   // 레벨업: 능력치 상승 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
     u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.atk = Math.round(u.atk * 1.05 * 10) / 10; u.maxMp = Math.round(u.maxMp * 1.05);
-    text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
+    text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
 }
 function die(S, u, killer) {
@@ -166,7 +166,7 @@ function hurt(S, from, t, dmg) {
   t.hp -= dmg; t.flash = 0.12;
   t.hitT = 0.35; t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;   // 맞은 방향으로 밀리는 피격 모션
   S.fx.push({ kind: 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, t: 0.22, max: 0.22 });
-  if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d');
+  if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d', 'dmg');
   if (t.hp <= 0) die(S, t, from);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
@@ -174,8 +174,8 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
   for (const e of S.units) if (live(e) && e !== from && (friendly || e.team !== from.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
 }
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
-  if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
-  if (S.rnd() < (t.cls === 'cavalry' ? 0.04 : 0.12)) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6'); return; }
+  if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
+  if (S.rnd() < (t.cls === 'cavalry' ? 0.04 : 0.12)) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
   hurt(S, p.from, t, Math.max(1, (p.atk * (0.85 + S.rnd() * 0.3) - t.ad * ftDef(t)) * DMG));
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
@@ -196,7 +196,7 @@ function castSpell(S, u, key, x, y) {
   if (key === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    const heal = (70 + u.lv * 5) * HP_MUL; t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
+    const heal = (70 + u.lv * 5) * HP_MUL; t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
   } else if (key === 'bolt') S.proj.push({ kind: 'bolt', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, left: sp.range * 1.25, atk: u.mat, from: u, team: u.team, a: ang, hit: new Set() });
   else if (key === 'fire') S.proj.push({ kind: 'fire', x: u.x, y: u.y - u.r * 1.4, tx: u.x + Math.cos(ang) * d, ty: u.y + Math.sin(ang) * d, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380, atk: u.mat, from: u, team: u.team, a: ang });
   else if (key === 'thunder') {
@@ -220,7 +220,7 @@ function useSpecial(S, u, x, y) {
     u.dashQ = q; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
-  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
+  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   u.spT = sp.cd; u.anim = 0.4; u.face = ang; u.ft = Math.min(100, u.ft + 3);
   return true;
 }
