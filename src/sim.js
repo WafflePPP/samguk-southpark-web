@@ -6,6 +6,7 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
+const SIZE = 0.7;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const MOVE_SPEED = 1.8;   // 한 칸 이동 속도 배율 (칸 단위 이동의 답답함 완화)
 const HP_MUL = 5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32, ENEMY_HP = 1.55, ENEMY_ATK = 1.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
@@ -122,7 +123,7 @@ function createBattle(seed = 1, opts = {}) {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1, hb = d.team === 'enemy' ? ENEMY_HP : 1, ab = d.team === 'enemy' ? ENEMY_ATK : 1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * hb * HP_MUL, maxHp: T.hp * hb * HP_MUL, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, mat: T.mat || 0, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r, style: T.style,
+        hp: T.hp * hb * HP_MUL, maxHp: T.hp * hb * HP_MUL, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, mat: T.mat || 0, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
@@ -466,7 +467,7 @@ function recall(S, u) {   // 철수한 유닛을 출진 지점(왼쪽)의 빈 �
 }
 function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이까지) 클릭된 유닛
   let best = null, bd = 1e9;
-  for (const u of S.units) { if (!live(u) || (team && u.team !== team)) continue; const d = Math.hypot(u.x - wx, (u.y - u.r * 1.6) - wy); if (d < u.r * 2.2 && d < bd) { bd = d; best = u; } }
+  for (const u of S.units) { if (!live(u) || (team && u.team !== team)) continue; const d = Math.hypot(u.x - wx, (u.y - u.r * 1.6) - wy); if (d < Math.max(u.r * 2.2, 24) && d < bd) { bd = d; best = u; } }
   return best;
 }
 
