@@ -82,11 +82,12 @@ const tileMul = (S, tx, ty) => { const t = S.map[ti(tx, ty)]; return t === FORES
 const diagOk = (S, x, y, dx, dy) => !dx || !dy || (okTile(S, x + dx, y) && okTile(S, x, y + dy));   // 모서리 가로지르기 금지
 
 const ASTAR_CAP = 800, prof = { astar: 0 };   // prof: 테스트용 호출 횟수
+const sameTeam = (S, u, id) => { const o = S.units[id - 1]; return !!o && o.team === u.team; };   // 유닛 id = 배열 위치 + 1
 function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유닛이 서 있는 칸도 막힌 칸으로 본다 (도착 칸은 예외)
   prof.astar++; let g = ti(gtx, gty); const s = ti(u.tx, u.ty);
   if (!okTile(S, gtx, gty)) { let best = -1, bd = 1e9; for (let i = 0; i < MW * MH; i++) if (okTile(S, i % MW, i / MW | 0)) { const d = Math.hypot(i % MW - gtx, (i / MW | 0) - gty); if (d < bd) { bd = d; best = i; } } g = best; }
   if (s === g) return [];
-  const ok = i => S.map[i] !== ROCK && S.map[i] !== WATER && (!dyn || i === g || S.occ[i] === 0 || S.occ[i] === u.id);
+  const ok = i => S.map[i] !== ROCK && S.map[i] !== WATER && (!dyn || i === g || S.occ[i] === 0 || S.occ[i] === u.id || sameTeam(S, u, S.occ[i]));
   const gc = new Float32Array(MW * MH).fill(1e9), from = new Int32Array(MW * MH).fill(-1), closed = new Uint8Array(MW * MH), heap = [[0, s]];
   gc[s] = 0;
   const h = i => { const dx = Math.abs(i % MW - g % MW), dy = Math.abs((i / MW | 0) - (g / MW | 0)); return Math.max(dx, dy) + 0.41 * Math.min(dx, dy); };
@@ -229,15 +230,27 @@ function useSpecial(S, u, x, y) {
 }
 
 // ---------- 이동 (한 칸 = 한 명) ----------
+const stepDur = (S, u, nx, ny) => TILE * (nx !== u.tx && ny !== u.ty ? 1.414 : 1) / (u.sp * MOVE_SPEED * tileMul(S, nx, ny) * ftMul(u));
+function canSwap(S, u, n) {   // 가만히 서 있는(이동·공격·돌진 중이 아니고 적과 맞붙지도 않은) 같은 편이 그 칸에 있으면 자리를 맞바꿔 지나갈 수 있다
+  const o = n && S.units[S.occ[ti(n.tx, n.ty)] - 1];
+  return o && o !== u && o.team === u.team && live(o) && !o.mv && !o.dashQ && o.anim <= 0 && o.stun <= 0 && !S.units.some(e => live(e) && e.team !== o.team && cheb(o, e) <= 1) && diagOk(S, u.tx, u.ty, n.tx - u.tx, n.ty - u.ty) ? o : null;
+}
+function beginSwap(S, a, b) {   // 두 유닛이 서로의 칸으로 동시에 이동 (점유표는 도착할 때 한꺼번에 갱신) → 어느 순간에도 한 칸에 둘이 멈춰 있지 않다
+  const dur = Math.max(stepDur(S, a, b.tx, b.ty), stepDur(S, b, a.tx, a.ty));
+  a.mv = { fx: a.x, fy: a.y, nx: b.tx, ny: b.ty, t: 0, dur, swap: b }; b.mv = { fx: b.x, fy: b.y, nx: a.tx, ny: a.ty, t: 0, dur, swap: a };
+  a.face = Math.atan2(b.ty - a.ty, b.tx - a.tx); b.face = a.face + Math.PI; a.stuck = 0; tire(a, 0.1); tire(b, 0.1);
+}
 function beginStep(S, u, nx, ny, dur) {   // 다음 칸을 즉시 점유하고, 출발 칸은 도착할 때까지 유지 → 두 칸을 오가는 동안에도 겹치지 않는다
-  const diag = nx !== u.tx && ny !== u.ty;
-  u.mv = { fx: u.x, fy: u.y, nx, ny, t: 0, dur: dur || TILE * (diag ? 1.414 : 1) / (u.sp * MOVE_SPEED * tileMul(S, nx, ny) * ftMul(u)) };
+  u.mv = { fx: u.x, fy: u.y, nx, ny, t: 0, dur: dur || stepDur(S, u, nx, ny) };
   S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; tire(u, 0.1);
 }
 function advanceMove(S, u, dt) {
   const m = u.mv; m.t += dt; const p = Math.min(1, m.t / m.dur); u.moving = true;
   u.x = m.fx + (tcx(m.nx) - m.fx) * p; u.y = m.fy + (tcy(m.ny) - m.fy) * p;
-  if (p >= 1) { if (S.occ[ti(u.tx, u.ty)] === u.id) S.occ[ti(u.tx, u.ty)] = 0; u.tx = m.nx; u.ty = m.ny; u.mv = null; }
+  if (p >= 1) {
+    const fin = x => { const mm = x.mv; if (!mm.swap && S.occ[ti(x.tx, x.ty)] === x.id) S.occ[ti(x.tx, x.ty)] = 0; x.tx = mm.nx; x.ty = mm.ny; x.mv = null; if (mm.swap) S.occ[ti(x.tx, x.ty)] = x.id; x.x = tcx(x.tx); x.y = tcy(x.ty); };
+    const o = m.swap; fin(u); if (o && o.mv && o.mv.swap === u) fin(o);   // 맞바꾸기는 둘이 함께 끝난다
+  }
 }
 function sidestep(S, u, gx, gy) {   // 앞이 막혔을 때: 목표에 더 가까워지는 빈 인접 칸, 오래 막혔으면 아무 빈 칸
   let best = null, bd = u.stuck > 1.5 ? 1e9 : Math.hypot(u.tx - gx, u.ty - gy);
@@ -250,7 +263,7 @@ function sidestep(S, u, gx, gy) {   // 앞이 막혔을 때: 목표에 더 가�
 function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는다 → 'arrived' | 'moving' | 'blocked'
   if (u.tx === gx && u.ty === gy) return 'arrived';
   if (u.waitT > 0) return 'blocked';
-  const gk = ti(gx, gy), free = n => n && S.occ[ti(n.tx, n.ty)] === 0;
+  const gk = ti(gx, gy), free = n => n && (S.occ[ti(n.tx, n.ty)] === 0 || !!canSwap(S, u, n));
   let nxt = u.pathGoal === gk && u.path && u.path[0] || null;
   if (!free(nxt)) {
     if (u.repathT > 0 && u.stuck < 1.5) { u.path = null; nxt = null; }   // 재탐색 간격 0.3초 (오래 막혔으면 무시)
@@ -258,13 +271,15 @@ function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는�
       u.repathT = 0.3; u.path = astar(S, u, gx, gy, true); u.pathGoal = gk; nxt = u.path && u.path[0];
       if (!free(nxt)) {   // 부분 경로를 받았으면 dyn=false 재탐색은 건너뛴다
         if (!(u.path && u.path.partial)) { const sp = astar(S, u, gx, gy, false), want = sp && sp[0]; nxt = free(want) ? want : null; }
-        if (!nxt) nxt = sidestep(S, u, gx, gy); u.path = null;
+        if (!free(nxt)) nxt = sidestep(S, u, gx, gy); u.path = null;   // 부분 경로의 첫 칸이 막혀 있어도 그대로 밟지 않는다
       }
     }
   }
   if (!nxt) { u.waitT = 0.2 + cur.rnd() * 0.15; u.stuck += u.waitT; return 'blocked'; }
   if (u.path && u.path[0] === nxt) u.path.shift();
-  beginStep(S, u, nxt.tx, nxt.ty); return 'moving';
+  const ally = S.occ[ti(nxt.tx, nxt.ty)] ? canSwap(S, u, nxt) : null;
+  if (ally) beginSwap(S, u, ally); else beginStep(S, u, nxt.tx, nxt.ty);
+  return 'moving';
 }
 function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 가장자리로 철수, 쪽은 고정 / 적: 오른쪽 가장자리 도주) — 도착하면 필드에서 사라진다
   if (u.team === 'player' && !u.order.side) u.order.side = u.tx < MW / 2 ? -1 : 1;   // 쪽은 명령 객체에 저장 → 새 명령이면 다시 정한다
@@ -437,6 +452,7 @@ function directMove(S, u, dx, dy) {
   const nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
   const eid = inMap(nx, ny) ? S.occ[ti(nx, ny)] : 0, e = eid && S.units.find(x => x.id === eid);
   if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 1.8); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
+  if (e && e.team === u.team) { if (canSwap(S, u, { tx: nx, ty: ny })) beginSwap(S, u, e); return; }   // 아군은 자리를 맞바꿔 지나간다
   if (okTile(S, nx, ny) && !eid && diagOk(S, u.tx, u.ty, dx, dy)) beginStep(S, u, nx, ny);
 }
 function aimAt(S, u, range) {   // 바라보는 방향 ±55° 안의 가장 가까운 적, 없으면 정면 150px
