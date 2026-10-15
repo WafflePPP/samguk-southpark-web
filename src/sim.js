@@ -6,7 +6,8 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
-const DMG = 0.32, ENEMY_HP = 1.6, ENEMY_ATK = 1.22;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
+const MOVE_SPEED = 1.8;   // 한 칸 이동 속도 배율 (칸 단위 이동의 답답함 완화)
+const DMG = 0.32, ENEMY_HP = 1.55, ENEMY_ATK = 1.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -220,7 +221,7 @@ function useSpecial(S, u, x, y) {
 // ---------- 이동 (한 칸 = 한 명) ----------
 function beginStep(S, u, nx, ny, dur) {   // 다음 칸을 즉시 점유하고, 출발 칸은 도착할 때까지 유지 → 두 칸을 오가는 동안에도 겹치지 않는다
   const diag = nx !== u.tx && ny !== u.ty;
-  u.mv = { fx: u.x, fy: u.y, nx, ny, t: 0, dur: dur || TILE * (diag ? 1.414 : 1) / (u.sp * tileMul(S, nx, ny) * ftMul(u)) };
+  u.mv = { fx: u.x, fy: u.y, nx, ny, t: 0, dur: dur || TILE * (diag ? 1.414 : 1) / (u.sp * MOVE_SPEED * tileMul(S, nx, ny) * ftMul(u)) };
   S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; u.ft = Math.min(100, u.ft + 0.1);
 }
 function advanceMove(S, u, dt) {
@@ -293,7 +294,7 @@ function updateUnit(S, u, dt) {
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - 0.04 * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
-  if (u.mv) { advanceMove(S, u, dt); return; }   // 한 칸을 걷는 동안에는 다른 행동을 하지 않는다
+  if (u.mv) { advanceMove(S, u, dt); if (u.mv) return; }   // 한 칸을 걷는 동안에는 다른 행동을 하지 않는다. 칸에 도착하면 같은 틱에 다음 입력·행동을 이어서 처리 (끊김 없이)
   if (u.dashQ) {
     const n = u.dashQ.shift();
     if (n && !S.occ[ti(n.tx, n.ty)]) { beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
