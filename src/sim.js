@@ -34,9 +34,20 @@ const U = {
   eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
   earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
   ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
+  hua: { name: '화웅', cls: 'warrior', sp: 173, cd: 1.0, r: 14, aa: 10, hr: 10, style: 'hua', special: 'spin', fanatic: true },
+  jang: { name: '장료', cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 14, hr: 10, style: 'jang', special: 'dash' },
+  xun: { name: '순욱', cls: 'mage', mp: 999, sp: 166, cd: 1.4, range: 200, r: 12, aa: 18, hr: 8, style: 'xun', spells: ['bolt', 'phoenix', 'fireball', 'thunder'], fanatic: true },
   emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'roll', 'tornado'], generic: true },
   esage: { name: '적 군사', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'phoenix', 'thunder', 'quake', 'web'], fanatic: true },
 };
+// 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 정예 장수는 같은 병종 일반 대장 × 배율 (2배 이상, 관우·여포 4배, 조운·황충·전위 3배 = 기본 2배 × 1.5, 초선·제갈량 2배).
+const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };
+const ELITE = { guan: 4, lubu: 4, zhao: 3, huang: 3, dian: 3, diao: 2, kong: 2, hua: 3, jang: 3, xun: 2 };   // 아군 정예 + 적 정예(화웅·장료·순욱)
+const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
+const CLONES = { yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'] };   // 이름만 다른 적 정예 장수
+for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = ELITE[src]; }
+for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
+for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
@@ -64,9 +75,9 @@ const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', c
 const ARMIES = [
   { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'sword', 'sword', 'shield', 'shield', 'huang', 'archer', 'archer', 'kong', 'diao'] },
   { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'sword', 'sword', 'sword', 'sword', 'archer', 'archer', 'mage', 'mage'] },
-  { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap','esword','esword','esword','esword','esword','earcher','earcher','earcher','ecav','ecap','ecap','esword','esword'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','eshield','eshield','esword','esword','esword','earcher','earcher','earcher','ecap','ecap','eshield','eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '법사대', at: [45, 7], leader: 'esage', units: ['esage','emage','emage','earcher','earcher','earcher','eshield','eshield','esage','esage','emage','emage'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap','esword','esword','esword','esword','esword','earcher','earcher','earcher','ecav','ecap','ecap','esword','esword', 'jang', 'yan', 'wen'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','eshield','eshield','esword','esword','esword','earcher','earcher','earcher','ecap','ecap','eshield','eshield', 'hua', 'gao', 'xia'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '법사대', at: [45, 7], leader: 'esage', units: ['esage','emage','emage','earcher','earcher','earcher','eshield','eshield','esage','esage','emage','emage', 'xun', 'guo'], trig: { near: 14, t: 70 } },
 ];
 
 // ---------- 지형 / 격자 ----------
@@ -157,7 +168,8 @@ const ftMul = u => 1 - u.ft * FT.penalty;   // 공격·이동 속도 배율
 const ftDef = u => 1 - u.ft * FT.penalty;   // 방어 배율 (설계값, ftMul 과 별개로 둘 수 있게 분리)
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
-const phys = (u, t, mul = 1) => Math.max(1, u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u) - t.df * ftDef(t)) * DMG;
+const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
+const phys = (u, t, mul = 1) => Math.max(1, mitigate(u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), t.df * ftDef(t))) * DMG;
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
@@ -197,7 +209,7 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < t.aa / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
-  hurt(S, p.from, t, Math.max(1, (p.atk * (0.85 + S.rnd() * 0.3) - t.ad * ftDef(t)) * DMG));
+  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), t.ad * ftDef(t))) * DMG);
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
@@ -531,6 +543,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

@@ -28,6 +28,9 @@ const STYLES = {
   shield: { body: '#3a4a5a', trim: '#9aa7b8', skin: '#d9a77e', helm: true, helmColor: '#2c3340', plume: 0.5, pauldrons: true, weapon: 'axe', shield: true },
   cav: { body: '#3b3f4b', trim: '#c9302c', skin: '#d9a77e', helm: true, helmColor: '#2b2d36', plume: 1.2, pauldrons: true, weapon: 'spear', horse: '#4a3a30' },
   captain: { body: '#5a1c24', trim: '#e0b13a', skin: '#c9946a', helm: true, helmColor: '#24222c', plume: 1.6, pauldrons: true, weapon: 'axe' },
+  hua: { body: '#7a1c24', trim: '#ffd34d', skin: '#c9946a', cape: '#3a0e14', helm: true, helmColor: '#1c1c26', plume: 1.8, pauldrons: true, beard: true, weapon: 'axe' },
+  jang: { body: '#3b3f4b', trim: '#ffd34d', skin: '#d9a77e', cape: '#5a1c24', helm: true, helmColor: '#2b2d36', plume: 1.6, pauldrons: true, weapon: 'spear', horse: '#26262e' },
+  xun: { body: '#4a2a5a', trim: '#ffd34d', skin: '#d9a77e', hairCap: true, crown: true, beard: true, beardColor: '#cfd3e6', sleeves: '#7a4a8a', weapon: 'fan' },
   emage: { body: '#4a2a5a', trim: '#c9302c', skin: '#d9a77e', hairCap: true, sleeves: '#7a4a8a', weapon: 'fan' },
 };
 
