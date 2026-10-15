@@ -20,6 +20,12 @@ let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = 
 const SHOW = { dmg: true, buff: true };
 try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ }
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
+// 카메라 거리(줌): 캐릭터를 줄인 만큼 확대해 화면에서 처음 크기로 보이게 한다 (기본 1.67 = 1/SIZE 0.6). 시스템 메뉴·[ ] 키로 조절
+const ZOOMS = [[1, '멀리'], [1.33, '조금 멀리'], [1.67, '기본'], [2, '가까이'], [2.5, '아주 가까이']];
+let zoomIdx = 2; try { const z = localStorage.getItem('sgsp-zoom'); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ }
+const Z = () => ZOOMS[zoomIdx][0];
+function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom', zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
+let wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
 function layout() { tblH = mobile ? 0 : (tblOpen ? 236 : 64); vh = VH - TB_H - tblH; }
@@ -34,16 +40,16 @@ function startBattle() {
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
 const alive = u => Sim.live(u);
-function camTarget() { const u = ctrlOf(); return u ? [u.x - VPW / 2, u.y - vh / 2 - 20] : [cam.x, cam.y]; }
-function clampCam() { cam.x = Math.max(0, Math.min(WW - VPW, cam.x)); cam.y = Math.max(0, Math.min(WH - vh, cam.y)); }
+function camTarget() { const u = ctrlOf(), z = Z(); return u ? [u.x - VPW / z / 2, u.y - vh / z / 2 - 20 / z] : [cam.x, cam.y]; }
+function clampCam() { const z = Z(); cam.x = Math.max(0, Math.min(WW - VPW / z, cam.x)); cam.y = Math.max(0, Math.min(WH - vh / z, cam.y)); }
 function snapCam() { const [x, y] = camTarget(); cam.x = x; cam.y = y; clampCam(); }
-const toWorld = (sx, sy) => [sx - LEFT_W + cam.x, sy - TB_H + cam.y];
+const toWorld = (sx, sy) => [(sx - LEFT_W) / Z() + cam.x, (sy - TB_H) / Z() + cam.y];
 const inView = (x, y) => x >= LEFT_W && x < VW && y >= TB_H && y < TB_H + vh;
 const tcx = t => (t + 0.5) * TILE, tcy = t => (t + 0.5) * TILE + 8;
 
 // ---------- 그리기 도구 ----------
 function label(s, x, y, size, col, align = 'left') {
-  size = Math.round(size * FS);
+  size = Math.round(size * FS / wz);
   ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
   ctx.lineWidth = size / 5; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineJoin = 'round'; ctx.strokeText(s, x, y); ctx.fillStyle = col; ctx.fillText(s, x, y);
 }
@@ -77,8 +83,9 @@ function drawUnit(u) {
 }
 function drawWorld() {
   ctx.save(); ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
-  ctx.drawImage(terrain, cam.x, cam.y, VPW, vh, LEFT_W, TB_H, VPW, vh);
-  ctx.translate(LEFT_W - cam.x, TB_H - cam.y);
+  const z = Z(), vw = VPW / z, vhh = vh / z; wz = z;
+  ctx.drawImage(terrain, cam.x, cam.y, vw, vhh, LEFT_W, TB_H, VPW, vh);
+  ctx.translate(LEFT_W, TB_H); ctx.scale(z, z); ctx.translate(-cam.x, -cam.y);
   const tileBox = (tx, ty, col, fill) => { if (fill) { ctx.fillStyle = fill; ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE); } ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2); };
   const c = ctrlOf();
   if (c && alive(c)) { tileBox(c.tx, c.ty, COLORS.gold, 'rgba(255,211,77,.16)'); if (c.mv) tileBox(c.mv.nx, c.mv.ny, 'rgba(255,211,77,.5)'); }   // 조작 캐릭터가 서 있는 칸
@@ -92,14 +99,14 @@ function drawWorld() {
     else { ctx.fillStyle = 'rgba(30,25,20,.5)'; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (1 + p), f.r * (1 + p) * 0.5, 0, 0, TAU); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
-  for (const u of S.units.filter(alive).sort((a, b) => a.y - b.y)) { if (u.x < cam.x - 60 || u.x > cam.x + VPW + 60 || u.y < cam.y - 90 || u.y > cam.y + vh + 60) continue; drawUnit(u); }
+  for (const u of S.units.filter(alive).sort((a, b) => a.y - b.y)) { if (u.x < cam.x - 60 || u.x > cam.x + vw + 60 || u.y < cam.y - 90 || u.y > cam.y + vhh + 60) continue; drawUnit(u); }
   for (const p of S.proj) {
     if (p.kind === 'arrow') { ctx.strokeStyle = p.team === 'player' ? '#e8f4ff' : '#ffc9b8'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - Math.cos(p.a) * 14, p.y - Math.sin(p.a) * 14); ctx.stroke(); }
     else if (p.kind === 'bolt') { ctx.fillStyle = '#9fe8ff'; ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(159,232,255,.5)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - Math.cos(p.a) * 30, p.y - Math.sin(p.a) * 30); ctx.stroke(); }
     else { ctx.fillStyle = '#ff7a3a'; ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, TAU); ctx.fill(); }
   }
   for (const t of S.texts) { if (t.k && t.k !== 'sys' && !SHOW[t.k]) continue; ctx.globalAlpha = Math.min(1, t.t * 2); label(String(t.s), t.x, t.y, 18, t.col, 'center'); ctx.globalAlpha = 1; }
-  ctx.restore();
+  ctx.restore(); wz = 1;
 }
 
 // ---------- HUD (PC) ----------
@@ -128,7 +135,7 @@ function drawLeftPanel() {
   const mw = LEFT_W - 12, mh = Math.round(mw * Sim.MH / Sim.MW), my = TB_H + vh - mh - 6, mx = 6, k = mw / WW;   // 미니맵
   ctx.drawImage(terrain, mx, my, mw, mh); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
   for (const e of S.units) if (alive(e)) { ctx.fillStyle = e.team === 'player' ? '#4fb0ff' : '#ff5a4a'; ctx.fillRect(mx + e.x * k - 1, my + e.y * k - 1, e.isLeader ? 4 : 2.5, e.isLeader ? 4 : 2.5); }
-  ctx.strokeStyle = COLORS.gold; ctx.strokeRect(mx + cam.x * k, my + cam.y * k, VPW * k, vh * k);
+  ctx.strokeStyle = COLORS.gold; ctx.strokeRect(mx + cam.x * k, my + cam.y * k, VPW / Z() * k, vh / Z() * k);
 }
 function drawSpellPanel() {
   const u = ctrlOf(); if (!u || !u.spells.length) return;
@@ -197,7 +204,7 @@ function drawActionsMobile() {   // 오른쪽 아래 원형 버튼 (맹장전 �
 }
 
 function drawMenu() {   // 퍼스트퀸4 시스템 메뉴: 게임 속도 조정 / 보조키 윈도우 확대·축소 표시 / 상태표시 교환 / 자동 전투
-  const items = [['m:speed', `게임 속도 조정  ×${SPEEDS[speedIdx]}`], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일']];
+  const items = [['m:speed', `게임 속도 조정  ×${SPEEDS[speedIdx]}`], ['m:zoom', `카메라 거리: ${ZOOMS[zoomIdx][1]} (×${Z()})`], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일']];
   if (!mobile) items.push(['m:padbig', '보조키 윈도우 확대표시'], ['m:padsmall', '보조키 윈도우 축소표시'], ['m:tbl', tblOpen ? '상태창 축소표시' : '상태창 확대표시'], ['m:abil', tblAbility ? '상태표시 교환 (→ 상태)' : '상태표시 교환 (→ 능력)']);
   items.push(['m:auto', `자동 전투 [${S.auto ? 'ON' : 'OFF'}]`], ['m:restart', '전투 다시 시작'], ['m:close', '닫기 (Esc)']);
   const ih = mobile ? 54 : 38, st = mobile ? 62 : 44, w = 480, h = 70 + items.length * st, x = (VW - w) / 2, y = Math.max(6, (VH - h) / 2);
@@ -262,6 +269,7 @@ function uiClick(id) {
   else if (id === 'm:act') act(false); else if (id === 'm:alt') act(true);
   else if (id === 'm:spell') { const u = ctrlOf(); if (u && u.spells.length) Sim.selectSpell(u, (u.spellSel + 1) % u.spells.length); }
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:padbig') padLarge = true; else if (id === 'm:padsmall') padLarge = false;
+  else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);
   else if (id === 'm:dmg') { SHOW.dmg = !SHOW.dmg; saveShow(); } else if (id === 'm:buff') { SHOW.buff = !SHOW.buff; saveShow(); }
   else if (id === 'm:mode') setMobile(!mobile);
   else if (id === 'm:tbl') tblOpen = !tblOpen; else if (id === 'm:abil') tblAbility = !tblAbility;
@@ -322,6 +330,7 @@ addEventListener('keydown', e => {
   if (k === 'ArrowLeft') cycleUnit(-1); else if (k === 'ArrowRight') cycleUnit(1);
   else if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'Tab') armyIdx = 1 - armyIdx;
   else if (k === ' ') act(false); else if (k === 'x') act(true);
+  else if (k === '[') setZoom(zoomIdx - 1); else if (k === ']') setZoom(zoomIdx + 1);
   else if (k === 'f') useCommand('charge'); else if (k === 'v') useCommand('stop'); else if (k === 'r') useCommand('retreat'); else if (k === 'b') useCommand('idle');
   else if (k === 'g') useCommand('deploy'); else if (k === 't') useCommand('auto'); else if (k === 'p') paused = !paused;
   else if (k === '1' || k === '2' || k === '3') { const u = ctrlOf(); if (u) Sim.selectSpell(u, +k - 1); }

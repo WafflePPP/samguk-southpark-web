@@ -8,7 +8,7 @@ const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
-const DMG = 0.32, ENEMY_HP = 2.0, ENEMY_ATK = 2.4;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
+const DMG = 0.32, ENEMY_HP = 1.2, ENEMY_ATK = 3.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -16,25 +16,25 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // cls: warrior 전사 · cavalry 기마 · archer 궁병 · shield 방패병 · mage 법사 · cleric 성직자
 // df 물리방어 · ad 화살방어 · md 마법방어 · mat 마법공격 · sp 속도(px/s, 32px = 1칸 → 180 = 5.6칸/초) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
 const U = {
-  guan: { name: '관우', cls: 'warrior', sp: 180, hp: 520, atk: 66, df: 10, ad: 8, md: 4, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
-  dian: { name: '전위', cls: 'warrior', sp: 173, hp: 440, atk: 66, df: 11, ad: 8, md: 4, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
-  zhao: { name: '조운', cls: 'cavalry', sp: 270, hp: 520, atk: 84, df: 12, ad: 6, md: 4, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
-  huang: { name: '황충', cls: 'archer', sp: 166, hp: 260, atk: 68, df: 4, ad: 4, md: 3, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
-  diao: { name: '초선', cls: 'cleric', mp: 999, sp: 180, hp: 400, atk: 66, df: 10, ad: 8, md: 12, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
-  kong: { name: '제갈량', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 6, ad: 6, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'fire', 'thunder'] },
+  guan: { name: '관우', cls: 'warrior', sp: 180, hp: 520, atk: 66, df: 40, ad: 32, md: 4, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
+  dian: { name: '전위', cls: 'warrior', sp: 173, hp: 440, atk: 66, df: 55, ad: 40, md: 4, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
+  zhao: { name: '조운', cls: 'cavalry', sp: 270, hp: 520, atk: 84, df: 42, ad: 21, md: 4, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
+  huang: { name: '황충', cls: 'archer', sp: 166, hp: 260, atk: 68, df: 12, ad: 12, md: 3, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
+  diao: { name: '초선', cls: 'cleric', mp: 999, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 12, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
+  kong: { name: '제갈량', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'fire', 'thunder'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
   archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
   cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
   mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fire'], generic: true },
-  lubu: { name: '여포', cls: 'cavalry', sp: 252, hp: 760, atk: 84, df: 12, ad: 8, md: 6, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
-  ecap: { name: '적 장수', cls: 'warrior', sp: 173, hp: 400, atk: 64, df: 10, ad: 6, md: 4, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
+  lubu: { name: '여포', cls: 'cavalry', sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 6, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
+  ecap: { name: '적 장수', cls: 'warrior', sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 4, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
   esword: { name: '적 보병', cls: 'warrior', hp: 115, atk: 20, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
   eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
   earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
   ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
   emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'fire'], generic: true },
-  esage: { name: '적 군사', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 6, ad: 6, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'fire', 'thunder'], fanatic: true },
+  esage: { name: '적 군사', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'fire', 'thunder'], fanatic: true },
 };
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 const SPELL = {   // lock: 시전 후 그 편의 모든 마법이 잠기는 시간 (퍼스트퀸4 의 번개·소환 등)
