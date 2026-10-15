@@ -42,6 +42,11 @@ function startBattle() {
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
 const alive = u => Sim.live(u);
+function visibleArmyUnits(limit = 9) {
+  const units = army().units, count = Math.min(limit, units.length), selected = units.indexOf(ctrlOf());
+  const start = units.length > limit ? (Math.max(0, selected) - Math.floor(limit / 2) + units.length) % units.length : 0;
+  return Array.from({ length: count }, (_, i) => units[(start + i) % units.length]);
+}
 function camTarget() { const u = ctrlOf(), z = Z(); return u ? [u.x - VPW / z / 2, u.y - vh / z / 2 - 20 / z] : [cam.x, cam.y]; }
 function clampCam() { const z = Z(); cam.x = Math.max(0, Math.min(WW - VPW / z, cam.x)); cam.y = Math.max(0, Math.min(WH - vh / z, cam.y)); }
 function snapCam() { const [x, y] = camTarget(); cam.x = x; cam.y = y; clampCam(); }
@@ -116,7 +121,7 @@ function drawWorld() {
 function drawToolbar() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, TB_H); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, TB_H - 2, VW, 2);
   for (let i = 0; i < 2; i++) button('army' + i, 4 + i * 72, 4, 68, 36, `${i + 1} ${S.armies[i].name}`, armyIdx === i);
-  army().units.forEach((u, i) => {   // 군단 초상 (최대 12명): 클릭 = 조작 캐릭터로 선택, 더블클릭 = 화면 이동
+  visibleArmyUnits().forEach((u, i) => {   // 선택 캐릭터 주변 최대 9명만 표시, 순환 창으로 전체 접근
     const x = LEFT_W + 6 + i * 38, on = u === ctrlOf();
     panel(x, 4, 36, 36, on ? COLORS.gold : 'rgba(255,255,255,.25)', on ? 3 : 1);
     ctx.save(); ctx.beginPath(); ctx.rect(x + 1, 5, 34, 34); ctx.clip(); ctx.globalAlpha = u.dead ? 0.25 : u.out ? 0.45 : 1;
@@ -165,10 +170,10 @@ function drawPad() {   // 보조키 윈도우: 마우스·터치로 누르는 �
 }
 function drawTable() {
   const y0 = TB_H + vh; ctx.fillStyle = COLORS.ink; ctx.fillRect(0, y0, VW, tblH); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, y0, VW, 2);
-  const names = tblOpen ? (tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST']) : ['NAME', 'HP'], rh = 28, cw = VPW / 12;
+  const visible = visibleArmyUnits(), names = tblOpen ? (tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST']) : ['NAME', 'HP'], rh = 28, cw = VPW / visible.length;
   const hpRow = tblOpen ? (tblAbility ? -1 : 2) : 1;
   names.forEach((r, i) => label(r, 10, y0 + 18 + i * rh, 16, COLORS.silver2));
-  army().units.forEach((u, c) => {
+  visible.forEach((u, c) => {
     const x = LEFT_W + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
     if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, y0 + 4, cw, tblH - 6); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y0 + 5, cw - 2, tblH - 8); }
     if (!gone && hpRow >= 0) { ctx.fillStyle = 'rgba(79,176,255,.3)'; ctx.fillRect(x + 3, y0 + 6 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); }
