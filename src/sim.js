@@ -80,8 +80,6 @@ const ARMIES = [
   { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','eshield','eshield','esword','esword','esword','earcher','earcher','earcher','ecap','ecap','eshield','eshield', 'hua', 'gao', 'xia'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'enemy', name: '법사대', at: [45, 7], leader: 'esage', units: ['esage','emage','emage','earcher','earcher','earcher','eshield','eshield','esage','esage','emage','emage', 'xun', 'guo'], trig: { near: 14, t: 70 } },
 ];
-const RESERVE = ['sword', 'sword', 'sword', 'shield', 'archer', 'archer', 'mage', 'cav'];
-
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -159,29 +157,7 @@ function createBattle(seed = 1, opts = {}) {
     });
     if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
   });
-  S.reserve = { spawned: false };
   return S;
-}
-
-function spawnReserve(S) {
-  const A = S.armies[0], cells = [];
-  for (let r = 0; r <= 8; r++) for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-    if (Math.abs(x - 5) + Math.abs(y - 32) !== r || !okTile(S, x, y) || S.occ[ti(x, y)]) continue;
-    cells.push([x, y]);
-  }
-  if (cells.length < RESERVE.length) return false;
-  for (let i = 0; i < RESERVE.length; i++) {
-    const key = RESERVE[i], T = U[key], [tx, ty] = cells[i], id = S.nextId++;
-    const u = { id, key, name: T.name + String.fromCharCode(65 + S.units.filter(v => v.key === key).length), cls: T.cls, team: 'player', army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-      hp: T.hp * HP_MUL * SOLDIER_HP, maxHp: T.hp * HP_MUL * SOLDIER_HP, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: S.rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-      aa: T.aa, hr: T.hr, named: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: false, isLeader: false,
-      face: 0, order: { type: A.order === 'idle' ? 'idle' : A.order }, slot: { dx: tx - 5, dy: ty - 32 }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: S.rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false,
-      spellSel: 0, ctrlIn: null, root: 0, hitT: 0, hitAng: 0, hitMag: 1 };
-    S.occ[ti(tx, ty)] = id; S.units.push(u); A.units.push(u);
-  }
-  S.reserve.spawned = true;
-  text(S, tcx(5), tcy(32) - 70, '예비 군단 도착!', '#7dff9a');
-  return true;
 }
 
 // ---------- 전투 계산 ----------
@@ -505,7 +481,6 @@ function checkEnd(S) {
 function step(S, dt) {
   if (S.over) return;
   cur = S; S.t += dt; enemyAI(S);
-  if (!S.reserve.spawned && (S.t >= 45 || S.armies.slice(0, 2).some(A => A.routed))) spawnReserve(S);
   for (const k of ['player', 'enemy']) { if (S.lock[k] > 0) S.lock[k] -= dt; if (S.lockAI[k] > 0) S.lockAI[k] -= dt; }
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
   const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -514,7 +489,6 @@ function step(S, dt) {
   for (const l of S.later) { l.t -= dt; if (l.t <= 0) l.fn(); } S.later = S.later.filter(l => l.t > 0);
   for (const f of S.fx) f.t -= dt; S.fx = S.fx.filter(f => f.t > 0);
   for (const x of S.texts) { x.t -= dt; x.y -= 22 * dt; } S.texts = S.texts.filter(x => x.t > 0);
-  if (!S.reserve.spawned && S.armies.slice(0, 2).some(A => A.routed)) spawnReserve(S);
   checkEnd(S);
 }
 
