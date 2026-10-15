@@ -9,7 +9,7 @@ const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 0.5;   // 일반 병사(generic) 체력 배율 — 장수는 그대로
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
-const DMG = 0.32, ENEMY_HP = 1.2, ENEMY_ATK = 3.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
+const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -64,9 +64,9 @@ const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', c
 const ARMIES = [
   { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'sword', 'sword', 'shield', 'shield', 'huang', 'archer', 'archer', 'kong', 'diao'] },
   { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'sword', 'sword', 'sword', 'sword', 'archer', 'archer', 'mage', 'mage'] },
-  { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap', 'esword', 'esword', 'esword', 'esword', 'esword', 'earcher', 'earcher', 'earcher', 'ecav'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu', 'eshield', 'eshield', 'eshield', 'eshield', 'esword', 'esword', 'esword', 'earcher', 'earcher', 'earcher'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '법사대', at: [45, 7], leader: 'esage', units: ['esage', 'emage', 'emage', 'earcher', 'earcher', 'earcher', 'eshield', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap','esword','esword','esword','esword','esword','earcher','earcher','earcher','ecav','ecap','ecap','esword','esword'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','eshield','eshield','esword','esword','esword','earcher','earcher','earcher','ecap','ecap','eshield','eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '법사대', at: [45, 7], leader: 'esage', units: ['esage','emage','emage','earcher','earcher','earcher','eshield','eshield','esage','esage','emage','emage'], trig: { near: 14, t: 70 } },
 ];
 
 // ---------- 지형 / 격자 ----------
@@ -135,10 +135,10 @@ function createBattle(seed = 1, opts = {}) {
     const A = { id: ai, team: d.team, name: d.name, units: [], leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : 'wait', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     d.units.forEach((key, i) => {
-      const T = U[key], sgn = d.team === 'player' ? 1 : -1, hb = d.team === 'enemy' ? ENEMY_HP : 1, ab = d.team === 'enemy' ? ENEMY_ATK : 1; cnt[key] = (cnt[key] || 0) + 1;
+      const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * hb * HP_MUL * (T.generic ? SOLDIER_HP : 1), maxHp: T.hp * hb * HP_MUL * (T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
+        hp: T.hp * HP_MUL * (T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: T.aa, hr: T.hr, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
