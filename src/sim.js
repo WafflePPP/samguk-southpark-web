@@ -6,6 +6,7 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
+const SOLDIER_HP = 0.5;   // 일반 병사(generic) 체력 배율 — 장수는 그대로
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32, ENEMY_HP = 1.2, ENEMY_ATK = 3.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
@@ -14,35 +15,49 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- 병종/영웅 표 ----------
 // cls: warrior 전사 · cavalry 기마 · archer 궁병 · shield 방패병 · mage 법사 · cleric 성직자
-// df 물리방어 · ad 화살방어 · md 마법방어 · mat 마법공격 · sp 속도(px/s, 32px = 1칸 → 180 = 5.6칸/초) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
+// df 물리방어 · ad 화살방어 · md 마법방어 · sp 속도(px/s, 32px = 1칸 → 180 = 5.6칸/초) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
 const U = {
   guan: { name: '관우', cls: 'warrior', sp: 180, hp: 520, atk: 66, df: 40, ad: 32, md: 4, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
   dian: { name: '전위', cls: 'warrior', sp: 173, hp: 440, atk: 66, df: 55, ad: 40, md: 4, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
   zhao: { name: '조운', cls: 'cavalry', sp: 270, hp: 520, atk: 84, df: 42, ad: 21, md: 4, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
   huang: { name: '황충', cls: 'archer', sp: 166, hp: 260, atk: 68, df: 12, ad: 12, md: 3, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
   diao: { name: '초선', cls: 'cleric', mp: 999, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 12, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
-  kong: { name: '제갈량', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'fire', 'thunder'] },
+  kong: { name: '제갈량', cls: 'mage', mp: 999, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
   archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
   cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
-  mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fire'], generic: true },
+  mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fireball', 'ice'], generic: true },
   lubu: { name: '여포', cls: 'cavalry', sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 6, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
   ecap: { name: '적 장수', cls: 'warrior', sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 4, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
   esword: { name: '적 보병', cls: 'warrior', hp: 115, atk: 20, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
   eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
   earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
   ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
-  emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'fire'], generic: true },
-  esage: { name: '적 군사', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'fire', 'thunder'], fanatic: true },
+  emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'roll', 'tornado'], generic: true },
+  esage: { name: '적 군사', cls: 'mage', mp: 999, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'phoenix', 'thunder', 'quake', 'web'], fanatic: true },
 };
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
-const SPELL = {   // lock: 시전 후 그 편의 모든 마법이 잠기는 시간 (퍼스트퀸4 의 번개·소환 등)
-  bolt: { name: '장풍', mp: 8, range: 260, cd: 1.2 },
-  fire: { name: '불새', mp: 16, range: 260, cd: 2.0 },
-  thunder: { name: '번개', mp: 30, range: 300, cd: 3.0, lock: 7 },
-  heal: { name: '치유', mp: 6, range: 130, cd: 1.2 },
+// 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
+//  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
+//  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
+//  설계값(자료 없음): 범위·속도·MP·쿨·번개/지진 피해·거미줄 효과·lock 7초.
+const BOLT = [140, 4, 20], BALL = [35, 1, 5];
+const SPELL = {
+  bolt: { name: '장풍', kind: 'homing', mp: 8, range: 260, cd: 1.2, dmg: BOLT, col: '#9fe8ff' },
+  phoenix: { name: '불새', kind: 'pierce', mp: 14, range: 260, cd: 1.8, dmg: BOLT, col: '#ff8a3a' },
+  ice: { name: '얼음칼날', kind: 'pierce', mp: 12, range: 260, cd: 1.6, dmg: BOLT, col: '#bfe8ff' },
+  tornado: { name: '회오리바람', kind: 'pierce', mp: 12, range: 260, cd: 1.6, dmg: BOLT, col: '#d8ffd0' },
+  fireball: { name: '불꽃탄', kind: 'ball', mp: 10, range: 260, cd: 1.5, dmg: BALL, r: 56, col: '#ff7a3a' },
+  roll: { name: '불공', kind: 'roll', mp: 8, range: 220, cd: 1.2, dmg: BALL, r: 34, col: '#ff9a4a' },
+  thunder: { name: '번개', kind: 'wide', mp: 30, range: 300, cd: 3.0, lock: 7, r: 110, dmg: [120, 3, 20], friendly: true, col: '#fff2a0' },
+  quake: { name: '지진', kind: 'quake', mp: 25, range: 0, cd: 3.0, lock: 7, r: 140, dmg: [25, 1, 5], col: '#c9a56a' },
+  web: { name: '거미줄', kind: 'web', mp: 20, range: 240, cd: 3.0, lock: 7, r: 70, root: 3, col: '#e8e8e8' },
+  heal: { name: '치유', kind: 'heal', mp: 6, range: 130, cd: 1.2 },
 };
+const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
+const MAGIC = 0.5;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
+const magicDmg = (sp, t) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * ftDef(t)) * MAGIC;
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 
 // 군단 편성. at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
@@ -114,7 +129,7 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 // ---------- 전투 생성 ----------
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-  const S = { t: 0, map: genMap(), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {};
   ARMIES.forEach((d, ai) => {
     const A = { id: ai, team: d.team, name: d.name, units: [], leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : 'wait', routed: false, order: 'idle', ctrl: null };
@@ -123,10 +138,10 @@ function createBattle(seed = 1, opts = {}) {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1, hb = d.team === 'enemy' ? ENEMY_HP : 1, ab = d.team === 'enemy' ? ENEMY_ATK : 1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * hb * HP_MUL, maxHp: T.hp * hb * HP_MUL, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, mat: T.mat || 0, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
+        hp: T.hp * hb * HP_MUL * (T.generic ? SOLDIER_HP : 1), maxHp: T.hp * hb * HP_MUL * (T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
-      u.spellSel = 0; u.ctrlIn = null; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
+      u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
     });
     if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
@@ -196,19 +211,29 @@ function attack(S, u, t) {
 // ---------- 마법·특수기 ----------
 function castSpell(S, u, key, x, y) {
   const sp = SPELL[key]; if (!sp || !live(u) || !u.spells.includes(key) || u.mp < sp.mp || u.cdT > 0 || u.stun > 0 || S.lock[u.team] > 0) return false;
-  const ang = Math.atan2(y - u.y, x - u.x), d = Math.min(sp.range, Math.hypot(x - u.x, y - u.y));
-  if (key === 'heal') {
+  const ang = Math.atan2(y - u.y, x - u.x), d = Math.min(sp.range, Math.hypot(x - u.x, y - u.y)), px = u.x + Math.cos(ang) * d, py = u.y + Math.sin(ang) * d;
+  const shot = o => S.proj.push({ x: u.x, y: u.y - u.r * 1.4, from: u, team: u.team, a: ang, sp: key, col: sp.col, ...o });
+  if (sp.kind === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
     const heal = Math.round((70 + u.lv * 5) * HP_MUL); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
-  } else if (key === 'bolt') S.proj.push({ kind: 'bolt', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, left: sp.range * 1.25, atk: u.mat, from: u, team: u.team, a: ang, hit: new Set() });
-  else if (key === 'fire') S.proj.push({ kind: 'fire', x: u.x, y: u.y - u.r * 1.4, tx: u.x + Math.cos(ang) * d, ty: u.y + Math.sin(ang) * d, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380, atk: u.mat, from: u, team: u.team, a: ang });
-  else if (key === 'thunder') {
-    const tx = u.x + Math.cos(ang) * d, ty = u.y + Math.sin(ang) * d;
-    ring(S, tx, ty, 100, 'rgba(255,240,120,.7)', 0.6);
-    S.later.push({ t: 0.5, fn: () => aoe(S, u, tx, ty, 100, e => hurt(S, u, e, Math.max(3, (u.mat * 1.1 - e.md * ftDef(e) * 2) * DMG)), '#fff2a0', true) });
-    S.lock[u.team] = sp.lock;
+  } else if (sp.kind === 'homing') {   // 장풍: 가까운 적을 쫓아간다 (조준한 곳 가까이에 적이 없으면 직진)
+    let tgt = null, bd = 80; for (const e of S.units) if (live(e) && e.team !== u.team) { const dd = Math.hypot(e.x - x, e.y - y); if (dd < bd) { bd = dd; tgt = e; } }
+    shot({ kind: 'homing', vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420, left: sp.range * 1.5, tgt });
+  } else if (sp.kind === 'pierce') shot({ kind: 'pierce', vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, left: sp.range * 1.25, hit: new Set() });   // 불새·얼음칼날·회오리바람: 관통
+  else if (sp.kind === 'roll') shot({ kind: 'roll', vx: Math.cos(ang) * 260, vy: Math.sin(ang) * 260, left: sp.range * 1.2 });   // 불공: 땅을 구르다 처음 맞은 적에서 터진다
+  else if (sp.kind === 'ball') shot({ kind: 'ball', tx: px, ty: py, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380 });   // 불꽃탄: 날아가 범위 폭발
+  else if (sp.kind === 'wide') {   // 번개: 넓은 범위, 시전자 외 같은 편도 맞는다
+    ring(S, px, py, sp.r, 'rgba(255,240,120,.7)', 0.6);
+    S.later.push({ t: 0.5, fn: () => aoe(S, u, px, py, sp.r, e => hurt(S, u, e, magicDmg(sp, e)), sp.col, true) });
+  } else if (sp.kind === 'quake') {   // 지진: 시전자 주위, 약한 피해, 아군은 안 맞는다
+    ring(S, u.x, u.y, sp.r, 'rgba(201,165,106,.8)', 0.7);
+    S.later.push({ t: 0.3, fn: () => aoe(S, u, u.x, u.y, sp.r, e => hurt(S, u, e, magicDmg(sp, e)), sp.col) });
+  } else if (sp.kind === 'web') {   // 거미줄: 범위 안 적이 한동안 움직이지 못한다
+    ring(S, px, py, sp.r, 'rgba(232,232,232,.8)', 0.5);
+    aoe(S, u, px, py, sp.r, e => { e.root = sp.root; e.path = null; text(S, e.x, e.y - e.r * 4, '속박', '#e8e8e8', 'buff'); }, sp.col);
   }
+  if (sp.lock) S.lock[u.team] = sp.lock;   // 전체 쿨 마법
   u.mp -= sp.mp; u.cdT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 'spell');
   return true;
 }
@@ -264,7 +289,7 @@ function sidestep(S, u, gx, gy) {   // 앞이 막혔을 때: 목표에 더 가�
 }
 function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는다 → 'arrived' | 'moving' | 'blocked'
   if (u.tx === gx && u.ty === gy) return 'arrived';
-  if (u.waitT > 0) return 'blocked';
+  if (u.waitT > 0 || u.root > 0) return 'blocked';
   const gk = ti(gx, gy), free = n => n && (S.occ[ti(n.tx, n.ty)] === 0 || !!canSwap(S, u, n));
   let nxt = u.pathGoal === gk && u.path && u.path[0] || null;
   if (!free(nxt)) {
@@ -349,12 +374,15 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
     let t = null, bd = 0.7; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; }
     if (t && castSpell(S, u, 'heal', t.x, t.y)) return true;
   }
-  if (u.cls === 'mage' && aggressive) {
-    const t = nearestEnemy(S, u, SPELL.fire.range); if (!t) return false;
-    let n = 0; for (const e of S.units) if (live(e) && e.team !== u.team && Math.hypot(e.x - t.x, e.y - t.y) < 70) n++;
-    let own = 0; for (const e of S.units) if (live(e) && e !== u && e.team === u.team && Math.hypot(e.x - t.x, e.y - t.y) <= 100 + e.r) own++;   // 번개는 아군도 맞는다
-    if (u.spells.includes('thunder') && n >= 4 && !own && castSpell(S, u, 'thunder', t.x, t.y)) return true;
-    if (n >= 2 && u.spells.includes('fire') && castSpell(S, u, 'fire', t.x, t.y)) return true;
+  if (u.cls === 'mage' && aggressive && !S.units.some(e => live(e) && e.team !== u.team && cheb(u, e) <= 1)) {   // 근접 교전 중에는 자동으로 마법을 쓰지 않는다 (원작). 평타(장풍)는 그대로
+    const t = nearestEnemy(S, u, 260); if (!t) return false;
+    const cnt = (x, y, r, own) => { let c = 0; for (const e of S.units) if (live(e) && e !== u && (own ? e.team === u.team : e.team !== u.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) c++; return c; };
+    const cast = (k, x, y) => { if (!u.spells.includes(k)) return false; if (SPELL[k].lock && S.lockAI[u.team] > 0) return false; const ok = castSpell(S, u, k, x, y); if (ok && SPELL[k].lock) S.lockAI[u.team] = AI_LOCK_GAP; return ok; };
+    if (cnt(t.x, t.y, SPELL.thunder.r, false) >= 4 && !cnt(t.x, t.y, SPELL.thunder.r, true) && cast('thunder', t.x, t.y)) return true;   // 번개는 아군이 없을 때만
+    if (cnt(u.x, u.y, SPELL.quake.r, false) >= 5 && cast('quake', u.x, u.y)) return true;
+    if (cnt(t.x, t.y, SPELL.web.r, false) >= 3 && cast('web', t.x, t.y)) return true;
+    if (cnt(t.x, t.y, SPELL.fireball.r, false) >= 2 && cast('fireball', t.x, t.y)) return true;
+    if (S.rnd() < 0.35) for (const k of ['phoenix', 'ice', 'tornado', 'roll']) if (cast(k, t.x, t.y)) return true;   // 원작 AI 는 마법을 무작위로 쓴다
   }
   if (u.special && u.spT <= 0 && aggressive) {
     if (u.special === 'bless') { let n = 0; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp * 0.6 && dist(u, e) <= 150) n++; if (n >= 3 && useSpecial(S, u, u.x, u.y)) return true; }
@@ -363,7 +391,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   return false;
 }
 function updateUnit(S, u, dt) {
-  u.cdT -= dt; u.spT -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.moving = false;
+  u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.moving = false;
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
@@ -399,17 +427,21 @@ function updateUnit(S, u, dt) {
 // ---------- 투사체 ----------
 function updateProj(S, dt) {
   for (const p of S.proj) {
-    const sx = p.vx * dt, sy = p.vy * dt, st = Math.hypot(sx, sy);
-    if (p.kind === 'fire') { if (Math.hypot(p.tx - p.x, p.ty - p.y) <= st + 2) { p.done = true; aoe(S, p.from, p.tx, p.ty, 56, e => hurt(S, p.from, e, Math.max(3, (p.atk * 0.75 - e.md * ftDef(e) * 1.5) * DMG)), '#ff7a3a'); continue; } }
+    if (p.kind === 'homing' && p.tgt && live(p.tgt)) { const a = Math.atan2(p.tgt.y - p.tgt.r * 1.4 - p.y, p.tgt.x - p.x), v = Math.hypot(p.vx, p.vy); p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; p.a = a; }
+    const sx = p.vx * dt, sy = p.vy * dt, st = Math.hypot(sx, sy), sp = p.sp && SPELL[p.sp];
+    if (p.kind === 'ball') { if (Math.hypot(p.tx - p.x, p.ty - p.y) <= st + 2) { p.done = true; aoe(S, p.from, p.tx, p.ty, sp.r, e => hurt(S, p.from, e, magicDmg(sp, e)), sp.col); continue; } }
     else { p.left -= st; if (p.left <= 0) { p.done = true; continue; } }
     p.x += sx; p.y += sy;
-    if (p.kind === 'fire') continue;
-    if (S.map[tileOf(p.x, p.y + 12)] === ROCK) { p.done = true; continue; }   // 바위는 화살·장풍을 막는다
+    if (p.kind === 'ball') continue;
+    if (S.map[tileOf(p.x, p.y + 12)] === ROCK) { p.done = true; continue; }   // 바위는 화살·마법을 막는다
     for (const e of S.units) {
       if (!live(e) || e.team === p.team || (p.hit && p.hit.has(e))) continue;
       if (Math.hypot(e.x - p.x, e.y - e.r * 1.4 - p.y) < e.r + 4) {
         if (p.kind === 'arrow') { arrowHit(S, p, e); p.done = true; break; }
-        p.hit.add(e); hurt(S, p.from, e, Math.max(3, (p.atk * (0.9 + S.rnd() * 0.2) - e.md * ftDef(e) * 2) * DMG));   // 장풍은 관통
+        if (p.kind === 'pierce') { p.hit.add(e); hurt(S, p.from, e, magicDmg(sp, e)); continue; }   // 관통
+        p.done = true;   // 장풍·불공: 맞은 적에서 끝 (불공은 작은 폭발)
+        if (p.kind === 'roll') aoe(S, p.from, e.x, e.y, sp.r, t => hurt(S, p.from, t, magicDmg(sp, t)), sp.col); else hurt(S, p.from, e, magicDmg(sp, e));
+        break;
       }
     }
   }
@@ -434,7 +466,7 @@ function checkEnd(S) {
 function step(S, dt) {
   if (S.over) return;
   cur = S; S.t += dt; enemyAI(S);
-  for (const k of ['player', 'enemy']) if (S.lock[k] > 0) S.lock[k] -= dt;
+  for (const k of ['player', 'enemy']) { if (S.lock[k] > 0) S.lock[k] -= dt; if (S.lockAI[k] > 0) S.lockAI[k] -= dt; }
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
   const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
   for (const u of order) if (live(u)) updateUnit(S, u, dt);   // 처리 순서를 매 틱 섞는다 (먼저 만든 군단이 빈 칸을 독점하지 않게)
@@ -455,6 +487,7 @@ function setCtrl(S, A, u) {
 }
 function control(S, u, dx, dy) { u.ctrlIn = { dx, dy, t: S.t }; }   // 방향 입력 (누르고 있는 동안 매 프레임 호출)
 function directMove(S, u, dx, dy) {
+  if (u.root > 0) return;   // 속박(거미줄) 중에는 걷지 못한다
   const nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
   const eid = inMap(nx, ny) ? S.occ[ti(nx, ny)] : 0, e = eid && S.units.find(x => x.id === eid);
   if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
