@@ -135,10 +135,11 @@ function createBattle(seed = 1, opts = {}) {
 }
 
 // ---------- 전투 계산 ----------
-const FT_EFF = 10;   // 피로도 효율 배율: 쌓이는 속도 1/10, 회복 속도 10배
-const tire = (u, n) => { u.ft = Math.min(100, u.ft + n / FT_EFF); };
-const ftMul = u => 1 - u.ft * 0.004;   // 피로도 100 이면 공격·이동 -40%
-const ftDef = u => 1 - u.ft * 0.004;   // 피로도 100 이면 방어 -40% (설계값, ftMul 과 별개)
+// 피로도(FT 0~100) 설정 — 한 곳에서 조절한다. 효율(eff) = 쌓이는 속도 1/eff · 회복 속도 eff배 (1 이면 교전 1분에 100 가까이, 10 이면 거의 안 쌓임; 3 이면 격렬한 교전 뒤에만 50~70까지 오르고 쉬면 내려감)
+const FT = { eff: 3, gain: { hit: 1.8, spell: 2, special: 3, step: 0.1 }, recover: 0.04, penalty: 0.004, max: 100 };   // gain: 행동 한 번당 상승량 / recover: 초당 회복 / penalty: FT 1 당 능력 감소 (100 이면 -40%)
+const tire = (u, kind) => { u.ft = Math.min(FT.max, u.ft + FT.gain[kind] / FT.eff); };
+const ftMul = u => 1 - u.ft * FT.penalty;   // 공격·이동 속도 배율
+const ftDef = u => 1 - u.ft * FT.penalty;   // 방어 배율 (설계값, ftMul 과 별개로 둘 수 있게 분리)
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 const phys = (u, t, mul = 1) => Math.max(1, u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u) - t.df * ftDef(t)) * DMG;
@@ -188,7 +189,7 @@ function shoot(S, u, tx, ty, mul = 1, spread = 0) {
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
   if (u.cls === 'mage') { if (!castSpell(S, u, u.spells[0], t.x, t.y)) u.cdT = 0.5; return; }   // 법사의 평타 = 장풍 (MP 소모)
-  u.cdT = u.cd; u.anim = 0.28; tire(u, 1.8);
+  u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit');
   if (u.range > 0) shoot(S, u, t.x, t.y); else hurt(S, u, t, phys(u, t));
 }
 
@@ -208,7 +209,7 @@ function castSpell(S, u, key, x, y) {
     S.later.push({ t: 0.5, fn: () => aoe(S, u, tx, ty, 100, e => hurt(S, u, e, Math.max(3, (u.mat * 1.1 - e.md * ftDef(e) * 2) * DMG)), '#fff2a0', true) });
     S.lock[u.team] = sp.lock;
   }
-  u.mp -= sp.mp; u.cdT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 2);
+  u.mp -= sp.mp; u.cdT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 'spell');
   return true;
 }
 function useSpecial(S, u, x, y) {
@@ -224,7 +225,7 @@ function useSpecial(S, u, x, y) {
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
   else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
-  u.spT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 3);
+  u.spT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 'special');
   return true;
 }
 
@@ -239,11 +240,11 @@ function canSwap(S, u, n) {   // 가만히 서 있는(이동·공격·돌진 중
 function beginSwap(S, a, b) {   // 두 유닛이 서로의 칸으로 동시에 이동 (점유표는 도착할 때 한꺼번에 갱신) → 어느 순간에도 한 칸에 둘이 멈춰 있지 않다
   const dur = Math.max(stepDur(S, a, b.tx, b.ty), stepDur(S, b, a.tx, a.ty));
   a.mv = { fx: a.x, fy: a.y, nx: b.tx, ny: b.ty, t: 0, dur, swap: b }; b.mv = { fx: b.x, fy: b.y, nx: a.tx, ny: a.ty, t: 0, dur, swap: a };
-  a.face = Math.atan2(b.ty - a.ty, b.tx - a.tx); b.face = a.face + Math.PI; a.stuck = 0; tire(a, 0.1); tire(b, 0.1);
+  a.face = Math.atan2(b.ty - a.ty, b.tx - a.tx); b.face = a.face + Math.PI; a.stuck = 0; tire(a, 'step'); tire(b, 'step');
 }
 function beginStep(S, u, nx, ny, dur) {   // 다음 칸을 즉시 점유하고, 출발 칸은 도착할 때까지 유지 → 두 칸을 오가는 동안에도 겹치지 않는다
   u.mv = { fx: u.x, fy: u.y, nx, ny, t: 0, dur: dur || stepDur(S, u, nx, ny) };
-  S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; tire(u, 0.1);
+  S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; tire(u, 'step');
 }
 function advanceMove(S, u, dt) {
   const m = u.mv; m.t += dt; const p = Math.min(1, m.t / m.dur); u.moving = true;
@@ -364,7 +365,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.moving = false;
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
-  u.ft = Math.max(0, u.ft - 0.04 * FT_EFF * dt);
+  u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
   if (u.mv) { advanceMove(S, u, dt); if (u.mv) return; }   // 한 칸을 걷는 동안에는 다른 행동을 하지 않는다. 칸에 도착하면 같은 틱에 다음 입력·행동을 이어서 처리 (끊김 없이)
   if (u.dashQ) {
@@ -456,7 +457,7 @@ function control(S, u, dx, dy) { u.ctrlIn = { dx, dy, t: S.t }; }   // 방향 �
 function directMove(S, u, dx, dy) {
   const nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
   const eid = inMap(nx, ny) ? S.occ[ti(nx, ny)] : 0, e = eid && S.units.find(x => x.id === eid);
-  if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 1.8); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
+  if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
   if (e && e.team === u.team) { if (canSwap(S, u, { tx: nx, ty: ny })) beginSwap(S, u, e); return; }   // 아군은 자리를 맞바꿔 지나간다
   if (okTile(S, nx, ny) && !eid && diagOk(S, u.tx, u.ty, dx, dy)) beginStep(S, u, nx, ny);
 }
@@ -471,7 +472,7 @@ function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(�
   if (sp === 'heal') { let t = null, bd = 1; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; } return t ? castSpell(S, u, 'heal', t.x, t.y) : false; }
   if (sp) { const [x, y] = aimAt(S, u, SPELL[sp].range); return castSpell(S, u, sp, x, y); }
   if (u.special && (!alt || u.spells.length)) { const [x, y] = aimAt(S, u, u.special === 'volley' ? u.range : 150); return useSpecial(S, u, x, y); }
-  if (u.range > 0 && u.cdT <= 0 && u.cls !== 'mage') { const [x, y] = aimAt(S, u, u.range); u.face = Math.atan2(y - u.y, x - u.x); u.cdT = u.cd; u.anim = 0.28; tire(u, 1.8); shoot(S, u, x, y); return true; }
+  if (u.range > 0 && u.cdT <= 0 && u.cls !== 'mage') { const [x, y] = aimAt(S, u, u.range); u.face = Math.atan2(y - u.y, x - u.x); u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); shoot(S, u, x, y); return true; }
   return false;
 }
 function selectSpell(u, i) { if (u.spells[i]) u.spellSel = i; }
