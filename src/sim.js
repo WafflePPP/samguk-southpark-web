@@ -7,35 +7,34 @@ const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
-const MOVE_SPEED = 1.8;   // 한 칸 이동 속도 배율 (칸 단위 이동의 답답함 완화)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
-const DMG = 0.32, ENEMY_HP = 1.55, ENEMY_ATK = 1.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
+const DMG = 0.32, ENEMY_HP = 2.0, ENEMY_ATK = 2.4;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- 병종/영웅 표 ----------
 // cls: warrior 전사 · cavalry 기마 · archer 궁병 · shield 방패병 · mage 법사 · cleric 성직자
-// df 물리방어 · ad 화살방어 · md 마법방어 · mat 마법공격 · sp 속도(px/s) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
+// df 물리방어 · ad 화살방어 · md 마법방어 · mat 마법공격 · sp 속도(px/s, 32px = 1칸 → 180 = 5.6칸/초) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
 const U = {
-  guan: { name: '관우', cls: 'warrior', hp: 520, atk: 46, df: 8, ad: 6, md: 4, sp: 100, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
-  dian: { name: '전위', cls: 'warrior', hp: 440, atk: 40, df: 9, ad: 7, md: 3, sp: 96, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
-  zhao: { name: '조운', cls: 'cavalry', hp: 400, atk: 40, df: 6, ad: 4, md: 4, sp: 150, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
-  huang: { name: '황충', cls: 'archer', hp: 260, atk: 40, df: 4, ad: 3, md: 3, sp: 92, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
-  diao: { name: '초선', cls: 'cleric', hp: 110, mp: 999, atk: 8, df: 1, ad: 0, md: 8, sp: 100, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
-  kong: { name: '제갈량', cls: 'mage', hp: 100, mp: 999, mat: 60, atk: 10, df: 1, ad: 0, md: 14, sp: 92, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'fire', 'thunder'] },
-  sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 3, ad: 2, md: 1, sp: 100, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
-  shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 7, ad: 12, md: 2, sp: 85, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
-  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 1, ad: 0, md: 1, sp: 96, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
-  cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 4, ad: 0, md: 1, sp: 150, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
-  mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 92, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fire'], generic: true },
-  lubu: { name: '여포', cls: 'cavalry', hp: 760, atk: 54, df: 10, ad: 8, md: 6, sp: 140, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
-  ecap: { name: '적 장수', cls: 'warrior', hp: 320, atk: 32, df: 6, ad: 4, md: 2, sp: 96, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
-  esword: { name: '적 보병', cls: 'warrior', hp: 115, atk: 20, df: 3, ad: 2, md: 1, sp: 100, cd: 1.0, r: 11, style: 'soldier', generic: true },
-  eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 7, ad: 12, md: 2, sp: 85, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
-  earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 1, ad: 0, md: 1, sp: 96, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
-  ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 4, ad: 0, md: 1, sp: 150, cd: 0.9, r: 13, style: 'cav', generic: true },
-  emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 92, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'fire'], generic: true },
-  esage: { name: '적 군사', cls: 'mage', hp: 130, mp: 999, mat: 58, atk: 10, df: 1, ad: 0, md: 14, sp: 92, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'fire', 'thunder'], fanatic: true },
+  guan: { name: '관우', cls: 'warrior', sp: 180, hp: 520, atk: 66, df: 10, ad: 8, md: 4, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
+  dian: { name: '전위', cls: 'warrior', sp: 173, hp: 440, atk: 66, df: 11, ad: 8, md: 4, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
+  zhao: { name: '조운', cls: 'cavalry', sp: 270, hp: 520, atk: 84, df: 12, ad: 6, md: 4, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
+  huang: { name: '황충', cls: 'archer', sp: 166, hp: 260, atk: 68, df: 4, ad: 4, md: 3, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
+  diao: { name: '초선', cls: 'cleric', mp: 999, sp: 180, hp: 400, atk: 66, df: 10, ad: 8, md: 12, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
+  kong: { name: '제갈량', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 6, ad: 6, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'fire', 'thunder'] },
+  sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
+  shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
+  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
+  cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
+  mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fire'], generic: true },
+  lubu: { name: '여포', cls: 'cavalry', sp: 252, hp: 760, atk: 84, df: 12, ad: 8, md: 6, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
+  ecap: { name: '적 장수', cls: 'warrior', sp: 173, hp: 400, atk: 64, df: 10, ad: 6, md: 4, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
+  esword: { name: '적 보병', cls: 'warrior', hp: 115, atk: 20, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
+  eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
+  earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
+  ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
+  emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, mat: 45, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'fire'], generic: true },
+  esage: { name: '적 군사', cls: 'mage', mp: 999, sp: 166, hp: 300, mat: 140, atk: 30, df: 6, ad: 6, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'fire', 'thunder'], fanatic: true },
 };
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 const SPELL = {   // lock: 시전 후 그 편의 모든 마법이 잠기는 시간 (퍼스트퀸4 의 번개·소환 등)
@@ -230,10 +229,12 @@ function useSpecial(S, u, x, y) {
 }
 
 // ---------- 이동 (한 칸 = 한 명) ----------
-const stepDur = (S, u, nx, ny) => TILE * (nx !== u.tx && ny !== u.ty ? 1.414 : 1) / (u.sp * MOVE_SPEED * tileMul(S, nx, ny) * ftMul(u));
+const stepDur = (S, u, nx, ny) => TILE * (nx !== u.tx && ny !== u.ty ? 1.414 : 1) / (u.sp * tileMul(S, nx, ny) * ftMul(u));
+const isBack = x => x.range > 0 || x.cls === 'cleric';   // 후열: 궁병·법사·성직
 function canSwap(S, u, n) {   // 가만히 서 있는(이동·공격·돌진 중이 아니고 적과 맞붙지도 않은) 같은 편이 그 칸에 있으면 자리를 맞바꿔 지나갈 수 있다
   const o = n && S.units[S.occ[ti(n.tx, n.ty)] - 1];
-  return o && o !== u && o.team === u.team && live(o) && !o.mv && !o.dashQ && o.anim <= 0 && o.stun <= 0 && !S.units.some(e => live(e) && e.team !== o.team && cheb(o, e) <= 1) && diagOk(S, u.tx, u.ty, n.tx - u.tx, n.ty - u.ty) ? o : null;
+  return o && o !== u && o.team === u.team && live(o) && (o !== o.army.ctrl || S.auto) && !(isBack(u) && !isBack(o) && u.order.type !== 'retreat' && u.order.type !== 'flee') &&   // 플레이어가 조작하는 캐릭터는 AI 가 밀지 못한다
+     !o.mv && !o.dashQ && o.anim <= 0 && o.stun <= 0 && !S.units.some(e => live(e) && e.team !== o.team && cheb(o, e) <= 1) && diagOk(S, u.tx, u.ty, n.tx - u.tx, n.ty - u.ty) ? o : null;
 }
 function beginSwap(S, a, b) {   // 두 유닛이 서로의 칸으로 동시에 이동 (점유표는 도착할 때 한꺼번에 갱신) → 어느 순간에도 한 칸에 둘이 멈춰 있지 않다
   const dur = Math.max(stepDur(S, a, b.tx, b.ty), stepDur(S, b, a.tx, a.ty));
@@ -275,7 +276,7 @@ function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는�
       }
     }
   }
-  if (!nxt) { u.waitT = 0.2 + cur.rnd() * 0.15; u.stuck += u.waitT; return 'blocked'; }
+  if (!nxt) { u.waitT = 0.05 + cur.rnd() * 0.05; u.stuck += u.waitT; return 'blocked'; }
   if (u.path && u.path[0] === nxt) u.path.shift();
   const ally = S.occ[ti(nxt.tx, nxt.ty)] ? canSwap(S, u, nxt) : null;
   if (ally) beginSwap(S, u, ally); else beginStep(S, u, nxt.tx, nxt.ty);
@@ -380,7 +381,10 @@ function updateUnit(S, u, dt) {
   if (o.type === 'idle' && ((S.auto && u.team === 'player') || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
   const aggressive = u.team === 'enemy' || S.auto || o.type === 'charge';
   if (autoAbilities(S, u, aggressive)) return;
-  if (u.cls === 'cleric') { if (aggressive) { const a = u.army.leader; if (a && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); } return; }   // 성직자는 직접 싸우지 않고 대장 곁을 따른다
+  if (u.cls === 'cleric') {   // 성직자는 직접 싸우지 않고, 정지·고정이 아니면(자유·돌격·자동) 조작 캐릭터(없으면 대장) 곁을 따라다닌다
+    if (o.type !== 'stop') { const c = u.army.ctrl, a = c && c !== u && live(c) ? c : u.army.leader; if (a && a !== u && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); }
+    return;
+  }
   if (o.type === 'attack') { if (!o.target || !live(o.target)) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
@@ -431,7 +435,8 @@ function step(S, dt) {
   cur = S; S.t += dt; enemyAI(S);
   for (const k of ['player', 'enemy']) if (S.lock[k] > 0) S.lock[k] -= dt;
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
-  for (const u of S.units) if (live(u)) updateUnit(S, u, dt);
+  const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  for (const u of order) if (live(u)) updateUnit(S, u, dt);   // 처리 순서를 매 틱 섞는다 (먼저 만든 군단이 빈 칸을 독점하지 않게)
   updateProj(S, dt);
   for (const l of S.later) { l.t -= dt; if (l.t <= 0) l.fn(); } S.later = S.later.filter(l => l.t > 0);
   for (const f of S.fx) f.t -= dt; S.fx = S.fx.filter(f => f.t > 0);
@@ -444,7 +449,7 @@ const mine = units => units.filter(u => live(u) && u.team === 'player');
 // 퍼스트퀸4 조작: 군단마다 "조작 캐릭터" 한 명을 직접 움직이고(방향 입력 = 한 칸 이동, 적이 있는 칸으로 밀면 공격), 나머지는 AI + 군단 명령(돌격·정지·후퇴·자유)
 function setCtrl(S, A, u) {
   if (!u || !live(u) || A.ctrl === u) return;
-  const old = A.ctrl; A.ctrl = u; u.order = { type: 'stop' }; u.ctrlIn = null; u.autoCharge = false; u.path = null;
+  const old = A.ctrl; A.ctrl = u; if (u.order.type !== 'retreat') u.order = { type: 'stop' };   // 후퇴 중인 캐릭터가 조작 캐릭터가 되어도 후퇴 명령은 유지 u.ctrlIn = null; u.autoCharge = false; u.path = null;
   if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: A.order }; old.ctrlIn = null; }   // 풀려난 캐릭터는 군단 명령을 따른다
 }
 function control(S, u, dx, dy) { u.ctrlIn = { dx, dy, t: S.t }; }   // 방향 입력 (누르고 있는 동안 매 프레임 호출)
