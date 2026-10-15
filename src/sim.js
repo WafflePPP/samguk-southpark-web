@@ -7,6 +7,7 @@ const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const MOVE_SPEED = 1.8;   // 한 칸 이동 속도 배율 (칸 단위 이동의 답답함 완화)
+const HP_MUL = 5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32, ENEMY_HP = 1.55, ENEMY_ATK = 1.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -79,8 +80,9 @@ const cheb = (a, b) => Math.max(Math.abs(a.tx - b.tx), Math.abs(a.ty - b.ty));
 const tileMul = (S, tx, ty) => { const t = S.map[ti(tx, ty)]; return t === FOREST ? 0.6 : t === ROAD ? 1.15 : 1; };
 const diagOk = (S, x, y, dx, dy) => !dx || !dy || (okTile(S, x + dx, y) && okTile(S, x, y + dy));   // 모서리 가로지르기 금지
 
+const ASTAR_CAP = 800, prof = { astar: 0 };   // prof: 테스트용 호출 횟수
 function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유닛이 서 있는 칸도 막힌 칸으로 본다 (도착 칸은 예외)
-  let g = ti(gtx, gty); const s = ti(u.tx, u.ty);
+  prof.astar++; let g = ti(gtx, gty); const s = ti(u.tx, u.ty);
   if (!okTile(S, gtx, gty)) { let best = -1, bd = 1e9; for (let i = 0; i < MW * MH; i++) if (okTile(S, i % MW, i / MW | 0)) { const d = Math.hypot(i % MW - gtx, (i / MW | 0) - gty); if (d < bd) { bd = d; best = i; } } g = best; }
   if (s === g) return [];
   const ok = i => S.map[i] !== ROCK && S.map[i] !== WATER && (!dyn || i === g || S.occ[i] === 0 || S.occ[i] === u.id);
@@ -89,8 +91,11 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
   const h = i => { const dx = Math.abs(i % MW - g % MW), dy = Math.abs((i / MW | 0) - (g / MW | 0)); return Math.max(dx, dy) + 0.41 * Math.min(dx, dy); };
   const push = e => { heap.push(e); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  let nodes = 0, near = s;   // 노드 확장 상한(설계값 800): 넘으면 목표에 가장 가까웠던 칸까지의 부분 경로
   while (heap.length) {
     const c = pop()[1]; if (closed[c]) continue; closed[c] = 1; if (c === g) break;
+    if (h(c) < h(near)) near = c;
+    if (++nodes > ASTAR_CAP) { g = near; break; }
     const cx = c % MW, cy = c / MW | 0;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue; const nx = cx + dx, ny = cy + dy; if (!inMap(nx, ny)) continue;
@@ -99,9 +104,10 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
       if (cost < gc[n]) { gc[n] = cost; from[n] = c; push([cost + h(n), n]); }
     }
   }
-  if (from[g] < 0) return null;
+  if (from[g] < 0 && g !== s) return null;
   const path = []; for (let c = g; c !== s && c >= 0; c = from[c]) path.push({ tx: c % MW, ty: c / MW | 0 });
-  return path.reverse();
+  path.reverse(); if (nodes > ASTAR_CAP) path.partial = true;
+  return path;
 }
 
 // ---------- 전투 생성 ----------
@@ -116,9 +122,9 @@ function createBattle(seed = 1, opts = {}) {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1, hb = d.team === 'enemy' ? ENEMY_HP : 1, ab = d.team === 'enemy' ? ENEMY_ATK : 1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * hb, maxHp: T.hp * hb, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, mat: T.mat || 0, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r, style: T.style,
+        hp: T.hp * hb * HP_MUL, maxHp: T.hp * hb * HP_MUL, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, mat: T.mat || 0, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r, style: T.style,
         shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
-        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
+        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
     });
@@ -129,9 +135,10 @@ function createBattle(seed = 1, opts = {}) {
 
 // ---------- 전투 계산 ----------
 const ftMul = u => 1 - u.ft * 0.004;   // 피로도 100 이면 공격·이동 -40%
+const ftDef = u => 1 - u.ft * 0.004;   // 피로도 100 이면 방어 -40% (설계값, ftMul 과 별개)
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
-const phys = (u, t, mul = 1) => Math.max(1, u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u) - t.df) * DMG;
+const phys = (u, t, mul = 1) => Math.max(1, u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u) - t.df * ftDef(t)) * DMG;
 function text(S, x, y, s, col) { S.texts.push({ x, y, s, col, t: 1.0 }); }
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
@@ -142,7 +149,7 @@ function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
 function gainXp(S, u, n) {
   if (!live(u)) return; u.xp += n;
   while (u.xp >= u.lv * 60) {   // 레벨업: 능력치 상승 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
-    u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20); u.atk = Math.round(u.atk * 1.05 * 10) / 10; u.maxMp = Math.round(u.maxMp * 1.05);
+    u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.atk = Math.round(u.atk * 1.05 * 10) / 10; u.maxMp = Math.round(u.maxMp * 1.05);
     text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
 }
@@ -162,14 +169,14 @@ function hurt(S, from, t, dmg) {
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d');
   if (t.hp <= 0) die(S, t, from);
 }
-function aoe(S, from, x, y, r, fn, col) {
+function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
   ring(S, x, y, r, col, 0.45);
-  for (const e of S.units) if (live(e) && e.team !== from.team && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
+  for (const e of S.units) if (live(e) && e !== from && (friendly || e.team !== from.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
 }
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < (t.cls === 'cavalry' ? 0.04 : 0.12)) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6'); return; }
-  hurt(S, p.from, t, Math.max(1, (p.atk * (0.85 + S.rnd() * 0.3) - t.ad) * DMG));
+  hurt(S, p.from, t, Math.max(1, (p.atk * (0.85 + S.rnd() * 0.3) - t.ad * ftDef(t)) * DMG));
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
@@ -189,13 +196,13 @@ function castSpell(S, u, key, x, y) {
   if (key === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    t.hp = Math.min(t.maxHp, t.hp + 70 + u.lv * 5); text(S, t.x, t.y - t.r * 4, '+70', '#7dff9a'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
+    const heal = (70 + u.lv * 5) * HP_MUL; t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
   } else if (key === 'bolt') S.proj.push({ kind: 'bolt', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, left: sp.range * 1.25, atk: u.mat, from: u, team: u.team, a: ang, hit: new Set() });
   else if (key === 'fire') S.proj.push({ kind: 'fire', x: u.x, y: u.y - u.r * 1.4, tx: u.x + Math.cos(ang) * d, ty: u.y + Math.sin(ang) * d, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380, atk: u.mat, from: u, team: u.team, a: ang });
   else if (key === 'thunder') {
     const tx = u.x + Math.cos(ang) * d, ty = u.y + Math.sin(ang) * d;
     ring(S, tx, ty, 100, 'rgba(255,240,120,.7)', 0.6);
-    S.later.push({ t: 0.5, fn: () => aoe(S, u, tx, ty, 100, e => hurt(S, u, e, Math.max(3, (u.mat * 1.1 - e.md * 2) * DMG)), '#fff2a0') });
+    S.later.push({ t: 0.5, fn: () => aoe(S, u, tx, ty, 100, e => hurt(S, u, e, Math.max(3, (u.mat * 1.1 - e.md * ftDef(e) * 2) * DMG)), '#fff2a0', true) });
     S.lock[u.team] = sp.lock;
   }
   u.mp -= sp.mp; u.cdT = sp.cd; u.anim = 0.4; u.face = ang; u.ft = Math.min(100, u.ft + 2);
@@ -243,20 +250,29 @@ function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는�
   const gk = ti(gx, gy), free = n => n && S.occ[ti(n.tx, n.ty)] === 0;
   let nxt = u.pathGoal === gk && u.path && u.path[0] || null;
   if (!free(nxt)) {
-    u.path = astar(S, u, gx, gy, true); u.pathGoal = gk; nxt = u.path && u.path[0];
-    if (!free(nxt)) { const sp = astar(S, u, gx, gy, false), want = sp && sp[0]; nxt = free(want) ? want : sidestep(S, u, gx, gy); u.path = null; }
+    if (u.repathT > 0 && u.stuck < 1.5) { u.path = null; nxt = null; }   // 재탐색 간격 0.3초 (오래 막혔으면 무시)
+    else {
+      u.repathT = 0.3; u.path = astar(S, u, gx, gy, true); u.pathGoal = gk; nxt = u.path && u.path[0];
+      if (!free(nxt)) {   // 부분 경로를 받았으면 dyn=false 재탐색은 건너뛴다
+        if (!(u.path && u.path.partial)) { const sp = astar(S, u, gx, gy, false), want = sp && sp[0]; nxt = free(want) ? want : null; }
+        if (!nxt) nxt = sidestep(S, u, gx, gy); u.path = null;
+      }
+    }
   }
   if (!nxt) { u.waitT = 0.2 + cur.rnd() * 0.15; u.stuck += u.waitT; return 'blocked'; }
   if (u.path && u.path[0] === nxt) u.path.shift();
   beginStep(S, u, nxt.tx, nxt.ty); return 'moving';
 }
-function leave(S, u) {   // 후퇴(아군: 왼쪽 가장자리 철수 / 적: 오른쪽 가장자리 도주) — 도착하면 필드에서 사라진다
-  if (u.team === 'player' ? u.tx <= 1 : u.tx >= MW - 2) {
+function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 가장자리로 철수, 쪽은 고정 / 적: 오른쪽 가장자리 도주) — 도착하면 필드에서 사라진다
+  if (u.team === 'player' && !u.order.side) u.order.side = u.tx < MW / 2 ? -1 : 1;   // 쪽은 명령 객체에 저장 → 새 명령이면 다시 정한다
+  const side = u.order.side;   // 되돌리려면 이 줄을 -1 고정으로
+  const gx = u.team === 'player' ? (side < 0 ? 1 : MW - 2) : MW - 2;
+  if (u.team === 'player' ? (side < 0 ? u.tx <= 1 : u.tx >= MW - 2) : u.tx >= MW - 2) {
     release(S, u); u.out = true; u.moving = false;
-    if (u.team === 'player') { u.hp = u.maxHp; u.mp = u.maxMp; u.ft = 0; u.order = { type: 'idle' }; text(S, 150, u.y, u.name + ' 철수', '#cfd3e6'); } else { u.fled = true; S.stats.fled++; }
+    if (u.team === 'player') { u.hp = u.maxHp; u.mp = u.maxMp; u.ft = 0; u.order = { type: 'idle' }; text(S, u.x, u.y, u.name + ' 철수', '#cfd3e6'); } else { u.fled = true; S.stats.fled++; }
     return;
   }
-  stepToward(S, u, u.team === 'player' ? 1 : MW - 2, u.ty);
+  stepToward(S, u, gx, u.ty);
 }
 
 // ---------- 유닛 AI ----------
@@ -268,8 +284,44 @@ function nearestEnemy(S, u, maxD) {
 }
 function inReach(u, t) { return u.range > 0 ? Math.hypot((u.tx - t.tx) * TILE, (u.ty - t.ty) * TILE) <= u.range : cheb(u, t) <= 1; }   // 근접 = 인접한 8칸
 function engage(S, u, t, canMove) {
-  if (inReach(u, t)) { u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
-  if (canMove) stepToward(S, u, t.tx, t.ty);
+  if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
+  if (!canMove) return;
+  if (u.range > 0) { stepToward(S, u, t.tx, t.ty); return; }
+  const k = freeAdj(S, u, t);   // 근접: 적에게 인접한 빈 칸을 목표로 (다른 유닛이 잡은 칸 제외)
+  if (k >= 0) stepToward(S, u, k % MW, k / MW | 0); else if (cheb(u, t) > 2) stepToward(S, u, t.tx, t.ty);
+}
+function freeAdj(S, u, t) {
+  const ok = k => { const x = k % MW, y = k / MW | 0; return cheb({ tx: x, ty: y }, t) === 1 && okTile(S, x, y) && (!S.occ[k] || S.occ[k] === u.id) && !S.units.some(v => v !== u && v.claim === k && v.claimT > S.t - 1 && live(v)); };
+  if (u.claim >= 0 && ok(u.claim)) { u.claimT = S.t; return u.claim; }
+  let best = -1, bd = 1e9;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue; const x = t.tx + dx, y = t.ty + dy; if (!inMap(x, y)) continue;
+    const k = ti(x, y), d = Math.hypot(x - u.tx, y - u.ty); if (d < bd && ok(k)) { bd = d; best = k; }
+  }
+  u.claimT = S.t; return u.claim = best;
+}
+// 대형: 슬롯 = 앵커 칸 + (자기 슬롯 - 앵커 슬롯). 앵커: 아군 = 조작 캐릭터, 적 = 대장(없으면 가장 전방 슬롯)
+function anchorOf(A) {
+  if (A.team === 'player') return A.ctrl && live(A.ctrl) ? A.ctrl : null;
+  if (A.leader && live(A.leader)) return A.leader;
+  let b = null; for (const v of A.units) if (live(v) && (!b || v.slot.dx < b.slot.dx)) b = v; return b;
+}
+function homeOf(S, u) {
+  const a = anchorOf(u.army); if (!a || a === u) return null;
+  return { tx: clamp(a.tx + u.slot.dx - a.slot.dx, 0, MW - 1), ty: clamp(a.ty + u.slot.dy - a.slot.dy, 0, MH - 1) };
+}
+const LEASH = 7, GATHER = 0.6;   // 슬롯에서 추격 한계(칸) / 대장 전진에 필요한 대장 4칸 이내 구성원 비율 (설계값)
+function formation(S, u, t) {   // 시야 안 적은 슬롯 7칸 이내일 때만 추격, 아니면 슬롯 복귀
+  const h = homeOf(S, u);
+  if (t && (!h || cheb(u, h) < LEASH)) { engage(S, u, t, true); return; }
+  if (h && cheb(u, h) > 1) stepToward(S, u, h.tx, h.ty);
+}
+function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지는 슬롯 (대장은 구성원 60% 가 4칸 안일 때만)
+  const t = nearestEnemy(S, u, Math.max(SIGHT, u.range));
+  if (u !== anchorOf(u.army)) return formation(S, u, t);
+  if (t) return engage(S, u, t, true);
+  const m = u.army.units.filter(live); if (m.filter(v => cheb(v, u) <= 4).length < m.length * GATHER) return;
+  const n = nearestEnemy(S, u, 1e9); if (n) engage(S, u, n, true);
 }
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
@@ -280,7 +332,8 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   if (u.cls === 'mage' && aggressive) {
     const t = nearestEnemy(S, u, SPELL.fire.range); if (!t) return false;
     let n = 0; for (const e of S.units) if (live(e) && e.team !== u.team && Math.hypot(e.x - t.x, e.y - t.y) < 70) n++;
-    if (u.spells.includes('thunder') && n >= 4 && castSpell(S, u, 'thunder', t.x, t.y)) return true;
+    let own = 0; for (const e of S.units) if (live(e) && e !== u && e.team === u.team && Math.hypot(e.x - t.x, e.y - t.y) <= 100 + e.r) own++;   // 번개는 아군도 맞는다
+    if (u.spells.includes('thunder') && n >= 4 && !own && castSpell(S, u, 'thunder', t.x, t.y)) return true;
     if (n >= 2 && u.spells.includes('fire') && castSpell(S, u, 'fire', t.x, t.y)) return true;
   }
   if (u.special && u.spT <= 0 && aggressive) {
@@ -290,7 +343,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   return false;
 }
 function updateUnit(S, u, dt) {
-  u.cdT -= dt; u.spT -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.thinkT -= dt; u.moving = false;
+  u.cdT -= dt; u.spT -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.moving = false;
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - 0.04 * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
@@ -311,19 +364,20 @@ function updateUnit(S, u, dt) {
   if (autoAbilities(S, u, aggressive)) return;
   if (u.cls === 'cleric') { if (aggressive) { const a = u.army.leader; if (a && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); } return; }   // 성직자는 직접 싸우지 않고 대장 곁을 따른다
   if (o.type === 'attack') { if (!o.target || !live(o.target)) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
+  if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     if (!o.tgt || !live(o.tgt) || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (!o.tgt || !live(o.tgt) || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }
   if (o.type === 'stop') { const t = nearestEnemy(S, u, u.range > 0 ? u.range : TILE * 1.5); if (t) engage(S, u, t, false); return; }   // 제자리에서 사거리 안의 적만 친다
-  const t = nearestEnemy(S, u, Math.max(SIGHT, u.range)); if (t) engage(S, u, t, true);   // idle: 시야 안의 적과 알아서 싸운다
+  formation(S, u, nearestEnemy(S, u, Math.max(SIGHT, u.range)));   // idle: 시야 안의 적과 싸우고, 적이 없거나 너무 멀어지면 대형 복귀
 }
 
 // ---------- 투사체 ----------
 function updateProj(S, dt) {
   for (const p of S.proj) {
     const sx = p.vx * dt, sy = p.vy * dt, st = Math.hypot(sx, sy);
-    if (p.kind === 'fire') { if (Math.hypot(p.tx - p.x, p.ty - p.y) <= st + 2) { p.done = true; aoe(S, p.from, p.tx, p.ty, 56, e => hurt(S, p.from, e, Math.max(3, (p.atk * 0.75 - e.md * 1.5) * DMG)), '#ff7a3a'); continue; } }
+    if (p.kind === 'fire') { if (Math.hypot(p.tx - p.x, p.ty - p.y) <= st + 2) { p.done = true; aoe(S, p.from, p.tx, p.ty, 56, e => hurt(S, p.from, e, Math.max(3, (p.atk * 0.75 - e.md * ftDef(e) * 1.5) * DMG)), '#ff7a3a'); continue; } }
     else { p.left -= st; if (p.left <= 0) { p.done = true; continue; } }
     p.x += sx; p.y += sy;
     if (p.kind === 'fire') continue;
@@ -332,7 +386,7 @@ function updateProj(S, dt) {
       if (!live(e) || e.team === p.team || (p.hit && p.hit.has(e))) continue;
       if (Math.hypot(e.x - p.x, e.y - e.r * 1.4 - p.y) < e.r + 4) {
         if (p.kind === 'arrow') { arrowHit(S, p, e); p.done = true; break; }
-        p.hit.add(e); hurt(S, p.from, e, Math.max(3, (p.atk * (0.9 + S.rnd() * 0.2) - e.md * 2) * DMG));   // 장풍은 관통
+        p.hit.add(e); hurt(S, p.from, e, Math.max(3, (p.atk * (0.9 + S.rnd() * 0.2) - e.md * ftDef(e) * 2) * DMG));   // 장풍은 관통
       }
     }
   }
@@ -416,6 +470,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

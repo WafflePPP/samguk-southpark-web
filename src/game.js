@@ -246,7 +246,7 @@ function useCommand(id) {
   if (id === 'act') act(false); else if (id === 'auto') S.auto = !S.auto; else if (id === 'menu') menuOpen = true;
 }
 function uiClick(id) {
-  if (id.startsWith('army')) { armyIdx = +id.slice(4); return; }
+  if (/^army\d/.test(id)) { armyIdx = +id.slice(4); return; }
   if (id.startsWith('slot') || id.startsWith('col')) {
     const u = S.units.find(x => x.id === +id.replace(/\D/g, '')); if (!u || u.dead) return;
     const dbl = lastPortrait.id === u.id && T - lastPortrait.t < 0.4; lastPortrait = { id: u.id, t: T };
@@ -291,7 +291,7 @@ cv.addEventListener('pointerdown', e => {
   if (S.over) { if (T - overAt > 1) startBattle(); return; }
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
   const b = hitBtn(p.x, p.y);
-  if (menuOpen) { if (b && b.id.startsWith('m:')) uiClick(b.id); return; }
+  if (menuOpen) { if (b && /^m:(?!act$|alt$|spell$)/.test(b.id)) uiClick(b.id); return; }
   if (!b && !stick && inStickZone(p.x, p.y)) { stick = { id: e.pointerId, ox: p.x, oy: p.y, kx: 0, ky: 0, dir: null }; stickMove(p.x, p.y); refreshPad(); return; }
   if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) { padPtrs.set(e.pointerId, [dx, dy]); refreshPad(); } else if (!mobile) act(false); return; }
   if (b) { uiClick(b.id); return; }
