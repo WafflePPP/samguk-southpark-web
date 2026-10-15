@@ -81,7 +81,7 @@ function drawUnit(u) {
   const top = y - u.r * 4.4 - (u.style === 'lubu' ? 22 : 0) - (styleOf(u).horse ? 10 : 0), w = u.r * 2.4;
   if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, ally ? hpCol(u.hp / u.maxHp) : COLORS.danger); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); }
   if (mine || other) { ctx.fillStyle = mine ? COLORS.gold : COLORS.ally; ctx.beginPath(); ctx.moveTo(x - 7, top - 14); ctx.lineTo(x + 7, top - 14); ctx.lineTo(x, top - 4); ctx.closePath(); ctx.fill(); }
-  if (u.isLeader || mine) label(u.name, x, top - (mine ? 26 : 12), 16, ally ? COLORS.silver : '#ffb0a0', 'center');
+  if (u.named || u.isLeader || mine) label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0', 'center');   // 이름 있는 장수는 항상 표기 (아군 금색 · 적 붉은색)
 }
 function drawWorld() {
   ctx.save(); ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
