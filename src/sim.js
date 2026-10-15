@@ -6,9 +6,9 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
-const SIZE = 0.5;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
+const SIZE = 0.35;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const MOVE_SPEED = 1.8;   // 한 칸 이동 속도 배율 (칸 단위 이동의 답답함 완화)
-const HP_MUL = 5;   // 전원 체력 배율 (고정 회복량에도 곱함)
+const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32, ENEMY_HP = 1.55, ENEMY_ATK = 1.2;   // 전체 피해 배율(전투 길이) · 적 보정(난이도)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -197,7 +197,7 @@ function castSpell(S, u, key, x, y) {
   if (key === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    const heal = (70 + u.lv * 5) * HP_MUL; t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
+    const heal = Math.round((70 + u.lv * 5) * HP_MUL); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
   } else if (key === 'bolt') S.proj.push({ kind: 'bolt', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, left: sp.range * 1.25, atk: u.mat, from: u, team: u.team, a: ang, hit: new Set() });
   else if (key === 'fire') S.proj.push({ kind: 'fire', x: u.x, y: u.y - u.r * 1.4, tx: u.x + Math.cos(ang) * d, ty: u.y + Math.sin(ang) * d, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380, atk: u.mat, from: u, team: u.team, a: ang });
   else if (key === 'thunder') {
