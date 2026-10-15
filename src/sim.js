@@ -15,27 +15,27 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- 병종/영웅 표 ----------
 // cls: warrior 전사 · cavalry 기마 · archer 궁병 · shield 방패병 · mage 법사 · cleric 성직자
-// df 물리방어 · ad 화살방어 · md 마법방어 · sp 속도(px/s, 32px = 1칸 → 180 = 5.6칸/초) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
+// df 물리방어 · ad 화살방어 · md 마법방어 · aa 화살 회피율(%) · hr 체력 회복률(서 있으면 초당 최대체력의 hr/1000) · sp 속도(px/s, 32px = 1칸 → 180 = 5.6칸/초) · range 사거리(px, 없으면 근접=인접 칸) · cd 공격간격(s)
 const U = {
-  guan: { name: '관우', cls: 'warrior', sp: 180, hp: 520, atk: 66, df: 40, ad: 32, md: 4, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
-  dian: { name: '전위', cls: 'warrior', sp: 173, hp: 440, atk: 66, df: 55, ad: 40, md: 4, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
-  zhao: { name: '조운', cls: 'cavalry', sp: 270, hp: 520, atk: 84, df: 42, ad: 21, md: 4, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
-  huang: { name: '황충', cls: 'archer', sp: 166, hp: 260, atk: 68, df: 12, ad: 12, md: 3, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
-  diao: { name: '초선', cls: 'cleric', mp: 999, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 12, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
-  kong: { name: '제갈량', cls: 'mage', mp: 999, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
-  sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
-  shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
-  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
-  cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
-  mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fireball', 'ice'], generic: true },
-  lubu: { name: '여포', cls: 'cavalry', sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 6, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
-  ecap: { name: '적 장수', cls: 'warrior', sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 4, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
-  esword: { name: '적 보병', cls: 'warrior', hp: 115, atk: 20, df: 3, ad: 2, md: 1, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
-  eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 7, ad: 12, md: 2, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
-  earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 1, ad: 0, md: 1, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
-  ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 4, ad: 0, md: 1, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
-  emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 0, ad: 0, md: 9, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'roll', 'tornado'], generic: true },
-  esage: { name: '적 군사', cls: 'mage', mp: 999, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'phoenix', 'thunder', 'quake', 'web'], fanatic: true },
+  guan: { name: '관우', cls: 'warrior', aa: 15, hr: 10, sp: 180, hp: 520, atk: 66, df: 40, ad: 32, md: 20, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
+  dian: { name: '전위', cls: 'warrior', aa: 10, hr: 12, sp: 173, hp: 440, atk: 66, df: 55, ad: 40, md: 20, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
+  zhao: { name: '조운', cls: 'cavalry', aa: 14, hr: 10, sp: 270, hp: 520, atk: 84, df: 42, ad: 21, md: 20, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
+  huang: { name: '황충', cls: 'archer', aa: 25, hr: 8, sp: 166, hp: 260, atk: 68, df: 12, ad: 12, md: 16, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
+  diao: { name: '초선', cls: 'cleric', mp: 999, aa: 20, hr: 12, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 24, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
+  kong: { name: '제갈량', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
+  sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
+  shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
+  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
+  cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
+  mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fireball', 'ice'], generic: true },
+  lubu: { name: '여포', cls: 'cavalry', aa: 14, hr: 12, sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 24, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
+  ecap: { name: '적 장수', cls: 'warrior', aa: 12, hr: 10, sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 20, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
+  esword: { name: '적 보병', cls: 'warrior', hp: 115, atk: 20, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
+  eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
+  earcher: { name: '적 궁병', cls: 'archer', hp: 75, atk: 21, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
+  ecav: { name: '적 기마', cls: 'cavalry', hp: 155, atk: 26, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
+  emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'roll', 'tornado'], generic: true },
+  esage: { name: '적 군사', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'phoenix', 'thunder', 'quake', 'web'], fanatic: true },
 };
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
@@ -139,7 +139,7 @@ function createBattle(seed = 1, opts = {}) {
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: T.hp * hb * HP_MUL * (T.generic ? SOLDIER_HP : 1), maxHp: T.hp * hb * HP_MUL * (T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk * ab, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
+        aa: T.aa, hr: T.hr, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
@@ -161,6 +161,8 @@ const phys = (u, t, mul = 1) => Math.max(1, u.atk * mul * (0.85 + cur.rnd() * 0.
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
+  const p = u.mv && u.mv.swap;   // 맞바꾸던 상대가 쓰러지거나 떠나면, 남은 쪽은 그 칸으로 가는 보통 이동으로 바꾸고 도착 칸을 바로 점유한다 (아니면 빈 칸으로 보여 다른 유닛이 겹쳐 들어온다)
+  if (p && p.mv && p.mv.swap === u) { p.mv.swap = null; S.occ[ti(p.mv.nx, p.mv.ny)] = p.id; }
   if (S.occ[ti(u.tx, u.ty)] === u.id) S.occ[ti(u.tx, u.ty)] = 0;
   if (u.mv && S.occ[ti(u.mv.nx, u.mv.ny)] === u.id) S.occ[ti(u.mv.nx, u.mv.ny)] = 0;
   u.mv = null;
@@ -182,7 +184,7 @@ function die(S, u, killer) {
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
-  t.hp -= dmg; t.flash = 0.12;
+  t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
   t.hitT = 0.35; t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;   // 맞은 방향으로 밀리는 피격 모션
   S.fx.push({ kind: 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, t: 0.22, max: 0.22 });
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d', 'dmg');
@@ -194,7 +196,7 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
 }
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
-  if (S.rnd() < (t.cls === 'cavalry' ? 0.04 : 0.12)) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
+  if (S.rnd() < t.aa / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
   hurt(S, p.from, t, Math.max(1, (p.atk * (0.85 + S.rnd() * 0.3) - t.ad * ftDef(t)) * DMG));
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
@@ -392,6 +394,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
 }
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.moving = false;
+  if (!u.mv && !u.dashQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.hr * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
