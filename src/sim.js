@@ -47,7 +47,7 @@ const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18]
 const ELITE = { guan: 4, lubu: 4, zhao: 3, huang: 3, dian: 3, diao: 2, kong: 2, hua: 3, jang: 3, xun: 2 };   // 아군 정예 + 적 정예(화웅·장료·순욱)
 const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
 const CLONES = { yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'] };   // 이름만 다른 적 정예 장수
-for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = ELITE[src]; }
+for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = 1; }   // 복제 장수는 일반 대장 등급 (정예 3배로 두면 독립 군단 9개가 한꺼번에 몰려 자동 전투 승률 0%)
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
@@ -96,7 +96,7 @@ const ARMIES = [
   { team: 'enemy', name: '고순대', at: [53, 13], leader: 'gao', units: ['gao'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'enemy', name: '안량대', at: [53, 27], leader: 'yan', units: ['yan'], trig: { near: 13, t: 110, after: 2 } },
 ];
-for (let i = 0; i < 48; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
+for (let i = 0; i < 3; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
