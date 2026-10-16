@@ -44,7 +44,10 @@ function startBattle() {
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
 const alive = u => Sim.live(u);
-function camTarget() { const u = ctrlOf(), z = Z(); return u ? [u.x - VPW / z / 2, u.y - vh / z / 2 - 20 / z] : [cam.x, cam.y]; }
+let look = null, mini = null, miniPtr = -1;   // look: 미니맵으로 잠시 둘러보기, mini: 이번 프레임 미니맵 영역
+function lookAt(p) { look = { x: (p.x - mini.x) / mini.k, y: (p.y - mini.y) / mini.k, until: T + 4 }; }
+const inMini = p => mini && p.x >= mini.x && p.x < mini.x + mini.w && p.y >= mini.y && p.y < mini.y + mini.h;
+function camTarget() { const u = ctrlOf(), z = Z(); if (look && T < look.until) return [look.x - VPW / z / 2, look.y - vh / z / 2]; return u ? [u.x - VPW / z / 2, u.y - vh / z / 2 - 20 / z] : [cam.x, cam.y]; }
 function clampCam() { const z = Z(); cam.x = Math.max(0, Math.min(WW - VPW / z, cam.x)); cam.y = Math.max(0, Math.min(WH - vh / z, cam.y)); }
 function snapCam() { const [x, y] = camTarget(); cam.x = x; cam.y = y; clampCam(); }
 const toWorld = (sx, sy) => [(sx - LEFT_W) / Z() + cam.x, (sy - TB_H) / Z() + cam.y];
@@ -168,7 +171,7 @@ function drawLeftPanel() {
   drawMinimap(6, TB_H + vh - Math.round((LEFT_W - 12) * Sim.MH / Sim.MW) - 6, LEFT_W - 12);
 }
 function drawMinimap(mx, my, mw) {
-  const mh = Math.round(mw * Sim.MH / Sim.MW), k = mw / WW;
+  const mh = Math.round(mw * Sim.MH / Sim.MW), k = mw / WW; mini = { x: mx, y: my, w: mw, h: mh, k };
   ctx.drawImage(terrain, mx, my, mw, mh); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
   for (const e of S.units) if (alive(e)) { ctx.fillStyle = e.team === 'player' ? '#4fb0ff' : '#ff5a4a'; ctx.fillRect(mx + e.x * k - 1, my + e.y * k - 1, e.isLeader ? 4 : 2.5, e.isLeader ? 4 : 2.5); }
   ctx.strokeStyle = COLORS.gold; ctx.strokeRect(mx + cam.x * k, my + cam.y * k, VPW / Z() * k, vh / Z() * k);
@@ -181,7 +184,10 @@ function drawSpellPanel() {
   u.spells.forEach((k, i) => { const sp = SPELL[k], ok = u.mp >= sp.mp && !locked; label(`${i + 1} ${sp.name}  ${sp.mp}MP`, x + 8, y + 44 + i * 28, 16, u.spellSel === i ? COLORS.gold : ok ? COLORS.silver : COLORS.dim); if (u.spellSel === i) label('◀', x + 196, y + 44 + i * 28, 16, COLORS.gold, 'right'); btns.push({ id: 'spell:' + i, x, y: y + 30 + i * 28, w: 210, h: 28 }); });
 }
 function drawStick() {   // 맹장전 조이스틱: 누른 자리에 반투명 링, 노브가 손가락을 따라간다 (방향이 잡히면 금색)
-  if (!stick) return;
+  if (!stick) {   // 손가락이 없을 때는 어디를 눌러 끌면 되는지 희미하게 안내
+    if (!selectMode && !menuOpen && !S.over) { ctx.save(); ctx.globalAlpha = 0.16; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(LEFT_W + 150, TB_H + vh - 120, STICK_R, 0, TAU); ctx.stroke(); ctx.globalAlpha = 0.3; label('이동', LEFT_W + 150, TB_H + vh - 120, 18, '#fff', 'center'); ctx.restore(); }
+    return;
+  }
   ctx.save(); ctx.globalAlpha = 0.55; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(stick.ox, stick.oy, STICK_R, 0, TAU); ctx.stroke();
   ctx.fillStyle = stick.dir ? COLORS.gold : '#fff'; ctx.beginPath(); ctx.arc(stick.ox + stick.kx, stick.oy + stick.ky, 30, 0, TAU); ctx.fill(); ctx.restore();
 }
@@ -221,11 +227,11 @@ function drawToolbarMobile() {
 }
 function drawMobileSide() {   // 왼쪽 중단 미니맵, 왼쪽 하단 거리·속도·시스템 (조이스틱은 상태창 오른쪽 전장 왼쪽 절반)
   const mw = LEFT_W - 8, mh = Math.round(mw * Sim.MH / Sim.MW);
-  drawMinimap(4, TB_H + Math.round((vh - mh) / 2) + 6, mw);
-  button('cmd:auto', 6, VH - 224, LEFT_W - 12, 48, S.auto ? '자동 ON' : '자동 OFF', S.auto, 16);
-  button('m:zoom', 6, VH - 170, LEFT_W - 12, 48, '거리 ×' + Z(), false, 16);
-  button('m:speed', 6, VH - 116, LEFT_W - 12, 48, '속도 ×' + SPEEDS[speedIdx], false, 16);
-  button('cmd:menu', 6, VH - 62, LEFT_W - 12, 52, '시스템', false, 16);
+  drawMinimap(4, TB_H + Math.round((vh - mh) / 2) - 14, mw);
+  button('cmd:auto', 6, VH - 258, LEFT_W - 12, 58, S.auto ? '자동 ON' : '자동 OFF', S.auto, 17);
+  button('m:zoom', 6, VH - 194, LEFT_W - 12, 58, '거리 ×' + Z(), false, 15);
+  button('m:speed', 6, VH - 130, LEFT_W - 12, 58, '속도 ×' + SPEEDS[speedIdx], false, 17);
+  button('cmd:menu', 6, VH - 66, LEFT_W - 12, 58, '시스템', false, 17);
 }
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
   ctx.fillStyle = on ? 'rgba(80,60,16,.75)' : 'rgba(10,12,20,.6)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
@@ -244,6 +250,7 @@ function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마
 function drawMobileStatus() {   // 약식: 이름·병종·HP/MP·피로도만 (조이스틱을 가리지 않게 좁고 투명하게)
   panel(0, TB_H, LEFT_W, 134, 'rgba(255,255,255,.2)', 1, 'rgba(10,12,20,.45)');
   const u = ctrlOf(); if (!u) return;
+  btns.push({ id: 'm:info', x: 0, y: TB_H, w: LEFT_W, h: 134 });   // 탭 = 능력치 상세 창
   label(u.name, 8, TB_H + 18, 18, COLORS.gold); label(`${u.subclass} Lv${u.lv}`, 8, TB_H + 40, 14, COLORS.silver);
   bar(8, TB_H + 52, LEFT_W - 16, 7, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   if (u.maxMp) bar(8, TB_H + 62, LEFT_W - 16, 5, u.mp / u.maxMp, '#8a6aff');
@@ -254,13 +261,13 @@ function drawMobileStatus() {   // 약식: 이름·병종·HP/MP·피로도만 (
 function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 창 + 확정 버튼, 전투는 멈춰 있다 (적을 눌렀으면 그 적의 정보)
   const u = selTarget && alive(selTarget) ? selTarget : ctrlOf(); if (!u) return; const foe = u.team === 'enemy';
   label(foe ? '적 정보 — 전투 일시정지' : '캐릭터 선택 중 — 전투 일시정지', LEFT_W + VPW / 2, TB_H + 22, 20, foe ? COLORS.danger : COLORS.gold, 'center');
-  const z = Z(), sx = LEFT_W + (u.x - cam.x) * z, sy = TB_H + (u.y - cam.y) * z, w = 262, h = 204, col = foe ? COLORS.danger : COLORS.gold;
+  const z = Z(), sx = LEFT_W + (u.x - cam.x) * z, sy = TB_H + (u.y - cam.y) * z, w = 296, h = 204, col = foe ? COLORS.danger : COLORS.gold;
   if (foe) { ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 3; ctx.strokeRect(sx - 20 * z, sy - 36 * z, 40 * z, 44 * z); }   // 가리킨 적 표시
   const x = Math.max(LEFT_W + 6, Math.min(LEFT_W + VPW - w - 6, sx + 36)), y = Math.max(TB_H + 40, Math.min(TB_H + vh - h - 90, sy - h / 2));
   panel(x, y, w, h, col, 3, 'rgba(10,12,20,.95)');
   label(u.name, x + 12, y + 20, 20, col); label(`${CATEGORY_NAME[u.category]}·${u.subclass} LV ${u.lv}`, x + w - 12, y + 20, 16, COLORS.silver, 'right');
   const rows = [['HP', Math.ceil(u.hp) + '/' + u.maxHp, 'HR', u.hr], ['AT', u.atk.toFixed(0), 'DF', u.df], ['AA', u.aa + '%', 'AD', u.ad], ['MD', u.md, 'FT', Math.round(u.ft)]];
-  rows.forEach((q, i) => { const yy = y + 50 + i * 26; label(q[0], x + 12, yy, 16, COLORS.silver2); label(String(q[1]), x + 70, yy, 16, COLORS.silver); label(q[2], x + 162, yy, 16, COLORS.silver2); label(String(q[3]), x + w - 12, yy, 16, COLORS.silver, 'right'); });
+  rows.forEach((q, i) => { const yy = y + 50 + i * 26; label(q[0], x + 12, yy, 16, COLORS.silver2); label(String(q[1]), x + 70, yy, 16, COLORS.silver); label(q[2], x + 190, yy, 16, COLORS.silver2); label(String(q[3]), x + w - 12, yy, 16, COLORS.silver, 'right'); });
   label('ST', x + 12, y + 156, 16, COLORS.silver2); label(stText(u), x + 70, y + 156, 16, COLORS.silver);
   if (u.range > 0) label('사거리 ' + Math.round(u.range / TILE) + '칸', x + 12, y + 182, 16, COLORS.silver2);
   if (u.spells && u.spells.length) label(u.spells.map(k => SPELL[k].name).join('·'), x + w - 12, y + 182, 14, COLORS.silver2, 'right');
@@ -294,12 +301,12 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.32', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.33', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 초상: 캐릭터 선택(1 본대·2 기마대) · 군단 명령 · 왼쪽 아래: 자동·거리·속도·시스템 · 왼쪽 중간: 미니맵'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function draw() {
-  btns = [];
+  btns = []; mini = null;
   if (state === 'title') { drawTitle(); return; }
   layout(); clampCam();
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
@@ -326,7 +333,7 @@ function confirmSelect() {   // 확정: 보던 적이 있으면 군단이 그 �
 }
 function cancelSelect() { selTarget = null; selectMode = false; }   // 취소(Esc): 지시 없이 재개
 function beginSelect() { if (SHOW.pauseSel && !S.over && !menuOpen) selectMode = true; }
-function pick(u) { if (!u || !alive(u) || u.team !== 'player') return; armyIdx = u.army.id; Sim.setCtrl(S, u.army, u); selTarget = null; beginSelect(); }
+function pick(u) { if (!u || !alive(u) || u.team !== 'player') return; look = null; armyIdx = u.army.id; Sim.setCtrl(S, u.army, u); selTarget = null; beginSelect(); }
 function cycleUnit(dir) {
   const list = army().units.filter(alive); if (!list.length) return;
   const i = list.indexOf(ctrlOf()); pick(list[i < 0 ? 0 : (i + dir + list.length) % list.length]);
@@ -352,6 +359,7 @@ function uiClick(id) {
   else if (id === 'm:spell') { const u = ctrlOf(); if (u && u.spells.length) Sim.selectSpell(u, (u.spellSel + 1) % u.spells.length); }
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:pad') padVisible = !padVisible;
   else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);
+  else if (id === 'm:info') { look = null; selTarget = null; selectMode = true; }
   else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
   else if (id === 'm:formation') { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(army().formation); Sim.setFormation(army(), forms[(i + 1) % forms.length]); }
   else if (id === 'm:pausesel') { SHOW.pauseSel = !SHOW.pauseSel; saveShow(); if (!SHOW.pauseSel) cancelSelect(); }
@@ -390,6 +398,7 @@ cv.addEventListener('pointerdown', e => {
   if (S.over) { if (T - overAt > 1) startBattle(); return; }
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
   const b = hitBtn(p.x, p.y);
+  if (!menuOpen && !b && inMini(p)) { miniPtr = e.pointerId; lookAt(p); return; }   // 미니맵: 누르거나 끌면 그 위치를 잠시 본다
   if (menuOpen) { if (b && /^m:(?!act$|alt$|spell$)/.test(b.id)) uiClick(b.id); return; }
   if (b && b.id.startsWith('order:')) { cancelSelect(); uiClick(b.id); return; }
   if (selectMode && mobile && !b && inStickZone(p.x, p.y)) confirmSelect();   // 모바일: 조이스틱을 잡으면 확정하고 바로 이동
@@ -406,10 +415,11 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
+  if (miniPtr === e.pointerId) { if (mini) lookAt({ x: Math.max(mini.x, Math.min(mini.x + mini.w, p.x)), y: Math.max(mini.y, Math.min(mini.y + mini.h, p.y)) }); return; }
   if (stick && stick.id === e.pointerId) { stickMove(p.x, p.y); refreshPad(); return; }
   if (padPtrs.has(e.pointerId)) { const b = hitBtn(p.x, p.y); if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) padPtrs.set(e.pointerId, [dx, dy]); else padPtrs.delete(e.pointerId); } else padPtrs.delete(e.pointerId); refreshPad(); }   // 패드 위에서 손가락을 미끄러뜨리면 방향 전환
 });
-const endPtr = e => { padPtrs.delete(e.pointerId); if (stick && stick.id === e.pointerId) stick = null; refreshPad(); };
+const endPtr = e => { if (miniPtr === e.pointerId) miniPtr = -1; padPtrs.delete(e.pointerId); if (stick && stick.id === e.pointerId) stick = null; refreshPad(); };
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
 addEventListener('keydown', e => {
   if (e.repeat) return;
