@@ -51,8 +51,11 @@ for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
-// 프로토타입 상성표: 전사>궁병·성직, 궁병>기병, 기병>전사, 성직>법사, 법사>방패, 방패>전사.
-const CLASS_COUNTERS = { warrior: ['archer', 'cleric'], archer: ['cavalry'], cavalry: ['warrior'], shield: ['warrior'], mage: ['shield'], cleric: ['mage'] };
+const CATEGORY_NAME = { spear: '창병', cavalry: '기병', archer: '궁병', mage: '법사', cleric: '성직' };
+const CATEGORY = { warrior: 'spear', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'mage', cleric: 'cleric' };
+const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병', shield: '방패병', xia: '전사', yan: '전사', wen: '전사', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', esword: '보병', eshield: '방패병', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
+// 사용자 지정 대분류 상성: 창병>기병>궁병>창병. 법사·성직은 모든 대분류와 동등.
+const CLASS_COUNTERS = { spear: ['cavalry'], cavalry: ['archer'], archer: ['spear'] };
 const matchup = (attacker, defender) => CLASS_COUNTERS[defender]?.includes(attacker) ? 1 : CLASS_COUNTERS[attacker]?.includes(defender) ? -1 : 0;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
@@ -152,7 +155,7 @@ function createBattle(seed = 1, opts = {}) {
     d.units.forEach((key, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
-      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
+      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: T.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
@@ -200,7 +203,7 @@ function die(S, u, killer) {
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
-  const tier = from && from.team !== t.team ? matchup(from.cls, t.cls) : 0;
+  const tier = from && from.team !== t.team ? matchup(from.category, t.category) : 0;
   dmg *= tier > 0 ? 0.8 : tier < 0 ? 1.2 : 1;
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
   t.hitState = tier; t.hitDuration = tier > 0 ? 0.24 : tier < 0 ? 0.48 : 0.35; t.hitT = t.hitDuration;
@@ -551,6 +554,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, matchup, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, SPELL, SPECIAL, ARMIES, matchup, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
