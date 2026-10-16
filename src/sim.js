@@ -51,6 +51,9 @@ for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
+// 프로토타입 상성표: 전사>궁병·성직, 궁병>기병, 기병>전사, 성직>법사, 법사>방패, 방패>전사.
+const CLASS_COUNTERS = { warrior: ['archer', 'cleric'], archer: ['cavalry'], cavalry: ['warrior'], shield: ['warrior'], mage: ['shield'], cleric: ['mage'] };
+const matchup = (attacker, defender) => CLASS_COUNTERS[defender]?.includes(attacker) ? 1 : CLASS_COUNTERS[attacker]?.includes(defender) ? -1 : 0;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
 //  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
@@ -197,9 +200,13 @@ function die(S, u, killer) {
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
+  const tier = from && from.team !== t.team ? matchup(from.cls, t.cls) : 0;
+  dmg *= tier > 0 ? 0.8 : tier < 0 ? 1.2 : 1;
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
-  t.hitT = 0.35; t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;   // 맞은 방향으로 밀리는 피격 모션
-  S.fx.push({ kind: 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, t: 0.22, max: 0.22 });
+  t.hitState = tier; t.hitDuration = tier > 0 ? 0.24 : tier < 0 ? 0.48 : 0.35; t.hitT = t.hitDuration;
+  t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6) * (tier > 0 ? 0.65 : tier < 0 ? 1.35 : 1); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;
+  S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
+  if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d', 'dmg');
   if (t.hp <= 0) die(S, t, from);
 }
@@ -544,6 +551,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, matchup, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
