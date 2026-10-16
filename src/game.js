@@ -221,7 +221,8 @@ function drawToolbarMobile() {
 }
 function drawMobileSide() {   // 왼쪽 중단 미니맵, 왼쪽 하단 거리·속도·시스템 (조이스틱은 상태창 오른쪽 전장 왼쪽 절반)
   const mw = LEFT_W - 8, mh = Math.round(mw * Sim.MH / Sim.MW);
-  drawMinimap(4, TB_H + Math.round((vh - mh) / 2) + 20, mw);
+  drawMinimap(4, TB_H + Math.round((vh - mh) / 2) + 6, mw);
+  button('cmd:auto', 6, VH - 224, LEFT_W - 12, 48, S.auto ? '자동 ON' : '자동 OFF', S.auto, 16);
   button('m:zoom', 6, VH - 170, LEFT_W - 12, 48, '거리 ×' + Z(), false, 16);
   button('m:speed', 6, VH - 116, LEFT_W - 12, 48, '속도 ×' + SPEEDS[speedIdx], false, 16);
   button('cmd:menu', 6, VH - 62, LEFT_W - 12, 52, '시스템', false, 16);
@@ -231,10 +232,9 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
   label(title, cx, cy - (sub ? 12 : 0), r > 60 ? 22 : 17, COLORS.silver, 'center'); if (sub) label(sub, cx, cy + 16, r > 60 ? 22 : 15, col, 'center');
   btns.push({ id, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, cx, cy, r });
 }
-function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법과 자주 쓰는 자동·진형
+function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법과 진형 3종
   const u = ctrlOf(); if (!u) return;
-  roundBtn('cmd:auto', 1180, 458, 44, '자동', S.auto ? 'ON' : 'OFF', S.auto ? COLORS.gold : COLORS.silver2, S.auto);
-  roundBtn('m:formation', 1074, 458, 44, '진형', FORMATION_NAME[army().formation], COLORS.silver2, false);
+  Object.entries(FORMATION_NAME).forEach(([key, name], i) => roundBtn('m:form:' + key, 1030 + i * 96, 458, 40, name, '', army().formation === key ? COLORS.gold : COLORS.silver2, army().formation === key));   // 진형 3종, 조작 장수가 속한 부대에 적용
   if (S.auto) return;
   const primary = actionInfo(u), alt = actionInfo(u, true), sp = u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
   roundBtn('m:act', 1168, 614, 74, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
@@ -294,8 +294,8 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.31', 24, 30, 16, COLORS.silver2);
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 초상: 캐릭터 선택(1 본대·2 기마대) · 군단 명령 · 왼쪽 아래: 거리·속도·시스템 · 왼쪽 중간: 미니맵'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.32', 24, 30, 16, COLORS.silver2);
+  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 초상: 캐릭터 선택(1 본대·2 기마대) · 군단 명령 · 왼쪽 아래: 자동·거리·속도·시스템 · 왼쪽 중간: 미니맵'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function draw() {
@@ -352,6 +352,7 @@ function uiClick(id) {
   else if (id === 'm:spell') { const u = ctrlOf(); if (u && u.spells.length) Sim.selectSpell(u, (u.spellSel + 1) % u.spells.length); }
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:pad') padVisible = !padVisible;
   else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);
+  else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
   else if (id === 'm:formation') { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(army().formation); Sim.setFormation(army(), forms[(i + 1) % forms.length]); }
   else if (id === 'm:pausesel') { SHOW.pauseSel = !SHOW.pauseSel; saveShow(); if (!SHOW.pauseSel) cancelSelect(); }
   else if (id === 'm:dmg') { SHOW.dmg = !SHOW.dmg; saveShow(); } else if (id === 'm:buff') { SHOW.buff = !SHOW.buff; saveShow(); }
