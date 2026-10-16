@@ -1,7 +1,7 @@
 ﻿'use strict';
 // 렌더 · 입력 · HUD — 퍼스트퀸4 전투 화면/조작: 군단마다 "조작 캐릭터" 한 명을 방향키(숫자패드)로 직접 움직이고 Space 로 특수기·마법,
 // 나머지는 AI + 상단 아이콘의 군단 명령(돌격·정지·후퇴). ←→ 조작 캐릭터 변경, ↑↓ 군단 변경, Ctrl 가속, 적을 클릭하면 집중 공격.
-// 모바일(터치): 같은 조작을 큰 버튼으로 — 왼쪽 이동패드(누르고 있기·멀티터치), 오른쪽 행동/보조/마법 버튼, 상단 두 군단 초상 줄·군단 명령, 오른쪽 아래 거리·속도·시스템.
+// 모바일(터치): 같은 조작을 큰 버튼으로 — 왼쪽 이동패드(누르고 있기·멀티터치), 오른쪽 행동/보조/마법 버튼, 상단 두 군단 초상 줄·군단 명령, 왼쪽 중간 미니맵, 왼쪽 아래 거리·속도·시스템.
 // 전투 규칙은 sim.js, 도형은 art.js.
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const { TILE, WW, WH, SPELL, SPECIAL, CATEGORY_NAME, FORMATION_NAME } = Sim;
@@ -165,7 +165,10 @@ function drawLeftPanel() {
   label(u.name, 10, TB_H + 18, 20, COLORS.gold); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
-  const mw = LEFT_W - 12, mh = Math.round(mw * Sim.MH / Sim.MW), my = TB_H + vh - mh - 6, mx = 6, k = mw / WW;   // 미니맵
+  drawMinimap(6, TB_H + vh - Math.round((LEFT_W - 12) * Sim.MH / Sim.MW) - 6, LEFT_W - 12);
+}
+function drawMinimap(mx, my, mw) {
+  const mh = Math.round(mw * Sim.MH / Sim.MW), k = mw / WW;
   ctx.drawImage(terrain, mx, my, mw, mh); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
   for (const e of S.units) if (alive(e)) { ctx.fillStyle = e.team === 'player' ? '#4fb0ff' : '#ff5a4a'; ctx.fillRect(mx + e.x * k - 1, my + e.y * k - 1, e.isLeader ? 4 : 2.5, e.isLeader ? 4 : 2.5); }
   ctx.strokeStyle = COLORS.gold; ctx.strokeRect(mx + cam.x * k, my + cam.y * k, VPW / Z() * k, vh / Z() * k);
@@ -216,6 +219,13 @@ function drawToolbarMobile() {
   drawArmyOrders();
   S.armies.slice(0, 2).forEach((A, i) => { const step = Math.min(52, Math.floor(630 / Math.max(1, A.units.length))); drawPortraits(4 + i * 640, 68, step - 2, 56, step, A); });   // 두 군단 모두 (위 군단 명령 줄과 같은 칸)
 }
+function drawMobileSide() {   // 왼쪽 중단 미니맵, 왼쪽 하단 거리·속도·시스템 (조이스틱은 상태창 오른쪽 전장 왼쪽 절반)
+  const mw = LEFT_W - 8, mh = Math.round(mw * Sim.MH / Sim.MW);
+  drawMinimap(4, TB_H + Math.round((vh - mh) / 2) + 20, mw);
+  button('m:zoom', 6, VH - 170, LEFT_W - 12, 48, '거리 ×' + Z(), false, 16);
+  button('m:speed', 6, VH - 116, LEFT_W - 12, 48, '속도 ×' + SPEEDS[speedIdx], false, 16);
+  button('cmd:menu', 6, VH - 62, LEFT_W - 12, 52, '시스템', false, 16);
+}
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
   ctx.fillStyle = on ? 'rgba(80,60,16,.75)' : 'rgba(10,12,20,.6)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
   label(title, cx, cy - (sub ? 12 : 0), r > 60 ? 22 : 17, COLORS.silver, 'center'); if (sub) label(sub, cx, cy + 16, r > 60 ? 22 : 15, col, 'center');
@@ -223,9 +233,6 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
 }
 function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법과 자주 쓰는 자동·진형
   const u = ctrlOf(); if (!u) return;
-  roundBtn('m:zoom', 1034, 366, 36, '거리', '×' + Z(), COLORS.silver2, false);
-  roundBtn('m:speed', 1130, 366, 36, '속도', '×' + SPEEDS[speedIdx], COLORS.silver2, false);
-  roundBtn('cmd:menu', 1226, 366, 36, '시스템', '', COLORS.silver2, false);
   roundBtn('cmd:auto', 1180, 458, 44, '자동', S.auto ? 'ON' : 'OFF', S.auto ? COLORS.gold : COLORS.silver2, S.auto);
   roundBtn('m:formation', 1074, 458, 44, '진형', FORMATION_NAME[army().formation], COLORS.silver2, false);
   if (S.auto) return;
@@ -287,8 +294,8 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.30', 24, 30, 16, COLORS.silver2);
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 초상: 캐릭터 선택(1 본대·2 기마대) · 군단 명령 · 오른쪽 아래: 거리·속도·시스템'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.31', 24, 30, 16, COLORS.silver2);
+  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 초상: 캐릭터 선택(1 본대·2 기마대) · 군단 명령 · 왼쪽 아래: 거리·속도·시스템 · 왼쪽 중간: 미니맵'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function draw() {
@@ -298,7 +305,7 @@ function draw() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
   if (mobile) {
-    drawToolbarMobile(); drawMobileStatus(); drawStick(); drawActionsMobile();
+    drawToolbarMobile(); drawMobileStatus(); drawMobileSide(); drawStick(); drawActionsMobile();
   } else { drawToolbar(); drawLeftPanel(); drawSpellPanel(); drawPad(); drawTable(); }
   if (S.auto) label('자동 전투', VW - 10, TB_H + 18, 18, COLORS.gold, 'right');
   if (S.t < 14 && !S.over) label(mobile ? '왼쪽 화면을 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 30 : 16), 16, COLORS.silver2, 'center');
