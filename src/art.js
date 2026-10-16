@@ -10,7 +10,7 @@ const COLORS = {
 
 // 영웅 6명(TKC HEROES.style 그대로) + 적 병종(TKC ENEMY 스타일) + 이 프로젝트용 병종
 const STYLES = {
-  guan: { body: '#2f8f5b', trim: '#d4a73a', skin: '#c9553f', cape: '#1f6a42', beard: true, hat: true, weapon: 'sword' },
+  guan: { body: '#2f8f5b', trim: '#d4a73a', skin: '#c9553f', cape: '#1f6a42', beard: true, hat: true, weapon: 'glaive' },
   lubu: { body: '#2a2030', trim: '#c9302c', skin: '#e0b08a', helm: true, feathers: true, pauldrons: true, weapon: 'halberd', horse: '#a8321f' },
   zhao: { body: '#2b6a6e', trim: '#c9cfd8', skin: '#e0b08a', cape: '#1f4a50', hair: true, band: true, pauldrons: true, weapon: 'lance', horse: '#f0ece0' },
   diao: { body: '#c86aa8', trim: '#ffd34d', skin: '#f4d9bd', sleeves: '#f7b3d3', hairCap: true, longHair: true, crown: true, flower: true, weapon: 'fan', weaponScale: 0.5 },
@@ -87,6 +87,11 @@ function drawWeapon(g, kind, x, y, ang, len, r, scale = 1) {
     g.moveTo(tx - dx * bl * 0.2 + nx * bl * 0.3, ty - dy * bl * 0.2 + ny * bl * 0.3); g.lineTo(tx + dx * bl * 1.2, ty + dy * bl * 1.2); g.lineTo(tx - dx * bl * 0.2 - nx * bl * 0.3, ty - dy * bl * 0.2 - ny * bl * 0.3);
   }
   g.closePath(); g.fill();
+  if (kind === 'glaive') {   // 금색 용 장식과 붉은 수술로 일반 장병기와 구분한다.
+    const jx = tx - dx * bl * 0.85, jy = ty - dy * bl * 0.85;
+    g.strokeStyle = COLORS.goldTrim; g.lineWidth = 3; g.beginPath(); g.arc(jx, jy, bl * 0.22, 0, TAU); g.stroke();
+    g.strokeStyle = '#b52b2b'; g.lineWidth = 3; g.beginPath(); g.moveTo(jx, jy); g.lineTo(jx - dx * bl * 0.35 + nx * bl * 0.35, jy - dy * bl * 0.35 + ny * bl * 0.35); g.stroke();
+  }
   g.restore();
 }
 

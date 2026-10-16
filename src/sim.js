@@ -62,6 +62,8 @@ const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield:
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
+const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기' };
+const ENEMY_FIELD_MAX = 36, ARMY_MAX = 12;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
 //  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
@@ -159,20 +161,22 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 // ---------- 전투 생성 ----------
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-  const S = { t: 0, map: genMap(), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
-  const cnt = {};
+  const S = { t: 0, map: genMap(), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const cnt = {}; let enemyField = 0, reserves = false;
   ARMIES.forEach((d, ai) => {
-    const A = { id: ai, team: d.team, name: d.name, units: [], leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : 'wait', routed: false, order: 'idle', ctrl: null };
+    const keys = d.units.slice(0, ARMY_MAX), reserve = d.team === 'enemy' && (reserves || enemyField + keys.length > ENEMY_FIELD_MAX);
+    if (reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
+    const A = { id: ai, team: d.team, name: d.name, units: [], leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
-    d.units.forEach((key, i) => {
+    keys.forEach((key, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
-        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
+        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
-      S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
+      if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
     });
     if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
   });
@@ -190,6 +194,8 @@ let cur = null;   // step() 중인 전투 (phys 의 난수용)
 const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
 const phys = (u, t, mul = 1) => Math.max(1, mitigate(u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), t.df * ftDef(t))) * DMG;
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
+function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
+function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   const p = u.mv && u.mv.swap;   // 맞바꾸던 상대가 쓰러지거나 떠나면, 남은 쪽은 그 칸으로 가는 보통 이동으로 바꾸고 도착 칸을 바로 점유한다 (아니면 빈 칸으로 보여 다른 유닛이 겹쳐 들어온다)
@@ -210,7 +216,11 @@ function die(S, u, killer) {
   if (u.team === 'player') S.stats.lost++; else { S.stats.kills++; if (killer && killer.team === 'player') gainXp(S, killer, 18 + u.lv * 6); }
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
-    if (u.team === 'enemy') for (const m of u.army.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; }   // 대장이 쓰러지면 결사항전이 아닌 병사는 흩어진다
+    dialogue(S, u, u.team === 'player' ? '내 뜻을 이어 전투를 계속하라…' : '내가 여기서 쓰러지다니…');
+    if (u.team === 'enemy') {
+      let fleeing = false; for (const m of u.army.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
+      if (fleeing) notice(S, 'enemy', '적 ' + u.army.name + '가 후퇴합니다.');
+    }
   }
 }
 function hurt(S, from, t, dmg) {
@@ -382,6 +392,17 @@ function freeAdj(S, u, t) {
   }
   u.claimT = S.t; return u.claim = best;
 }
+function setFormation(A, type) {
+  if (!FORMATION_NAME[type]) return false; A.formation = type;
+  const sgn = A.team === 'player' ? 1 : -1, mid = Math.floor((A.units.length - 1) / 2);
+  A.units.forEach((u, i) => {
+    if (type === 'line') u.slot = { dx: 0, dy: i - mid };
+    else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: -sgn * row, dy: i ? (i % 2 ? -row : row) : 0 }; }
+    else u.slot = { dx: -sgn * Math.floor(i / 4), dy: (i % 4) - 1 };
+    u.path = null;
+  });
+  return true;
+}
 // 대형: 슬롯 = 앵커 칸 + (자기 슬롯 - 앵커 슬롯). 앵커: 아군 = 조작 캐릭터, 적 = 대장(없으면 가장 전방 슬롯)
 function anchorOf(A) {
   if (A.team === 'player') return A.ctrl && live(A.ctrl) ? A.ctrl : null;
@@ -488,12 +509,24 @@ function updateProj(S, dt) {
 
 // ---------- 적 군단 AI / 종료 판정 ----------
 function enemyAI(S) {
+  let field = S.units.filter(u => u.team === 'enemy' && live(u)).length;
+  for (const A of S.armies) if (A.team === 'enemy' && A.state === 'reserve') {
+    const ready = A.units.filter(u => !u.dead && !u.fled).length; if (!ready || field + ready > ENEMY_FIELD_MAX) continue;
+    field += deployArmy(S, A);
+  }
   for (const A of S.armies) {
     if (A.team !== 'enemy' || A.state !== 'wait') continue;
     const tr = A.trig, ref = A.leader || A.units.find(live);
     let go = S.t >= tr.t || (tr.after != null && S.armies[tr.after].routed) || A.units.some(u => live(u) && u.hp < u.maxHp);
     if (!go && ref) for (const e of S.units) if (live(e) && e.team === 'player' && dist(ref, e) < tr.near * TILE) { go = true; break; }
-    if (go) { A.state = 'advance'; if (ref) text(S, ref.x, ref.y - 70, A.name + ' 진격!', '#ff5a4a'); }
+    if (go) { A.state = 'advance'; notice(S, 'enemy', '적 ' + A.name + '가 참전했습니다.'); if (ref) text(S, ref.x, ref.y - 70, A.name + ' 진격!', '#ff5a4a'); }
+  }
+}
+function commanderDialogue(S) {
+  for (const A of S.armies) {
+    const e = A.team === 'enemy' && A.state === 'advance' && A.leader && live(A.leader) ? A.leader : null; if (!e || S.talked.has(A.id)) continue;
+    let p = null, bd = 7 * TILE; for (const P of S.armies) { const l = P.team === 'player' && P.leader && live(P.leader) ? P.leader : null; if (l && dist(e, l) < bd) { bd = dist(e, l); p = l; } }
+    if (p) { S.talked.add(A.id); dialogue(S, e, p.name + ', 여기서 승부를 내자!'); dialogue(S, p, '좋다. 정면으로 받아주마!'); }
   }
 }
 function checkEnd(S) {
@@ -503,7 +536,7 @@ function checkEnd(S) {
 }
 function step(S, dt) {
   if (S.over) return;
-  cur = S; S.t += dt; enemyAI(S);
+  cur = S; S.t += dt; enemyAI(S); commanderDialogue(S);
   for (const k of ['player', 'enemy']) { if (S.lock[k] > 0) S.lock[k] -= dt; if (S.lockAI[k] > 0) S.lockAI[k] -= dt; }
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
   const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -548,17 +581,36 @@ function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(�
 }
 function selectSpell(u, i) { if (u.spells[i]) u.spellSel = i; }
 function armyOrder(S, A, type) {   // 군단 명령: 조작 캐릭터는 제외 (후퇴만 전원)
+  if (type === 'retreat' && A.order !== 'retreat') notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 후퇴합니다.');
   A.order = type;
   for (const u of A.units) if (live(u) && (u !== A.ctrl || type === 'retreat')) { u.order = { type }; u.path = null; u.autoCharge = false; }
 }
 function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric') { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
-function recall(S, u) {   // 철수한 유닛을 출진 지점(왼쪽)의 빈 칸에 다시 투입 — 체력은 철수할 때 이미 회복
+function recall(S, u, quiet = false) {   // 철수한 유닛을 출진 지점(왼쪽)의 빈 칸에 다시 투입 — 체력은 철수할 때 이미 회복
   if (!u.out || u.fled || u.dead || u.team !== 'player') return false;
   for (let k = 0; k < 80; k++) {
     const tx = 3 + Math.floor(S.rnd() * 4), ty = 14 + Math.floor(S.rnd() * 14);
-    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === u.army.ctrl ? 'stop' : u.army.order }; u.path = null; text(S, u.x, u.y - 40, u.name + ' 출진', '#7dff9a'); return true; }
+    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === u.army.ctrl ? 'stop' : u.army.order }; u.path = null; text(S, u.x, u.y - 40, u.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
   }
   return false;
+}
+function deployArmy(S, A) {
+  let count = 0;
+  if (A.team === 'player') {
+    for (const u of A.units) if (recall(S, u, true)) count++;
+  } else {
+    for (const u of A.units) {
+      if (!u.out || u.dead || u.fled) continue;
+      for (let k = 0; k < 120; k++) {
+        const tx = MW - 4 - Math.floor(S.rnd() * 4), ty = 3 + Math.floor(S.rnd() * (MH - 6));
+        if (!okTile(S, tx, ty) || S.occ[ti(tx, ty)]) continue;
+        u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.reserve = false; u.order = { type: 'charge' }; u.path = null; count++; break;
+      }
+    }
+    if (count) { A.state = 'advance'; setFormation(A, A.formation); }
+  }
+  if (count) notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 참전했습니다.');
+  return count;
 }
 function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이까지) 클릭된 유닛
   let best = null, bd = 1e9;
@@ -566,6 +618,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, SPELL, SPECIAL, ARMIES, matchup, classMultiplier, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
