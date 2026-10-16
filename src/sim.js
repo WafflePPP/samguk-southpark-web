@@ -25,6 +25,7 @@ const U = {
   diao: { name: '초선', cls: 'cleric', mp: 999, aa: 20, hr: 12, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 24, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
   kong: { name: '제갈량', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
+  spear: { name: '보병(창)', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
   archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
   cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
@@ -53,8 +54,8 @@ for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = 
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 const CATEGORY_NAME = { cavalry: '기병', sword: '검병', spear: '창병', archer: '궁병', military: '군사' };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
-const UNIT_CATEGORY = { guan: 'spear', dian: 'spear', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', esword: 'spear', eshield: 'spear' };
-const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
+const UNIT_CATEGORY = { guan: 'spear', dian: 'spear', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
+const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.5, archer: 1.5, military: 1.5, cavalry: 0.5 }, spear: { spear: 1, sword: 1.5, archer: 1.5, military: 1.5, cavalry: 2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
@@ -88,11 +89,11 @@ const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', c
 
 // 군단 편성. at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
 const ARMIES = [
-  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'sword', 'sword', 'shield', 'shield', 'huang', 'archer', 'archer', 'kong', 'diao'] },
-  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'sword', 'sword', 'sword', 'sword', 'archer', 'archer', 'mage', 'mage'] },
+  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'sword', 'sword', 'sword', 'spear', 'spear', 'spear', 'spear', 'spear', 'archer', 'archer', 'huang'] },
+  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap','esword','esword','esword','esword','esword','earcher','earcher','earcher','ecav','ecap','ecap','esword','esword', 'jang', 'yan', 'wen'], trig: { near: 15, t: 25 } },
   { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','eshield','eshield','esword','esword','esword','earcher','earcher','earcher','ecap','ecap','eshield','eshield', 'hua', 'gao', 'xia'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '법사대', at: [45, 7], leader: 'esage', units: ['esage','emage','emage','earcher','earcher','earcher','eshield','eshield','esage','esage','emage','emage', 'xun', 'guo'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '궁병대', at: [45, 7], leader: 'earcher', units: ['earcher','earcher','earcher','eshield','eshield'], trig: { near: 14, t: 70 } },
 ];
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7) {
@@ -163,7 +164,7 @@ function createBattle(seed = 1, opts = {}) {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
+        hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
