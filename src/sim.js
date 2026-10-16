@@ -50,6 +50,8 @@ const CLONES = { yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '�
 for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = 1; }   // 복제 장수는 일반 대장 등급 (정예 3배로 두면 독립 군단 9개가 한꺼번에 몰려 자동 전투 승률 0%)
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
+// 일반 병사만 현재 전투 능력치의 2.5배. 이동·사거리·공격 간격·MP와 장수 등급은 유지한다.
+for (const u of Object.values(U)) if (u.generic) for (const f of [...STAT5, 'aa', 'hr']) u[f] *= 2.5;
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 const CATEGORY_NAME = { cavalry: '기병', sword: '검병', spear: '창병', archer: '궁병', military: '군사' };
