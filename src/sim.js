@@ -57,14 +57,9 @@ const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer
 const UNIT_CATEGORY = { guan: 'spear', dian: 'spear', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
 const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
 // 표에 적힌 공격 병과별 최종 피해 배율.
-const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.5, archer: 1.5, military: 1.5, cavalry: 0.5 }, spear: { spear: 1, sword: 1.5, archer: 1.5, military: 1.5, cavalry: 2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
+const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
-const meleeMultiplier = (from, target, rnd) => {
-  let a = Math.atan2(from.y - target.y, from.x - target.x) - target.face;
-  a = Math.atan2(Math.sin(a), Math.cos(a)); a = Math.abs(a);
-  return a < Math.PI / 4 ? 0.8 + rnd() * 0.2 : a < Math.PI * 3 / 4 ? 1.2 : 1.5 + rnd() * 1.5;
-};
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
 //  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
@@ -91,10 +86,11 @@ const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', c
 const ARMIES = [
   { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'sword', 'sword', 'sword', 'spear', 'spear', 'spear', 'spear', 'spear', 'archer', 'archer', 'huang'] },
   { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap','esword','esword','esword','esword','esword','earcher','earcher','earcher','ecav','ecap','ecap','esword','esword', 'jang', 'yan', 'wen'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','eshield','eshield','esword','esword','esword','earcher','earcher','earcher','ecap','ecap','eshield','eshield', 'hua', 'gao', 'xia'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '궁병대', at: [45, 7], leader: 'earcher', units: ['earcher','earcher','earcher','eshield','eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '선봉', at: [37, 19], leader: 'ecap', units: ['ecap','esword','esword','earcher','earcher','ecav','jang','xia'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '본진', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu','eshield','eshield','esword','esword','earcher','earcher','ecap','esword','esword','esword','esword'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '궁병대', at: [45, 7], leader: 'earcher', units: ['earcher','earcher','eshield','eshield'], trig: { near: 14, t: 70 } },
 ];
+for (let i = 0; i < 40; i++) ARMIES[2 + i % 3].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -209,9 +205,8 @@ function die(S, u, killer) {
     if (u.team === 'enemy') for (const m of u.army.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; }   // 대장이 쓰러지면 결사항전이 아닌 병사는 흩어진다
   }
 }
-function hurt(S, from, t, dmg, melee = false) {
+function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
-  if (melee && from) dmg *= meleeMultiplier(from, t, S.rnd);
   const tier = from && from.team !== t.team ? matchup(from.category, t.category) : 0;
   if (from && from.team !== t.team) dmg *= classMultiplier(from.category, t.category);
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
@@ -239,7 +234,7 @@ function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
   if (u.cls === 'mage') { if (!castSpell(S, u, u.spells[0], t.x, t.y)) u.cdT = 0.5; return; }   // 법사의 평타 = 장풍 (MP 소모)
   u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit');
-  if (u.range > 0) shoot(S, u, t.x, t.y); else hurt(S, u, t, phys(u, t), true);
+  if (u.range > 0) shoot(S, u, t.x, t.y); else hurt(S, u, t, phys(u, t));
 }
 
 // ---------- 마법·특수기 ----------
@@ -274,7 +269,7 @@ function castSpell(S, u, key, x, y) {
 function useSpecial(S, u, x, y) {
   if (!live(u) || !u.special || u.spT > 0 || u.stun > 0 || u.dashQ) return false;
   cur = S; const ang = Math.atan2(y - u.y, x - u.x), sp = SPECIAL[u.special];
-  if (u.special === 'spin') aoe(S, u, u.x, u.y, 80, e => hurt(S, u, e, phys(u, e, 2.2), true), '#ffd34d');
+  if (u.special === 'spin') aoe(S, u, u.x, u.y, 80, e => hurt(S, u, e, phys(u, e, 2.2)), '#ffd34d');
   else if (u.special === 'dash') {   // 돌진: 바라보는 8방향 직선으로 최대 6칸, 빈 칸까지만 질주한 뒤 충격
     const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), q = []; let cx = u.tx, cy = u.ty;
     if ((!dx && !dy) || u.mv) return false;
@@ -434,7 +429,7 @@ function updateUnit(S, u, dt) {
   if (u.dashQ) {
     const n = u.dashQ.shift();
     if (n && !S.occ[ti(n.tx, n.ty)]) { beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
-    u.dashQ = null; aoe(S, u, u.x, u.y, 60, e => hurt(S, u, e, phys(u, e, 2), true), '#7fd0ff'); return;
+    u.dashQ = null; aoe(S, u, u.x, u.y, 60, e => hurt(S, u, e, phys(u, e, 2)), '#7fd0ff'); return;
   }
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
@@ -525,7 +520,7 @@ function directMove(S, u, dx, dy) {
   if (u.root > 0) return;   // 속박(거미줄) 중에는 걷지 못한다
   const nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
   const eid = inMap(nx, ny) ? S.occ[ti(nx, ny)] : 0, e = eid && S.units.find(x => x.id === eid);
-  if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1), u.range === 0); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
+  if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
   if (e && e.team === u.team) { if (canSwap(S, u, { tx: nx, ty: ny })) beginSwap(S, u, e); return; }   // 아군은 자리를 맞바꿔 지나간다
   if (okTile(S, nx, ny) && !eid && diagOk(S, u.tx, u.ty, dx, dy)) beginStep(S, u, nx, ny);
 }
@@ -563,6 +558,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, SPELL, SPECIAL, ARMIES, matchup, classMultiplier, meleeMultiplier, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, SPELL, SPECIAL, ARMIES, matchup, classMultiplier, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
