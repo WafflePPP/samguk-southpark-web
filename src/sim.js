@@ -7,6 +7,7 @@ const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 0.5;   // 일반 병사(generic) 체력 배율 — 장수는 그대로
+const FRONTLINE_HP = 1.5; // 보병·방패병은 기존 일반 병사 체력의 3배
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
@@ -24,6 +25,7 @@ const U = {
   diao: { name: '초선', cls: 'cleric', mp: 999, aa: 20, hr: 12, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 24, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
   kong: { name: '제갈량', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
+  spear: { name: '보병(창)', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
   archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
   cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
@@ -50,6 +52,14 @@ for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
+const CATEGORY_NAME = { cavalry: '기병', sword: '검병', spear: '창병', archer: '궁병', military: '군사' };
+const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
+const UNIT_CATEGORY = { guan: 'spear', dian: 'spear', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
+const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
+// 표에 적힌 공격 병과별 최종 피해 배율.
+const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
+const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
+const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
 //  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
@@ -74,8 +84,8 @@ const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', c
 
 // 군단 편성. at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
 const ARMIES = [
-  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'sword', 'sword', 'shield', 'shield', 'huang', 'archer', 'archer', 'kong', 'diao'] },
-  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'sword', 'sword', 'sword', 'sword', 'archer', 'archer', 'mage', 'mage'] },
+  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'sword', 'sword', 'sword', 'spear', 'spear', 'spear', 'spear', 'spear', 'archer', 'archer', 'huang'] },
+  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'enemy', name: '장료대', at: [37, 19], leader: 'jang', units: ['jang', 'ecap', 'esword'], trig: { near: 15, t: 25 } },
   { team: 'enemy', name: '여포대', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'enemy', name: '순욱대', at: [45, 7], leader: 'xun', units: ['xun', 'esage'], trig: { near: 14, t: 70 } },
@@ -86,8 +96,7 @@ const ARMIES = [
   { team: 'enemy', name: '고순대', at: [53, 13], leader: 'gao', units: ['gao'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'enemy', name: '안량대', at: [53, 27], leader: 'yan', units: ['yan'], trig: { near: 13, t: 110, after: 2 } },
 ];
-const RESERVE = ['sword', 'sword', 'sword', 'shield', 'archer', 'archer', 'mage', 'cav'];
-
+for (let i = 0; i < 48; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -156,8 +165,8 @@ function createBattle(seed = 1, opts = {}) {
     d.units.forEach((key, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
-      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * HP_MUL * (T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
+      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
+        hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
@@ -165,29 +174,7 @@ function createBattle(seed = 1, opts = {}) {
     });
     if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
   });
-  S.reserve = { spawned: false };
   return S;
-}
-
-function spawnReserve(S) {
-  const A = S.armies[0], cells = [];
-  for (let r = 0; r <= 8; r++) for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-    if (Math.abs(x - 5) + Math.abs(y - 32) !== r || !okTile(S, x, y) || S.occ[ti(x, y)]) continue;
-    cells.push([x, y]);
-  }
-  if (cells.length < RESERVE.length) return false;
-  for (let i = 0; i < RESERVE.length; i++) {
-    const key = RESERVE[i], T = U[key], [tx, ty] = cells[i], id = S.nextId++;
-    const u = { id, key, name: T.name + String.fromCharCode(65 + S.units.filter(v => v.key === key).length), cls: T.cls, team: 'player', army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-      hp: T.hp * HP_MUL * SOLDIER_HP, maxHp: T.hp * HP_MUL * SOLDIER_HP, mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: S.rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-      aa: T.aa, hr: T.hr, named: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: false, isLeader: false,
-      face: 0, order: { type: A.order === 'idle' ? 'idle' : A.order }, slot: { dx: tx - 5, dy: ty - 32 }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: S.rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: false, fled: false, moving: false, autoCharge: false,
-      spellSel: 0, ctrlIn: null, root: 0, hitT: 0, hitAng: 0, hitMag: 1 };
-    S.occ[ti(tx, ty)] = id; S.units.push(u); A.units.push(u);
-  }
-  S.reserve.spawned = true;
-  text(S, tcx(5), tcy(32) - 70, '예비 군단 도착!', '#7dff9a');
-  return true;
 }
 
 // ---------- 전투 계산 ----------
@@ -226,9 +213,13 @@ function die(S, u, killer) {
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
+  const tier = from && from.team !== t.team ? matchup(from.category, t.category) : 0;
+  if (from && from.team !== t.team) dmg *= classMultiplier(from.category, t.category);
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
-  t.hitT = 0.35; t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;   // 맞은 방향으로 밀리는 피격 모션
-  S.fx.push({ kind: 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, t: 0.22, max: 0.22 });
+  t.hitState = tier; t.hitDuration = tier > 0 ? 0.24 : tier < 0 ? 0.48 : 0.35; t.hitT = t.hitDuration;
+  t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6) * (tier > 0 ? 0.65 : tier < 0 ? 1.35 : 1); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;
+  S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
+  if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d', 'dmg');
   if (t.hp <= 0) die(S, t, from);
 }
@@ -511,7 +502,6 @@ function checkEnd(S) {
 function step(S, dt) {
   if (S.over) return;
   cur = S; S.t += dt; enemyAI(S);
-  if (!S.reserve.spawned && (S.t >= 45 || S.armies.slice(0, 2).some(A => A.routed))) spawnReserve(S);
   for (const k of ['player', 'enemy']) { if (S.lock[k] > 0) S.lock[k] -= dt; if (S.lockAI[k] > 0) S.lockAI[k] -= dt; }
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
   const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -520,7 +510,6 @@ function step(S, dt) {
   for (const l of S.later) { l.t -= dt; if (l.t <= 0) l.fn(); } S.later = S.later.filter(l => l.t > 0);
   for (const f of S.fx) f.t -= dt; S.fx = S.fx.filter(f => f.t > 0);
   for (const x of S.texts) { x.t -= dt; x.y -= 22 * dt; } S.texts = S.texts.filter(x => x.t > 0);
-  if (!S.reserve.spawned && S.armies.slice(0, 2).some(A => A.routed)) spawnReserve(S);
   checkEnd(S);
 }
 
@@ -575,6 +564,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, SPELL, SPECIAL, ARMIES, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, SPELL, SPECIAL, ARMIES, matchup, classMultiplier, createBattle, step, setCtrl, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
