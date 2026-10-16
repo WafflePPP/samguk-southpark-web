@@ -10,47 +10,56 @@ const COLORS = {
 
 // 영웅 6명(TKC HEROES.style 그대로) + 적 병종(TKC ENEMY 스타일) + 이 프로젝트용 병종
 const STYLES = {
-  guan: { body: '#2f8f5b', trim: '#d4a73a', skin: '#c9553f', cape: '#1f6a42', beard: true, hat: true, weapon: 'glaive' },
+  guan: { body: '#2f8f5b', trim: '#d4a73a', skin: '#c9553f', cape: '#1f6a42', beard: true, hat: true, weapon: 'sword' },
   lubu: { body: '#2a2030', trim: '#c9302c', skin: '#e0b08a', helm: true, feathers: true, pauldrons: true, weapon: 'halberd', horse: '#a8321f' },
   zhao: { body: '#2b6a6e', trim: '#c9cfd8', skin: '#e0b08a', cape: '#1f4a50', hair: true, band: true, pauldrons: true, weapon: 'lance', horse: '#f0ece0' },
-  diao: { body: '#c86aa8', trim: '#ffd34d', skin: '#f4d9bd', sleeves: '#f7b3d3', hairCap: true, longHair: true, crown: true, flower: true, weapon: 'fan' },
+  diao: { body: '#c86aa8', trim: '#ffd34d', skin: '#f4d9bd', sleeves: '#f7b3d3', hairCap: true, longHair: true, crown: true, flower: true, weapon: 'fan', weaponScale: 0.5 },
   dian: { body: '#8a3a22', trim: '#d4a73a', skin: '#c98a6a', beard: true, wrap: true, pauldrons: true, cape: '#5a2418', weapon: 'twin' },
   huang: { body: '#5c5a3c', trim: '#d4a73a', skin: '#d9a98a', helm: true, helmColor: '#c9a24a', plume: 1, beard: true, beardColor: '#e8e4da', pauldrons: true, cape: '#a8321f', weapon: 'bow' },
-  kong: { body: '#2a3f7a', trim: '#ffd34d', skin: '#e8c9a8', hairCap: true, beard: true, beardColor: '#e8e4da', sleeves: '#6a86d8', weapon: 'fan' },
+  kong: { body: '#2a3f7a', trim: '#ffd34d', skin: '#e8c9a8', hairCap: true, beard: true, beardColor: '#e8e4da', sleeves: '#6a86d8', weapon: 'fan', weaponScale: 0.5 },
   // 아군 병졸: 영웅과 구분되게 청색 계열 몸통 (밝으면 영웅, 어두우면 적 — 아트방향 4)
   ally_sword: { body: '#35506e', trim: '#9aa7b8', skin: '#e0b08a', helm: true, helmColor: '#2c3340', plume: 0.5, weapon: 'spear' },
   ally_archer: { body: '#3d5a6a', trim: '#9aa7b8', skin: '#e0b08a', helm: true, helmColor: '#4a5a66', plume: 0.4, weapon: 'bow' },
   ally_shield: { body: '#35506e', trim: '#9aa7b8', skin: '#e0b08a', helm: true, helmColor: '#2c3340', plume: 0.5, pauldrons: true, weapon: 'axe', shield: true },
   ally_cav: { body: '#2f5f8a', trim: '#c9cfd8', skin: '#e0b08a', helm: true, helmColor: '#2c3340', plume: 1.2, pauldrons: true, weapon: 'spear', horse: '#d8d2c0' },
-  mage: { body: '#3a5a8a', trim: '#ffd34d', skin: '#e8c9a8', hairCap: true, sleeves: '#8fb0e8', weapon: 'fan' },
+  mage: { body: '#3a5a8a', trim: '#ffd34d', skin: '#e8c9a8', hairCap: true, sleeves: '#8fb0e8', weapon: 'fan', weaponScale: 0.5 },
   soldier: { body: '#4a2b33', trim: '#a02b2b', skin: '#d9a77e', helm: true, helmColor: '#34303a', plume: 1, pauldrons: true, weapon: 'spear' },
   archer: { body: '#3d3a46', trim: '#8a2a2a', skin: '#d9a77e', helm: true, helmColor: '#5a4332', plume: 0.7, weapon: 'bow' },
   shield: { body: '#3a4a5a', trim: '#9aa7b8', skin: '#d9a77e', helm: true, helmColor: '#2c3340', plume: 0.5, pauldrons: true, weapon: 'axe', shield: true },
   cav: { body: '#3b3f4b', trim: '#c9302c', skin: '#d9a77e', helm: true, helmColor: '#2b2d36', plume: 1.2, pauldrons: true, weapon: 'spear', horse: '#4a3a30' },
-  captain: { body: '#5a1c24', trim: '#e0b13a', skin: '#c9946a', helm: true, helmColor: '#24222c', plume: 1.6, pauldrons: true, weapon: 'axe' },
+  captain: { body: '#5a1c24', trim: '#e0b13a', skin: '#c9946a', helm: true, helmColor: '#24222c', plume: 1.6, pauldrons: true, weapon: 'sword' },
   hua: { body: '#7a1c24', trim: '#ffd34d', skin: '#c9946a', cape: '#3a0e14', helm: true, helmColor: '#1c1c26', plume: 1.8, pauldrons: true, beard: true, weapon: 'axe' },
   jang: { body: '#3b3f4b', trim: '#ffd34d', skin: '#d9a77e', cape: '#5a1c24', helm: true, helmColor: '#2b2d36', plume: 1.6, pauldrons: true, weapon: 'spear', horse: '#26262e' },
-  xun: { body: '#4a2a5a', trim: '#ffd34d', skin: '#d9a77e', hairCap: true, crown: true, beard: true, beardColor: '#cfd3e6', sleeves: '#7a4a8a', weapon: 'fan' },
-  emage: { body: '#4a2a5a', trim: '#c9302c', skin: '#d9a77e', hairCap: true, sleeves: '#7a4a8a', weapon: 'fan' },
+  xun: { body: '#4a2a5a', trim: '#ffd34d', skin: '#d9a77e', hairCap: true, crown: true, beard: true, beardColor: '#cfd3e6', sleeves: '#7a4a8a', weapon: 'fan', weaponScale: 0.5 },
+  emage: { body: '#4a2a5a', trim: '#c9302c', skin: '#d9a77e', hairCap: true, sleeves: '#7a4a8a', weapon: 'fan', weaponScale: 0.5 },
 };
 
 function circle(g, x, y, r) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
 
-function drawWeapon(g, kind, x, y, ang, len, r) {
+function drawWeapon(g, kind, x, y, ang, len, r, scale = 1) {
+  g.save(); g.translate(x, y); g.scale(scale, scale); g.translate(-x, -y);
   const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
   g.lineCap = 'round';
+  if (kind === 'sword') {   // 짧은 손잡이·가드와 곧은 양날 검신으로 창과 구분한다.
+    const guard = len * 0.14, width = len * 0.1;
+    g.strokeStyle = '#5a3020'; g.lineWidth = 4; g.beginPath(); g.moveTo(x - dx * len * 0.22, y - dy * len * 0.22); g.lineTo(x, y); g.stroke();
+    g.fillStyle = '#dce8f2'; g.beginPath(); g.moveTo(x + nx * width, y + ny * width); g.lineTo(x + dx * len * 0.78 + nx * width * 0.7, y + dy * len * 0.78 + ny * width * 0.7); g.lineTo(x + dx * len, y + dy * len); g.lineTo(x + dx * len * 0.78 - nx * width * 0.7, y + dy * len * 0.78 - ny * width * 0.7); g.lineTo(x - nx * width, y - ny * width); g.closePath(); g.fill();
+    g.strokeStyle = '#7c9ab5'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + dx * len * 0.9, y + dy * len * 0.9); g.stroke();
+    g.strokeStyle = COLORS.goldTrim; g.lineWidth = 3; g.beginPath(); g.moveTo(x - nx * guard, y - ny * guard); g.lineTo(x + nx * guard, y + ny * guard); g.stroke();
+    g.restore(); return;
+  }
   if (kind === 'fan') {
     const hx = x + dx * len * 0.42, hy = y + dy * len * 0.42, R = 22;
     g.strokeStyle = '#8a5a2a'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(hx, hy); g.stroke();
     g.fillStyle = '#ff9ac8'; g.beginPath(); g.moveTo(hx, hy); g.arc(hx, hy, R, ang - 0.95, ang + 0.95); g.closePath(); g.fill();
     g.strokeStyle = COLORS.gold; g.lineWidth = 1.5; g.beginPath(); g.arc(hx, hy, R, ang - 0.95, ang + 0.95); g.stroke();
-    return;
+    g.restore(); return;
   }
   if (kind === 'bow') {
     const cx = x + dx * 14, cy = y + dy * 14, R = r * 1.1;
     g.strokeStyle = '#6a4a2a'; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, R, ang - 1.2, ang + 1.2); g.stroke();
     g.strokeStyle = '#ddd'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + Math.cos(ang - 1.2) * R, cy + Math.sin(ang - 1.2) * R); g.lineTo(cx + Math.cos(ang + 1.2) * R, cy + Math.sin(ang + 1.2) * R); g.stroke();
-    return;
+    g.restore(); return;
   }
   if (kind === 'twin') {
     for (const sd of [-1, 1]) {
@@ -59,7 +68,7 @@ function drawWeapon(g, kind, x, y, ang, len, r) {
       g.strokeStyle = '#3a2a1e'; g.lineWidth = 4.5; g.beginPath(); g.moveTo(bx - c2 * 8, by - s2 * 8); g.lineTo(tx, ty); g.stroke();
       g.fillStyle = '#d6dbe3'; g.beginPath(); g.moveTo(tx - c2 * 10, ty - s2 * 10); g.lineTo(tx + c2 * 22, ty + s2 * 22); g.lineTo(tx - s2 * 14, ty + c2 * 14); g.closePath(); g.fill();
     }
-    return;
+    g.restore(); return;
   }
   const bx = x - dx * len * 0.22, by = y - dy * len * 0.22, tx = x + dx * len, ty = y + dy * len;
   g.strokeStyle = '#5a3a1a'; g.lineWidth = kind === 'glaive' || kind === 'halberd' ? 6 : 5; g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.stroke();
@@ -78,6 +87,7 @@ function drawWeapon(g, kind, x, y, ang, len, r) {
     g.moveTo(tx - dx * bl * 0.2 + nx * bl * 0.3, ty - dy * bl * 0.2 + ny * bl * 0.3); g.lineTo(tx + dx * bl * 1.2, ty + dy * bl * 1.2); g.lineTo(tx - dx * bl * 0.2 - nx * bl * 0.3, ty - dy * bl * 0.2 - ny * bl * 0.3);
   }
   g.closePath(); g.fill();
+  g.restore();
 }
 
 // TKC drawHorse 축약: 몸통·네 다리(보행/질주)·목과 머리·꼬리
@@ -105,7 +115,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   const wp = s.weapon ? { ang: o.weaponAng != null ? o.weaponAng : face + 0.9, len: o.weaponLen || 80 } : null;
   g.save(); if (o.alpha != null) g.globalAlpha = o.alpha;
   if (!s.horse) { g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + r * 0.35, r * 1.15, r * 0.55, 0, 0, TAU); g.fill(); }
-  if (wp && sy < 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r);
+  if (wp && sy < 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r, s.weaponScale ?? 1);
   if (s.longHair) { g.fillStyle = f ? W : '#1e1624'; g.beginPath(); g.ellipse(x - cx * r * 0.1, hy + r * 1.0, r * 0.72, r * 1.45, 0, 0, TAU); g.fill(); }
   g.fillStyle = f ? W : s.body; g.beginPath(); g.ellipse(x, by, r * 0.9, r * 1.15, 0, 0, TAU); g.fill();
   if (s.pauldrons) { g.fillStyle = f ? W : s.trim; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(x + sd * r * 0.82, by - r * 0.45, r * 0.34, r * 0.26, sd * 0.4, 0, TAU); g.fill(); } }
@@ -128,7 +138,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   if (s.crown) { g.fillStyle = f ? W : COLORS.gold; g.beginPath(); g.moveTo(x - r * 0.5, hy - r * 0.5); g.lineTo(x - r * 0.42, hy - r * 1.0); g.lineTo(x - r * 0.2, hy - r * 0.72); g.lineTo(x, hy - r * 1.14); g.lineTo(x + r * 0.2, hy - r * 0.72); g.lineTo(x + r * 0.42, hy - r * 1.0); g.lineTo(x + r * 0.5, hy - r * 0.5); g.closePath(); g.fill(); }
   if (s.flower) { g.fillStyle = f ? W : '#ff9ac8'; for (let k = 0; k < 5; k++) { const an = k * TAU / 5 - 1.2; circle(g, x + r * 0.58 + Math.cos(an) * r * 0.2, hy - r * 0.4 + Math.sin(an) * r * 0.2, r * 0.17); } }
   g.fillStyle = '#111'; for (const sd of [-1, 1]) circle(g, x + sd * r * 0.24 + cx * r * 0.14, hy + sy * r * 0.1 + r * 0.02, r * 0.075);
-  if (wp && sy >= 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r);
+  if (wp && sy >= 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r, s.weaponScale ?? 1);
   g.restore();
 }
 
