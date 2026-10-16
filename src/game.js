@@ -16,23 +16,25 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false;
 let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확정하면 군단이 그 적을 집중 공격)
 let selectMode = false;   // 캐릭터 선택 단계: 전투가 멈추고 능력치 창이 뜬다 (확정하면 재개)
-let armyIdx = 0, tblOpen = false, tblAbility = false, speedIdx = 0, padVisible = false;
+let armyIdx = 0, tblOpen = true, tblAbility = false, speedIdx = 0, padVisible = false;
 let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null, stick = null;   // stick: 모바일 가상 조이스틱 {id, ox, oy, kx, ky}
 // 표시 옵션: 피해량 숫자 / 버프·효과 표기(회복·방어·회피·레벨업). 시스템 메뉴에서 켜고 끄며 브라우저에 기억한다
 const SHOW = { dmg: true, buff: true, pauseSel: true };   // pauseSel: PC(조작 캐릭터) 선택 중 전투 일시정지
 try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ }
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
-// 카메라 거리(줌): 캐릭터를 줄인 만큼 확대해 화면에서 처음 크기로 보이게 한다 (기본 1.67 = 1/SIZE 0.6). 시스템 메뉴·[ ] 키로 조절
+// 카메라 거리(줌): PC 기본 ×1.67, 모바일 기본 ×1.33. 상단 HUD·[ ] 키로 조절하고 모드별로 기억한다
 const ZOOMS = [[1, '멀리'], [1.33, '조금 멀리'], [1.67, '기본'], [2, '가까이'], [2.5, '아주 가까이']];
-let zoomIdx = 2; try { const z = localStorage.getItem('sgsp-zoom'); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ }
+let zoomIdx = 2;
 const Z = () => ZOOMS[zoomIdx][0];
-function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom', zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
+function loadZoom(on) { zoomIdx = on ? 1 : 2; try { const z = localStorage.getItem('sgsp-zoom-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
+function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
+loadZoom(false);
 let wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
 function layout() { tblH = mobile ? 0 : (tblOpen ? 236 : 64); vh = VH - TB_H - tblH; }
-function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 패널·하단 표 없음(맵 전체), 글자 확대
-  mobile = on; TB_H = on ? 128 : 88; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
+function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 상태창, 글자 확대
+  mobile = on; loadZoom(on); TB_H = on ? 128 : 88; LEFT_W = on ? 240 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
 function startBattle() {
   S = Sim.createBattle((Date.now() % 100000) + 1); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
@@ -65,6 +67,14 @@ function button(id, x, y, w, h, text, on, size = 16) {
 const styleOf = u => u.key !== 'guan' && u.category === 'sword' ? { ...STYLES[u.style], weapon: 'sword' } : STYLES[u.style];
 const stText = u => u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && !S.auto ? '조작' : (ORDER_NAME[u.order.type] || '자유');
 const hpCol = p => p > 0.5 ? COLORS.ally : p > 0.25 ? '#ffb04d' : COLORS.danger;
+function actionInfo(u, alt = false) {
+  const spell = !alt && u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
+  const special = u.special && (!alt || u.spells.length) ? SPECIAL[u.special] : null;
+  const name = spell ? spell.name : special ? special.name : u.range > 0 ? '화살' : '공격';
+  const cd = spell ? Math.max(u.cdT, S.lock.player) : special ? u.spT : u.range > 0 ? u.cdT : 0;
+  return { name, cd: Math.max(0, cd), ready: cd <= 0 && (!spell || u.mp >= spell.mp) };
+}
+const cooldownText = a => a.cd > 0 ? a.cd.toFixed(1) + '초' : a.ready ? '준비' : '불가';
 
 // ---------- 월드 그리기 ----------
 function drawUnit(u) {
@@ -137,7 +147,13 @@ function drawToolbar() {
     if (u.dead) label('✕', x + 18, y + 18, 22, COLORS.danger, 'center'); else if (u.out) label('철', x + 18, y + 18, 16, COLORS.silver2, 'center');
     btns.push({ id: 'slot' + u.id, x, y, w: 36, h: 36 });
   });
-  [['act', '행동 ␣'], ['auto', S.auto ? '자동 ON' : '자동 T'], ['menu', '시스템']].forEach(([id, title], i) => button('cmd:' + id, 616 + i * 220, 48, 212, 36, title, id === 'auto' && S.auto));
+  const a = actionInfo(ctrlOf());
+  button('cmd:act', 616, 48, 106, 36, '행동 ' + (a.cd > 0 ? cooldownText(a) : '␣'), a.ready);
+  button('cmd:auto', 726, 48, 106, 36, S.auto ? '자동 ON' : '자동 T', S.auto);
+  button('m:zoom', 836, 48, 106, 36, '거리 ×' + Z(), false);
+  button('m:speed', 946, 48, 106, 36, '속도 ×' + SPEEDS[speedIdx], false);
+  button('m:tbl', 1056, 48, 106, 36, tblOpen ? '상태 축소' : '상태 확대', tblOpen);
+  button('cmd:menu', 1166, 48, 110, 36, '시스템', false);
 }
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
@@ -201,9 +217,9 @@ function drawToolbarMobile() {
   if (u) { bar(82, 104, 170, 8, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); if (u.maxMp) bar(82, 115, 170, 4, u.mp / u.maxMp, '#8a6aff'); }
   button('next', 266, 68, 62, 56, '▶', false, 22);
   button('armyT', 334, 68, 112, 56, (armyIdx + 1) + ' ' + A.name, false, 18);
-  button('cmd:auto', 456, 68, 180, 56, S.auto ? '자동 ON' : '자동 OFF', S.auto, 20);
-  button('m:formation', 650, 68, 250, 56, '진형 ' + FORMATION_NAME[A.formation], false, 20);
-  label('선택 부대', 992, 96, 18, COLORS.silver2, 'center');
+  button('m:zoom', 456, 68, 200, 56, '거리 ×' + Z(), false, 20);
+  button('m:speed', 668, 68, 190, 56, '속도 ×' + SPEEDS[speedIdx], false, 20);
+  label('선택 부대', 970, 96, 18, COLORS.silver2, 'center');
   button('cmd:menu', 1096, 68, 176, 56, '≡ 시스템', false, 20);
 }
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
@@ -211,14 +227,24 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
   label(title, cx, cy - (sub ? 12 : 0), r > 60 ? 22 : 17, COLORS.silver, 'center'); if (sub) label(sub, cx, cy + 16, r > 60 ? 22 : 15, col, 'center');
   btns.push({ id, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, cx, cy, r });
 }
-function drawActionsMobile() {   // 오른쪽 아래 원형 버튼 (맹장전 배치): 큰 행동 + 보조 + 마법 전환
-  const u = ctrlOf(); if (!u || S.auto) return;
-  const sp = u.spells.length ? SPELL[u.spells[u.spellSel]] : null, primary = sp ? sp.name : u.special ? SPECIAL[u.special].name : u.range > 0 ? '화살' : '공격';
-  const ready = sp ? u.mp >= sp.mp && S.lock.player <= 0 : u.special ? u.spT <= 0 : true;
-  roundBtn('m:act', 1168, 614, 74, '행동', primary, ready ? COLORS.gold : COLORS.silver2, ready);
-  const alt = u.spells.length ? (u.special ? SPECIAL[u.special].name : '') : (u.special && u.range > 0 ? '화살' : '');
-  if (alt) roundBtn('m:alt', 1028, 662, 46, '보조', alt, COLORS.silver2, false);
-  if (u.spells.length > 1) roundBtn('m:spell', 1040, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + 's' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
+function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법과 자주 쓰는 자동·진형
+  const u = ctrlOf(); if (!u) return;
+  roundBtn('cmd:auto', 1180, 458, 44, '자동', S.auto ? 'ON' : 'OFF', S.auto ? COLORS.gold : COLORS.silver2, S.auto);
+  roundBtn('m:formation', 1074, 458, 44, '진형', FORMATION_NAME[army().formation], COLORS.silver2, false);
+  if (S.auto) return;
+  const primary = actionInfo(u), alt = actionInfo(u, true), sp = u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
+  roundBtn('m:act', 1168, 614, 74, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
+  if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 1028, 662, 46, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
+  if (u.spells.length > 1) roundBtn('m:spell', 1040, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
+}
+function drawMobileStatus() {
+  panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
+  const u = ctrlOf(); if (!u) return;
+  label(u.name, 12, TB_H + 22, 20, COLORS.gold); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 12, TB_H + 50, 15, COLORS.silver);
+  bar(10, TB_H + 68, LEFT_W - 20, 8, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
+  if (u.maxMp) bar(10, TB_H + 80, LEFT_W - 20, 5, u.mp / u.maxMp, '#8a6aff');
+  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft)], ['XP', `${u.xp}/${u.lv * 60}`], ['AT', u.atk.toFixed(0)], ['DF', u.df], ['AD', u.ad], ['MD', u.md], ['AA', u.aa + '%'], ['HR', u.hr], ['SP', u.sp], ['상태', stText(u)]];
+  rows.forEach((r, i) => { const y = TB_H + 106 + i * 29; label(r[0], 14, y, 15, COLORS.silver2); label(String(r[1]), LEFT_W - 14, y, 15, r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
 }
 
 function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 창 + 확정 버튼, 전투는 멈춰 있다 (적을 눌렀으면 그 적의 정보)
@@ -236,9 +262,9 @@ function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 �
   if (u.spells && u.spells.length) label(u.spells.map(k => SPELL[k].name).join('·'), x + w - 12, y + 182, 14, COLORS.silver2, 'right');
   button('sel:ok', LEFT_W + VPW / 2 - 110, TB_H + vh - (mobile ? 92 : 70), 220, mobile ? 64 : 44, foe ? (mobile ? '확정 (집중 공격)' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
 }
-function drawMenu() {   // 시스템: 전투 속도·카메라, 표시 설정, 전투 명령 순
-  const items = [['m:speed', `게임 속도 조정 ×${SPEEDS[speedIdx]}`], ['m:zoom', `카메라 거리 ${ZOOMS[zoomIdx][1]} (×${Z()})`], ['m:formation', `진형 변경: ${FORMATION_NAME[army().formation]}`], ['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`, SHOW.buff]];
-  if (!mobile) items.push(['m:pad', `보조키 표시 [${padVisible ? 'ON' : 'OFF'}]`, padVisible], ['m:tbl', tblOpen ? '상태창 축소' : '상태창 확대'], ['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
+function drawMenu() {   // 시스템: 표시 설정·전투 설정
+  const items = [['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`, SHOW.buff]];
+  if (!mobile) items.push(['m:formation', `진형 변경: ${FORMATION_NAME[army().formation]}`], ['m:pad', `보조키 표시 [${padVisible ? 'ON' : 'OFF'}]`, padVisible], ['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
   items.push(['m:auto', `자동 전투 [${S.auto ? 'ON' : 'OFF'}]`, S.auto], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일'], ['m:restart', '전투 다시 시작'], ['m:close', '닫기 (Esc)']);
   const ih = mobile ? 54 : 38, st = mobile ? 62 : 44, w = 480, h = 70 + items.length * st, x = (VW - w) / 2, y = Math.max(6, (VH - h) / 2);
   panel(x, y, w, h, COLORS.gold, 3); label('시스템', x + w / 2, y + 30, 22, COLORS.gold, 'center');
@@ -264,7 +290,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.27', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.28', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 부딪치면 공격', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 ◀▶: 캐릭터 변경 · 군단 명령 · ≡ 메뉴'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -275,8 +301,7 @@ function draw() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
   if (mobile) {
-    drawToolbarMobile(); drawStick(); drawActionsMobile();
-    const u = ctrlOf(); if (u) { panel(8, TB_H + 8, 230, 54, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.6)'); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}  ${Math.ceil(u.hp)}/${u.maxHp}`, 16, TB_H + 26, 16, COLORS.silver); label(`FT ${Math.round(u.ft)}${u.maxMp ? `  MP ${Math.floor(u.mp)}` : ''}  ${stText(u)}`, 16, TB_H + 48, 16, COLORS.silver2); }
+    drawToolbarMobile(); drawMobileStatus(); drawStick(); drawActionsMobile();
   } else { drawToolbar(); drawLeftPanel(); drawSpellPanel(); drawPad(); drawTable(); }
   if (S.auto) label('자동 전투', VW - 10, TB_H + 18, 18, COLORS.gold, 'right');
   if (S.t < 14 && !S.over) label(mobile ? '왼쪽 화면을 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 30 : 16), 16, COLORS.silver2, 'center');
@@ -343,7 +368,7 @@ function pos(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX -
 const hitBtn = (x, y) => [...btns].reverse().find(b => b.r ? Math.hypot(x - b.cx, y - b.cy) <= b.r + 6 : x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
 const padOf = id => { const [dx, dy] = id.slice(4).split(',').map(Number); return [dx, dy]; };
 const STICK_R = 70, D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
-const inStickZone = (x, y) => mobile && x < VW * 0.5 && y > TB_H;   // 맹장전 방식: 왼쪽 화면 어디를 눌러도 그 자리에 조이스틱이 생긴다 (플로팅)
+const inStickZone = (x, y) => mobile && x >= LEFT_W && x < LEFT_W + VPW * 0.5 && y > TB_H;   // 맹장전 방식: 상태창을 제외한 왼쪽 전장에 플로팅 조이스틱
 function stickMove(x, y) {   // 손가락 위치 → 노브 위치(반지름 제한) + 8방향
   const dx = x - stick.ox, dy = y - stick.oy, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1; stick.kx = dx * k; stick.ky = dy * k;
   stick.dir = d > 10 ? D8[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8] : null;
