@@ -222,7 +222,7 @@ function hurt(S, from, t, dmg) {
   t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6) * (tier > 0 ? 0.65 : tier < 0 ? 1.35 : 1); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;
   S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
   if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
-  if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), t.team === 'player' ? '#ff6a5a' : '#ffd34d', 'dmg');
+  if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), tier < 0 ? '#ff9a32' : tier > 0 ? '#999999' : '#ffffff', 'dmg');
   if (t.hp <= 0) die(S, t, from);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
