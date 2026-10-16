@@ -580,24 +580,24 @@ function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(�
   return false;
 }
 function selectSpell(u, i) { if (u.spells[i]) u.spellSel = i; }
-function armyOrder(S, A, type) {   // 군단 명령: 조작 캐릭터는 제외 (후퇴만 전원)
+function armyOrder(S, A, type, directCtrl = A.ctrl) {   // 현재 직접 조작 중인 캐릭터만 제외 (후퇴는 전원)
   if (type === 'retreat' && A.order !== 'retreat') notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 후퇴합니다.');
   A.order = type;
-  for (const u of A.units) if (live(u) && (u !== A.ctrl || type === 'retreat')) { u.order = { type }; u.path = null; u.autoCharge = false; }
+  for (const u of A.units) if (live(u) && (u !== directCtrl || type === 'retreat')) { u.order = { type }; u.path = null; u.autoCharge = false; }
 }
 function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric') { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
-function recall(S, u, quiet = false) {   // 철수한 유닛을 출진 지점(왼쪽)의 빈 칸에 다시 투입 — 체력은 철수할 때 이미 회복
+function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 철수한 유닛을 출진 지점(왼쪽)의 빈 칸에 다시 투입 — 체력은 철수할 때 이미 회복
   if (!u.out || u.fled || u.dead || u.team !== 'player') return false;
   for (let k = 0; k < 80; k++) {
     const tx = 3 + Math.floor(S.rnd() * 4), ty = 14 + Math.floor(S.rnd() * 14);
-    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === u.army.ctrl ? 'stop' : u.army.order }; u.path = null; text(S, u.x, u.y - 40, u.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
+    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === directCtrl ? 'stop' : u.army.order }; u.path = null; text(S, u.x, u.y - 40, u.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
   }
   return false;
 }
-function deployArmy(S, A) {
+function deployArmy(S, A, directCtrl = A.ctrl) {
   let count = 0;
   if (A.team === 'player') {
-    for (const u of A.units) if (recall(S, u, true)) count++;
+    for (const u of A.units) if (recall(S, u, true, directCtrl)) count++;
   } else {
     for (const u of A.units) {
       if (!u.out || u.dead || u.fled) continue;
