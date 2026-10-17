@@ -1,6 +1,6 @@
 'use strict';
 // 퍼스트퀸4 식 실시간 전투 시뮬레이션 (DOM 없음 → node 에서도 돌려 테스트한다).
-// 군단(최대 6명)의 캐릭터를 하나씩 지휘한다: 이동·공격·돌격·정지·이동불가·후퇴·특수기·마법.
+// 군단(최대 18명, 3개 분대)의 캐릭터를 하나씩 지휘한다: 이동·공격·돌격·정지·이동불가·후퇴·특수기·마법.
 // 이동은 정사각형 타일 격자: 한 칸에는 한 명만 설 수 있고, 한 번에 한 칸씩(8방향) 걸어간다. 이동 중에는 출발·도착 두 칸을 모두 점유한다.
 // 유닛은 명령이 없으면 시야 안의 적과 알아서 싸운다. 피로도·레벨업·방패 방어·번개 잠금·대장 전사 시 도주·철수 후 재출진을 갖는다.
 const Sim = (() => {
@@ -63,7 +63,7 @@ const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, 
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
 const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기' };
-const ENEMY_FIELD_MAX = 36, ARMY_MAX = 6;
+const ENEMY_FIELD_MAX = 36, ARMY_MAX = 18, SQUAD_MAX = 3;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
 //  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
@@ -86,7 +86,8 @@ const MAGIC = 0.5;   // 마법 피해 배율 (원작 수치를 이 프로토의 
 const magicDmg = (sp, t) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * ftDef(t)) * MAGIC;
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 
-// 군단 편성. at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
+// 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
+// at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
 const ARMIES = [
   { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'shield', 'sword', 'shield'] },
   { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav'] },
@@ -165,19 +166,28 @@ function createBattle(seed = 1, opts = {}) {
   const S = { t: 0, map: genMap(), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   ARMIES.forEach((d, ai) => {
-    const keys = d.units.slice(0, ARMY_MAX), reserve = d.team === 'enemy' && (reserves || enemyField + keys.length > ENEMY_FIELD_MAX);
+    const squadDefs = d.squads || [{ leader: d.leader, units: d.units }];
+    if (squadDefs.length > SQUAD_MAX) throw new Error(d.name + ': 분대는 최대 ' + SQUAD_MAX + '개');
+    const members = [];
+    squadDefs.forEach((q, squad) => {
+      const leader = U[q.leader];
+      if (!leader || leader.generic || leader.name.startsWith('적 ') || q.units.filter(k => k === q.leader).length !== 1) throw new Error(d.name + ': 분대장은 이름 있는 장수 1명이어야 함');
+      q.units.forEach(key => members.push({ key, squad }));
+    });
+    const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' && (reserves || enemyField + keys.length > ENEMY_FIELD_MAX);
     if (reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
-    const A = { id: ai, team: d.team, name: d.name, units: [], leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    const leaderKey = d.leader || squadDefs[0].leader;
+    const A = { id: ai, team: d.team, name: d.name, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
-    keys.forEach((key, i) => {
+    keys.forEach(({ key, squad }, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === d.leader,
+        aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
-      if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
+      if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isSquadLeader) u.squad.leader = u; if (u.isLeader) A.leader = u;
     });
     if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
   });
@@ -619,6 +629,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
