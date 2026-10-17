@@ -4,7 +4,7 @@
 // 모바일(터치): 같은 조작을 큰 버튼으로 — 왼쪽 이동패드(누르고 있기·멀티터치), 오른쪽 행동/보조/마법 버튼, 상단 두 군단 초상 줄·군단 명령, 왼쪽 중간 미니맵, 왼쪽 아래 시스템.
 // 전투 규칙은 sim.js, 도형은 art.js.
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-const { TILE, WW, WH, SPELL, SPECIAL, CATEGORY_NAME, FORMATION_NAME } = Sim;
+const { TILE, WW, WH, SPELL, SPECIAL, CATEGORY_NAME, FORMATION_NAME, CLS_NAME } = Sim;
 const VW = 1280, VH = 720;
 let TB_H = 44, LEFT_W = 150, VPW = VW - LEFT_W, FS = 1, mobile = false;   // 레이아웃은 PC/모바일 모드에 따라 바뀐다 (setMobile)
 const ORDER_NAME = { idle: '자유', attack: '공격', charge: '돌격', stop: '정지', retreat: '후퇴', flee: '도주' };
@@ -28,6 +28,14 @@ const STAGES = [
 ];
 const stageById = id => STAGES.find(s => s.id === id);
 const campaign = { at: 'tak', battle: null, notice: '탁현에서 원정을 시작한다.' };
+// 원정 지도 편성: 현재 세 부대는 각각 6명 분대다. 전투 시작 때만 복사해 Sim에 넘긴다.
+const roster = Sim.ARMIES.filter(a => a.team === 'player').map(a => ({ name: a.name, units: a.units.slice() }));
+let rosterPick = null;
+const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
+function rosterArmies() {
+  let i = 0;
+  return Sim.ARMIES.map(a => a.team === 'player' ? { ...a, leader: roster[i].units[0], units: roster[i++].units.slice() } : a);
+}
 let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확정하면 군단이 그 적을 집중 공격)
 let selectMode = false;   // 캐릭터 선택 단계: 전투가 멈추고 능력치 창이 뜬다 (확정하면 재개)
 let tutorialStep = -1, tutorialSeen = false;
@@ -54,7 +62,7 @@ function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 �
 }
 function startBattle(stage) {
   campaign.battle = stage || campaign.battle;
-  S = Sim.createBattle((Date.now() % 100000) + 1); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
+  S = Sim.createBattle((Date.now() % 100000) + 1, { armies: rosterArmies() }); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
   state = 'play'; overAt = 0; paused = false; menuOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
 }
@@ -369,7 +377,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.58', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.59', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -398,14 +406,42 @@ function drawStageMap() {
   label('금색 고리의 연결 거점을 선택', 1030, 284, 15, COLORS.silver2);
   label('적 주둔지에 도착하면 즉시 전투', 1030, 310, 15, COLORS.silver2);
   label('승리하면 해당 거점을 점령', 1030, 336, 15, COLORS.silver2);
+  button('campaign:roster', 1025, 375, 210, 46, '장수 편성 · 6명 분대', false, 16);
   panel(1025, 525, 210, 112, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');
   label(campaign.notice, 1130, 560, 16, COLORS.silver, 'center');
   label('거점 깃발을 클릭하세요', 1130, 610, 15, COLORS.goldSel, 'center');
+}
+function drawRoster() {
+  ctx.fillStyle = '#0b3036'; ctx.fillRect(0, 0, VW, VH);
+  panel(18, 16, 1244, 54, COLORS.gold, 3, 'rgba(6,17,23,.9)');
+  label('장수 편성 · 유비군 18명', 42, 43, 27, COLORS.gold);
+  label('6명마다 1분대 · 두 명을 선택하면 위치를 교환합니다', 350, 43, 17, COLORS.silver);
+  button('roster:back', 1095, 25, 145, 36, '원정 지도로', false, 16);
+  roster.forEach((squad, squadId) => {
+    const x = 18 + squadId * 414, y = 90, w = 400;
+    panel(x, y, w, 560, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
+    panel(x + 8, y + 8, w - 16, 42, COLORS.gold, 2, '#174854');
+    label(`${squadId + 1}분대 · ${squad.name}`, x + 20, y + 29, 21, COLORS.gold);
+    label(`${squad.units.length} / 6`, x + w - 18, y + 29, 17, COLORS.silver, 'right');
+    label('NO   이름                  병과                 역할', x + 18, y + 70, 14, COLORS.silver2);
+    squad.units.forEach((key, slot) => {
+      const unit = Sim.U[key], ry = y + 86 + slot * 72, selected = rosterPick && rosterPick.squadId === squadId && rosterPick.slot === slot;
+      panel(x + 10, ry, w - 20, 62, selected ? COLORS.goldSel : 'rgba(206,231,224,.35)', selected ? 3 : 1, selected ? 'rgba(117,96,25,.6)' : 'rgba(15,44,52,.8)');
+      label(String(slot + 1).padStart(2, '0'), x + 22, ry + 30, 16, COLORS.silver);
+      label(unit.name, x + 64, ry + 24, 21, unit.generic ? COLORS.silver : COLORS.goldSel);
+      label(CLS_NAME[unit.cls] || unit.cls, x + 64, ry + 47, 14, COLORS.silver2);
+      label(slot === 0 ? '분대장' : '분대원', x + w - 18, ry + 30, 16, slot === 0 ? COLORS.gold : COLORS.silver, 'right');
+      btns.push({ id: `roster:${squadId}:${slot}`, x: x + 10, y: ry, w: w - 20, h: 62 });
+    });
+  });
+  panel(18, 666, 1244, 38, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.35)');
+  label(campaign.notice || '분대원을 선택하세요.', VW / 2, 685, 16, COLORS.silver, 'center');
 }
 function draw() {
   btns = [];
   if (state === 'title') { drawTitle(); return; }
   if (state === 'map') { drawStageMap(); return; }
+  if (state === 'roster') { drawRoster(); return; }
   layout(); clampCam();
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
@@ -444,7 +480,18 @@ function useCommand(id, A = army()) {
   if (id === 'act') act(false); else if (id === 'auto') S.auto = !S.auto; else if (id === 'menu') menuOpen = true;
 }
 function cycleFormation(A) { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(A.formation); Sim.setFormation(A, forms[(i + 1) % forms.length]); }
+function pickRosterUnit(squadId, slot) {
+  const pick = { squadId, slot };
+  if (!rosterPick) { rosterPick = pick; campaign.notice = '교환할 다른 분대원을 선택하세요.'; return; }
+  if (rosterPick.squadId === squadId && rosterPick.slot === slot) { rosterPick = null; campaign.notice = '선택을 취소했습니다.'; return; }
+  const a = roster[rosterPick.squadId], b = roster[squadId], aKey = a.units[rosterPick.slot], bKey = b.units[slot];
+  if ((rosterPick.slot === 0 && !namedRosterUnit(bKey)) || (slot === 0 && !namedRosterUnit(aKey))) { rosterPick = null; campaign.notice = '분대장 자리에는 이름 있는 장수만 배치할 수 있습니다.'; return; }
+  [a.units[rosterPick.slot], b.units[slot]] = [bKey, aKey]; rosterPick = null; campaign.notice = '편성을 교환했습니다. 전투 시작 시 적용됩니다.';
+}
 function uiClick(id) {
+  if (id === 'campaign:roster') { state = 'roster'; rosterPick = null; campaign.notice = '분대원을 선택하세요.'; return; }
+  if (id === 'roster:back') { state = 'map'; rosterPick = null; campaign.notice = '편성이 저장되었습니다.'; return; }
+  if (id.startsWith('roster:')) { const [, squadId, slot] = id.split(':'); pickRosterUnit(+squadId, +slot); return; }
   if (id.startsWith('stage:')) { moveCampaign(id.slice(6)); return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
@@ -503,7 +550,7 @@ cv.addEventListener('pointerdown', e => {
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
   if (state === 'title') { if (mobile) goFullscreen(); startCampaign(); return; }
-  if (state === 'map') { const b = hitBtn(p.x, p.y); if (b) uiClick(b.id); return; }
+  if (state === 'map' || state === 'roster') { const b = hitBtn(p.x, p.y); if (b) uiClick(b.id); return; }
   const b = hitBtn(p.x, p.y);
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { S.events.shift(); return; }
@@ -544,6 +591,7 @@ addEventListener('keydown', e => {
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
   if (state === 'title') { if (e.key === 'Enter') startCampaign(); return; }
   if (state === 'map') return;
+  if (state === 'roster') { if (e.code === 'Escape') uiClick('roster:back'); return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') finishTutorial(); else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 3 ? finishTutorial() : tutorialStep++; return; }
   if (S.events.length) { if (['Enter', ' ', 'Escape'].includes(e.key)) S.events.shift(); return; }
   if (S.over) { if (e.key.toLowerCase() === 'r' && T - overAt > 1) finishBattle(); return; }
