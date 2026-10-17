@@ -32,10 +32,10 @@ let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확�
 let selectMode = false;   // 캐릭터 선택 단계: 전투가 멈추고 능력치 창이 뜬다 (확정하면 재개)
 let tutorialStep = -1, tutorialSeen = false;
 try { tutorialSeen = localStorage.getItem('sgsp-tutorial') === '1'; } catch (e) { /* 저장소를 못 쓰면 매번 안내 */ }
-let armyIdx = 0, tblAbility = false, speedIdx = 0, padVisible = false;
+let armyIdx = 0, tblAbility = false, tblCompact = false, speedIdx = 0, padVisible = false;
 let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null, stick = null;   // stick: 모바일 가상 조이스틱 {id, ox, oy, kx, ky}
 // 표시 옵션: 피해량 숫자 / 버프·효과 표기(회복·방어·회피·레벨업). 시스템 메뉴에서 켜고 끄며 브라우저에 기억한다
-const SHOW = { dmg: true, buff: true, pauseSel: true };   // pauseSel: PC(조작 캐릭터) 선택 중 전투 일시정지
+const SHOW = { dmg: true, buff: true, pauseSel: true, status: true };   // status: 모바일 조작 장수 정보 표시
 try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ }
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
 // 카메라 거리(줌): PC·모바일 기본 ×1.3. 상단 버튼·[ ] 키로 조절하고 모드별로 기억한다
@@ -48,7 +48,7 @@ loadZoom(false);
 let wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
-function layout() { tblH = mobile ? 0 : 236; vh = VH - TB_H - tblH; }
+function layout() { tblH = mobile ? 0 : tblCompact ? 54 : 236; vh = VH - TB_H - tblH; }
 function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 상태창, 글자 확대
   mobile = on; loadZoom(on); TB_H = on ? 0 : 44; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
@@ -217,13 +217,15 @@ function drawPad() {   // 보조키 윈도우: 마우스로 누르고 있으면 
 }
 function drawTable() {
   const y0 = TB_H + vh; ctx.fillStyle = COLORS.ink; ctx.fillRect(0, y0, VW, tblH); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, y0, VW, 2);
-  const groups = pArmies(), names = tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST'], rh = 22, headH = 54, gw = VPW / groups.length, cw = gw / 6, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2;
-  names.forEach((r, i) => label(r, 10, dataY + 12 + i * rh, 15, COLORS.silver2));
+  const groups = pArmies(), compact = tblCompact, names = tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST'], rh = 22, headH = 54, gw = VPW / groups.length, cw = gw / 6, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2;
+  if (!compact) names.forEach((r, i) => label(r, 10, dataY + 12 + i * rh, 15, COLORS.silver2));
   groups.forEach((A, j) => {
-    const gx = LEFT_W + j * gw, bw = (gw - 94) / 5;
-    button('army' + A.id, gx + 2, y0 + 6, 88, 30, (j + 1) + ' ' + A.name, armyIdx === A.id, 15);
-    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], k) => button('order:' + A.id + ':' + id, gx + 94 + k * bw, y0 + 6, bw - 2, 30, title, A.order === id, 14));
+    const gx = LEFT_W + j * gw, bw = (gw - 144) / 5;
+    button('army' + A.id, gx + 2, y0 + 6, 72, 30, (j + 1) + ' ' + A.name, armyIdx === A.id, 13);
+    button('form:' + A.id, gx + 78, y0 + 6, 62, 30, FORMATION_NAME[A.formation], false, 13);
+    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], k) => button('order:' + A.id + ':' + id, gx + 144 + k * bw, y0 + 6, bw - 2, 30, title, A.order === id, 14));
     ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.strokeRect(gx, y0 + 2, gw, tblH - 4);
+    if (compact) return;
     A.units.forEach((u, c) => {
       const x = gx + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
       if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
@@ -242,7 +244,8 @@ function drawToolbarMobile() {   // 오른쪽 한 열에는 부대 버튼만: 1�
   ctx.fillStyle = 'rgba(8,10,18,.84)'; ctx.fillRect(x0, 0, 216, VH);
   pArmies().forEach((A, j) => {
     const y0 = j * 240, i = A.id;
-    button('army' + i, x0 + 2, y0 + 2, 212, 22, j + 1 + ' ' + A.name, armyIdx === i, 14);
+    button('army' + i, x0 + 2, y0 + 2, 90, 22, j + 1 + ' ' + A.name, armyIdx === i, 14);
+    button('form:' + i, x0 + 94, y0 + 2, 120, 22, '진형: ' + FORMATION_NAME[A.formation], false, 14);
     drawPortraits(x0 + 2, y0 + 26, 69, 70, 72, A, true, 3);
     ORDERS.forEach(([id, title], k) => button('order:' + i + ':' + id, x0 + 2 + k * 43, y0 + 174, 41, 58, title, A.order === id, 15));
   });
@@ -258,9 +261,8 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
   label(title, cx, cy - (sub ? 12 : 0), r > 60 ? 22 : 17, COLORS.silver, 'center'); if (sub) label(sub, cx, cy + 16, r > 60 ? 22 : 15, col, 'center');
   btns.push({ id, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, cx, cy, r });
 }
-function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법과 진형 3종
+function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법
   const u = ctrlOf(); if (!u) return;
-  Object.entries(FORMATION_NAME).forEach(([key, name], i) => roundBtn('m:form:' + key, 822 + i * 92, 500, 40, name, '', army().formation === key ? COLORS.gold : COLORS.silver2, army().formation === key));   // 장수 정보 아래 진형 3종
   if (S.auto) return;
   const primary = actionInfo(u), alt = actionInfo(u, true), sp = u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
   roundBtn('m:act', 978, 614, 74, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
@@ -268,6 +270,7 @@ function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마
   if (u.spells.length > 1) roundBtn('m:spell', 850, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
 }
 function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 중인 장수 정보를 표시한다
+  if (!SHOW.status) return;
   const u = ctrlOf(); if (!u) return;
   const w = 262, x = 6, y = 68, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
   const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 22 : 0) + 26 + 14;
@@ -314,7 +317,8 @@ function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 �
 }
 function drawMenu() {   // 시스템: 표시 설정·전투 설정
   const items = [['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`, SHOW.buff]];
-  if (!mobile) items.push(['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
+  if (mobile) items.push(['m:status', `장수 정보 [${SHOW.status ? 'ON' : 'OFF'}]`, SHOW.status]);
+  else items.push(['m:compact', `장수 정보 축소 [${tblCompact ? 'ON' : 'OFF'}]`, tblCompact], ['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
   items.push(['m:tutorial', '튜토리얼 다시 보기'], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일'], ['m:restart', '전투 다시 시작'], ['m:close', '닫기 (Esc)']);
   const ih = mobile ? 54 : 38, st = mobile ? 62 : 44, w = 480, h = 70 + items.length * st, x = (VW - w) / 2, y = Math.max(6, (VH - h) / 2);
   panel(x, y, w, h, COLORS.gold, 3); label('시스템', x + w / 2, y + 30, 22, COLORS.gold, 'center');
@@ -365,7 +369,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.56', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.57', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -439,12 +443,14 @@ function useCommand(id, A = army()) {
   if (id === 'deploy') { Sim.deployArmy(S, A, A === army() ? ctrlOf() : null); return; }
   if (id === 'act') act(false); else if (id === 'auto') S.auto = !S.auto; else if (id === 'menu') menuOpen = true;
 }
+function cycleFormation(A) { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(A.formation); Sim.setFormation(A, forms[(i + 1) % forms.length]); }
 function uiClick(id) {
   if (id.startsWith('stage:')) { moveCampaign(id.slice(6)); return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
   if (id === 'tut:skip') { finishTutorial(); return; }
   if (id.startsWith('order:')) { const [, index, command] = id.split(':'); useCommand(command, S.armies[+index]); return; }
+  if (id.startsWith('form:')) { cycleFormation(S.armies[+id.slice(5)]); return; }
   if (/^army\d/.test(id)) { armyIdx = +id.slice(4); beginSelect(); return; }
   if (id.startsWith('slot') || id.startsWith('col')) {
     const u = S.units.find(x => x.id === +id.replace(/\D/g, '')); if (!u || u.dead) return;
@@ -460,11 +466,13 @@ function uiClick(id) {
   else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);
   else if (id === 'm:info') { selTarget = null; selectMode = true; }
   else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
-  else if (id === 'm:formation') { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(army().formation); Sim.setFormation(army(), forms[(i + 1) % forms.length]); }
+  else if (id === 'm:formation') cycleFormation(army());
   else if (id === 'm:pausesel') { SHOW.pauseSel = !SHOW.pauseSel; saveShow(); if (!SHOW.pauseSel) cancelSelect(); }
   else if (id === 'm:dmg') { SHOW.dmg = !SHOW.dmg; saveShow(); } else if (id === 'm:buff') { SHOW.buff = !SHOW.buff; saveShow(); }
   else if (id === 'm:tutorial') { menuOpen = false; selectMode = false; tutorialStep = 0; }
   else if (id === 'm:mode') setMobile(!mobile);
+  else if (id === 'm:status') { SHOW.status = !SHOW.status; saveShow(); }
+  else if (id === 'm:compact') { tblCompact = !tblCompact; layout(); snapCam(); }
   else if (id === 'm:abil') tblAbility = !tblAbility;
   else if (id === 'm:auto') S.auto = !S.auto; else if (id === 'm:restart') startBattle(campaign.battle); else if (id === 'm:close') menuOpen = false;
 }
