@@ -14,6 +14,20 @@ const DIRS = { Numpad7: [-1, -1], Numpad8: [0, -1], Numpad9: [1, -1], Numpad4: [
 const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0, '←'], [5, 0, 0, '행동'], [6, 1, 0, '→'], [1, -1, 1, '↙'], [2, 0, 1, '↓'], [3, 1, 1, '↘']];   // 보조키 윈도우: 숫자패드 배열
 
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false;
+// 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
+const STAGES = [
+  { id: 'tak', name: '탁현', x: 510, y: 150, owner: 'player', links: ['luoyang', 'beiping'] },
+  { id: 'beiping', name: '북평', x: 755, y: 135, owner: 'enemy', links: ['tak'] },
+  { id: 'luoyang', name: '낙양', x: 470, y: 285, owner: 'enemy', links: ['tak', 'xuchang', 'xinye'] },
+  { id: 'xuchang', name: '허창', x: 625, y: 370, owner: 'enemy', links: ['luoyang', 'xinye', 'jiangling'] },
+  { id: 'xinye', name: '신야', x: 465, y: 455, owner: 'enemy', links: ['luoyang', 'xuchang', 'xiangyang'] },
+  { id: 'xiangyang', name: '양양', x: 405, y: 565, owner: 'enemy', links: ['xinye', 'jiangling'] },
+  { id: 'jiangling', name: '강릉', x: 600, y: 610, owner: 'enemy', links: ['xuchang', 'xiangyang', 'changsha', 'jianye'] },
+  { id: 'changsha', name: '장사', x: 770, y: 630, owner: 'enemy', links: ['jiangling'] },
+  { id: 'jianye', name: '건업', x: 920, y: 500, owner: 'enemy', links: ['jiangling'] },
+];
+const stageById = id => STAGES.find(s => s.id === id);
+const campaign = { at: 'tak', battle: null, notice: '탁현에서 원정을 시작한다.' };
 let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확정하면 군단이 그 적을 집중 공격)
 let selectMode = false;   // 캐릭터 선택 단계: 전투가 멈추고 능력치 창이 뜬다 (확정하면 재개)
 let tutorialStep = -1, tutorialSeen = false;
@@ -38,10 +52,27 @@ function layout() { tblH = mobile ? 0 : 236; vh = VH - TB_H - tblH; }
 function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 상태창, 글자 확대
   mobile = on; loadZoom(on); TB_H = on ? 0 : 44; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
-function startBattle() {
+function startBattle(stage) {
+  campaign.battle = stage || campaign.battle;
   S = Sim.createBattle((Date.now() % 100000) + 1); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
   state = 'play'; overAt = 0; paused = false; menuOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
+}
+function startCampaign() {
+  state = 'map'; S = null; campaign.battle = null; campaign.notice = '연결된 거점을 선택해 이동하세요.';
+}
+function moveCampaign(id) {
+  const here = stageById(campaign.at), next = stageById(id);
+  if (!next || next === here) return;
+  if (!here.links.includes(next.id)) { campaign.notice = '연결된 거점으로만 이동할 수 있습니다.'; return; }
+  campaign.at = next.id;
+  if (next.owner === 'enemy') { campaign.notice = `${next.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(next); }
+  else campaign.notice = `${next.name}으로 이동했다.`;
+}
+function finishBattle() {
+  if (S && S.over === 'win' && campaign.battle) { campaign.battle.owner = 'player'; campaign.notice = `${campaign.battle.name}을 점령했다.`; }
+  else campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`;
+  campaign.battle = null; S = null; state = 'map'; overAt = 0; menuOpen = false; selectMode = false;
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
@@ -333,13 +364,43 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.52', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.53', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 그 왼쪽: 자동·조작 장수 정보 · 왼쪽 위: 시스템·거리'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
-  label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
+  label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
+}
+function drawStageMap() {
+  const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#345d55'); g.addColorStop(0.55, '#66834c'); g.addColorStop(1, '#9a8150'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(120, 0); ctx.bezierCurveTo(80, 160, 165, 255, 105, 405); ctx.bezierCurveTo(60, 520, 125, 630, 40, VH); ctx.lineTo(0, VH); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(206,231,224,.6)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(250, 30); ctx.bezierCurveTo(330, 180, 270, 330, 430, 475); ctx.bezierCurveTo(570, 590, 750, 470, 990, 680); ctx.stroke();
+  ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 170; x < 980; x += 90) for (let y = 75; y < 690; y += 75) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
+  const here = stageById(campaign.at);
+  for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
+  for (const s of STAGES) {
+    const on = s === here, friendly = s.owner === 'player', reachable = here.links.includes(s.id); const col = friendly ? COLORS.ally : COLORS.danger;
+    ctx.fillStyle = on ? COLORS.gold : col; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 22 : 16, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? '#fff3c0' : '#161722'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = friendly ? '#e9f4ff' : '#ffd8cb'; ctx.beginPath(); ctx.moveTo(s.x + 10, s.y - 26); ctx.lineTo(s.x + 10, s.y - 4); ctx.lineTo(s.x + 36, s.y + 2); ctx.lineTo(s.x + 10, s.y + 8); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#28211a'; ctx.lineWidth = 2; ctx.stroke();
+    label(s.name, s.x, s.y + 38, 18, on ? COLORS.goldSel : '#f3eed8', 'center');
+    if (reachable) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y, 25, 0, TAU); ctx.stroke(); }
+    btns.push({ id: 'stage:' + s.id, x: s.x - 32, y: s.y - 36, w: 72, h: 84 });
+  }
+  panel(1005, 34, 250, 650, COLORS.gold, 3, 'rgba(8,20,25,.88)');
+  label('삼국지 원정', 1130, 76, 30, COLORS.gold, 'center');
+  label('유비군 · 3부대', 1030, 120, 18, COLORS.silver);
+  label(`현재 위치: ${here.name}`, 1030, 158, 19, COLORS.goldSel);
+  label(`점령 거점  ${STAGES.filter(s => s.owner === 'player').length} / ${STAGES.length}`, 1030, 192, 18, COLORS.silver);
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.beginPath(); ctx.moveTo(1025, 220); ctx.lineTo(1235, 220); ctx.stroke();
+  label('이동 규칙', 1030, 252, 18, COLORS.gold);
+  label('금색 고리의 연결 거점을 선택', 1030, 284, 15, COLORS.silver2);
+  label('적 주둔지에 도착하면 즉시 전투', 1030, 310, 15, COLORS.silver2);
+  label('승리하면 해당 거점을 점령', 1030, 336, 15, COLORS.silver2);
+  panel(1025, 525, 210, 112, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');
+  label(campaign.notice, 1130, 560, 16, COLORS.silver, 'center');
+  label('거점 깃발을 클릭하세요', 1130, 610, 15, COLORS.goldSel, 'center');
 }
 function draw() {
   btns = [];
   if (state === 'title') { drawTitle(); return; }
+  if (state === 'map') { drawStageMap(); return; }
   layout(); clampCam();
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
@@ -352,8 +413,8 @@ function draw() {
   if (S.events.length) { drawEvent(S.events[0]); return; }
   if (selectMode && !menuOpen && !S.over) drawSelectUI();
   if (menuOpen) drawMenu();
-  if (S.over === 'win') drawOverlay('승 리', ['적 군단을 모두 물리쳤다!', `${Math.round(S.t)}초 · 격파 ${S.stats.kills} · 도주 ${S.stats.fled} · 전사 ${S.stats.lost} · 레벨업 ${S.stats.levelups}`, mobile ? '화면을 탭하면 다시 시작' : '클릭 / R 로 다시 시작'], COLORS.gold);
-  else if (S.over === 'lose') drawOverlay('패 배', ['총대장 관우가 쓰러졌다…', `${Math.round(S.t)}초 · 격파 ${S.stats.kills} · 전사 ${S.stats.lost}`, mobile ? '화면을 탭하면 다시 시작' : '클릭 / R 로 다시 시작'], COLORS.danger);
+  if (S.over === 'win') drawOverlay('승 리', [`${campaign.battle ? campaign.battle.name + '을 점령했다!' : '적 군단을 모두 물리쳤다!'}`, `${Math.round(S.t)}초 · 격파 ${S.stats.kills} · 도주 ${S.stats.fled} · 전사 ${S.stats.lost} · 레벨업 ${S.stats.levelups}`, mobile ? '화면을 탭하면 원정 지도로' : '클릭 / R 로 원정 지도'], COLORS.gold);
+  else if (S.over === 'lose') drawOverlay('패 배', ['총대장 관우가 쓰러졌다…', `${Math.round(S.t)}초 · 격파 ${S.stats.kills} · 전사 ${S.stats.lost}`, mobile ? '화면을 탭하면 원정 지도로' : '클릭 / R 로 원정 지도'], COLORS.danger);
   else if (paused && !menuOpen) drawOverlay('일시정지', [mobile ? '화면을 탭하면 계속' : 'P 로 계속'], COLORS.silver);
 }
 
@@ -378,6 +439,7 @@ function useCommand(id, A = army()) {
   if (id === 'act') act(false); else if (id === 'auto') S.auto = !S.auto; else if (id === 'menu') menuOpen = true;
 }
 function uiClick(id) {
+  if (id.startsWith('stage:')) { moveCampaign(id.slice(6)); return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
   if (id === 'tut:skip') { finishTutorial(); return; }
@@ -403,7 +465,7 @@ function uiClick(id) {
   else if (id === 'm:tutorial') { menuOpen = false; selectMode = false; tutorialStep = 0; }
   else if (id === 'm:mode') setMobile(!mobile);
   else if (id === 'm:abil') tblAbility = !tblAbility;
-  else if (id === 'm:auto') S.auto = !S.auto; else if (id === 'm:restart') startBattle(); else if (id === 'm:close') menuOpen = false;
+  else if (id === 'm:auto') S.auto = !S.auto; else if (id === 'm:restart') startBattle(campaign.battle); else if (id === 'm:close') menuOpen = false;
 }
 function mapClick(sx, sy, right) {   // 적을 클릭 = 군단이 그 적을 집중 공격, 아군을 클릭 = 그 캐릭터를 조작, 우클릭 = 집중 공격 해제
   const [wx, wy] = toWorld(sx, sy);
@@ -431,11 +493,12 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
-  if (state === 'title') { if (mobile) goFullscreen(); startBattle(); return; }
+  if (state === 'title') { if (mobile) goFullscreen(); startCampaign(); return; }
+  if (state === 'map') { const b = hitBtn(p.x, p.y); if (b) uiClick(b.id); return; }
   const b = hitBtn(p.x, p.y);
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { S.events.shift(); return; }
-  if (S.over) { if (T - overAt > 1) startBattle(); return; }
+  if (S.over) { if (T - overAt > 1) finishBattle(); return; }
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
   if (menuOpen) { if (b && /^m:(?!act$|alt$|spell$)/.test(b.id)) uiClick(b.id); return; }
   if (b && b.id.startsWith('order:')) { cancelSelect(); uiClick(b.id); return; }
@@ -470,10 +533,11 @@ addEventListener('pointerup', e => endPtr(e, false)); addEventListener('pointerc
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
-  if (state === 'title') { if (e.key === 'Enter') startBattle(); return; }
+  if (state === 'title') { if (e.key === 'Enter') startCampaign(); return; }
+  if (state === 'map') return;
   if (tutorialStep >= 0) { if (e.key === 'Escape') finishTutorial(); else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 3 ? finishTutorial() : tutorialStep++; return; }
   if (S.events.length) { if (['Enter', ' ', 'Escape'].includes(e.key)) S.events.shift(); return; }
-  if (S.over) { if (e.key.toLowerCase() === 'r' && T - overAt > 1) startBattle(); return; }
+  if (S.over) { if (e.key.toLowerCase() === 'r' && T - overAt > 1) finishBattle(); return; }
   if (e.code in DIRS) { if (selectMode) confirmSelect(); dirStack = dirStack.filter(c => c !== e.code); dirStack.push(e.code); e.preventDefault(); return; }   // 방향 입력 (NumLock 상태와 무관하게 code 로 판별)
   keys[e.key] = true;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -506,7 +570,7 @@ function frame(now) {
       let r = dt * (keys.Control ? 3 : SPEEDS[speedIdx]);
       while (r > 0) { const s = Math.min(r, 1 / 60); if (d && u && alive(u)) Sim.control(S, u, d[0], d[1]); Sim.step(S, s); r -= s; }
     }
-    if (S.over && !overAt) overAt = T;
+    if (S.over && !overAt) { overAt = T; if (S.over === 'win' && campaign.battle) campaign.battle.owner = 'player'; }
     const [tx, ty] = camTarget(); cam.x += (tx - cam.x) * Math.min(1, dt * 7); cam.y += (ty - cam.y) * Math.min(1, dt * 7);   // 조작 캐릭터를 따라 맵이 스크롤
   }
   draw(); requestAnimationFrame(frame);
