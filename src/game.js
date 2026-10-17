@@ -239,9 +239,9 @@ function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마
   if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 838, 662, 46, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
   if (u.spells.length > 1) roundBtn('m:spell', 850, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
 }
-function drawMobileStatus() {   // 부대 버튼 열(오른쪽) 바로 옆에 붙여 조작 중인 장수의 정보를 최대한 (표시 전용 — 터치는 그대로 전달). 왼쪽 전체는 이동 영역
+function drawMobileStatus() {   // 왼쪽 자동 버튼 아래에 조작 중인 장수의 정보를 최대한 (표시 전용 — 터치는 그대로 전달되어 이동·탭 정보 입력이 된다)
   const u = ctrlOf(); if (!u) return;
-  const w = 262, x = VW - 216 - w - 2, y = 6, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
+  const w = 262, x = 6, y = 6 + 56 + 6, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
   const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 22 : 0) + 26 + 14;
   panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.55)');
   let yy = y + 20; label(u.name, x + 10, yy, 20, COLORS.gold); label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right');
@@ -300,8 +300,8 @@ function drawTutorial() {
   const pages = mobile ? [
     ['이동과 카메라', '전장 왼쪽을 누른 채 끌면 가상패드가 생기고, 손을 떼면 멈춥니다.', '끌지 않고 짧게 터치만 하면 그 자리의 장수 정보가 나옵니다.'],
     ['공격과 기술', '오른쪽 행동 버튼으로 특수기·마법을 사용합니다.', '버튼 아래 숫자는 다시 사용할 수 있을 때까지 남은 시간입니다.'],
-    ['부대 지휘', '오른쪽 위에 1부대·2부대가 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
-    ['전투 정보', '조작 부대 블록 옆에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위 자동·시스템 버튼에서 자동 전투와 거리·속도를 조정합니다.']
+    ['부대 지휘', '오른쪽 끝에 부대들이 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
+    ['전투 정보', '왼쪽 위 자동 버튼 아래에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위 자동·시스템 버튼에서 자동 전투와 거리·속도를 조정합니다.']
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 시스템의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '상단 행동 버튼에 다시 사용할 수 있을 때까지 남은 시간이 표시됩니다.'],
@@ -337,8 +337,8 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.47', 24, 30, 16, COLORS.silver2);
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 1부대·2부대 버튼, 바로 옆: 조작 장수 정보 · 왼쪽 위: 자동·시스템 · 왼쪽: 이동'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.48', 24, 30, 16, COLORS.silver2);
+  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 자동·시스템·거리, 그 아래 조작 장수 정보 · 왼쪽: 이동'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function draw() {
