@@ -48,13 +48,13 @@ function rosterArmies() {
   const armies = Sim.ARMIES.map(a => {
     if (a.team !== 'player') return a;
     const start = i++ * 6, units = roster[0].units.slice(start, start + 6).filter(Boolean);
-    return { ...a, name: i + '분대', leader: roster[0].units[start], units };
+    return { ...a, name: i + '분대', leader: roster[0].units[start], units, corps: roster[0].id };
   });
   roster.slice(1).forEach((corps, corpsIndex) => {
     for (let start = 0; start < 18; start += 6) {
       const units = corps.units.slice(start, start + 6).filter(Boolean);
       if (!units.length) continue;
-      armies.push({ team: 'player', name: `${corpsName(corps)} ${start / 6 + 1}분대`, leader: corps.units[start], units, at: [5, 18 + corpsIndex * 2], support: true });
+      armies.push({ team: 'player', name: `${corpsName(corps)} ${start / 6 + 1}분대`, leader: corps.units[start], units, at: [5, 18 + corpsIndex * 2], corps: corps.id, support: true });
     }
   });
   return armies;
@@ -119,9 +119,11 @@ function finishBattle() {
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
-const pArmies = () => S.armies.filter(A => A.team === 'player' && A.units.length && (!A.support || A.state !== 'support'));
+const activePlayerArmies = () => S.armies.filter(A => A.team === 'player' && A.units.length && (!A.support || A.state !== 'support'));
+const pArmies = () => { const A = army(); return activePlayerArmies().filter(P => P.corps === A.corps).slice(0, 3); };
 const supportArmies = () => S.armies.filter(A => A.team === 'player' && A.support && A.state === 'support' && A.units.some(u => !u.dead && u.out));
 const nextArmy = dir => { const l = pArmies(), i = l.indexOf(army()); return l[(i + dir + l.length) % l.length].id; };   // 조작 부대 순환
+const nextCorps = () => { const all = activePlayerArmies(), l = all.filter((A, i) => all.findIndex(B => B.corps === A.corps) === i), n = l.findIndex(A => A.corps === army().corps); return l[(n + 1) % l.length].id; };
 const alive = u => Sim.live(u);
 function camTarget() { const u = ctrlOf(), z = Z(); return u ? [u.x - VPW / z / 2, u.y - vh / z / 2] : [cam.x, cam.y]; }
 function clampCam() { const z = Z(); cam.x = Math.max(0, Math.min(WW - VPW / z, cam.x)); cam.y = Math.max(0, Math.min(WH - vh / z, cam.y)); }
@@ -288,9 +290,7 @@ function drawTable() {
 function drawToolbarMobile() {   // 오른쪽 한 열에는 부대 버튼만: 1부대 · 2부대 · 3부대 (초상 3열×2줄 + 명령 한 줄). 장수 정보는 이 열 바로 왼쪽에 붙는다
   const ORDERS = [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']], x0 = VW - 216;
   ctx.fillStyle = 'rgba(8,10,18,.84)'; ctx.fillRect(x0, 0, 216, VH);
-  const all = pArmies(), visible = all.slice(0, 3);
-  if (all.length > 3 && !visible.includes(army())) visible[2] = army();
-  visible.forEach((A, j) => {
+  pArmies().forEach((A, j) => {
     const y0 = j * 240, i = A.id;
     button('army' + i, x0 + 2, y0 + 2, 90, 22, A.name, armyIdx === i, 14);
     button('form:' + i, x0 + 94, y0 + 2, 120, 22, '진형: ' + FORMATION_NAME[A.formation], false, 14);
@@ -418,7 +418,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.66', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.67', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -547,7 +547,7 @@ function confirmSelect() {   // 확정: 보던 적이 있으면 군단이 그 �
 }
 function cancelSelect() { selTarget = null; selectMode = false; }   // 취소(Esc): 지시 없이 재개
 function beginSelect() { if (SHOW.pauseSel && !S.over && !menuOpen) selectMode = true; }
-function pick(u) { if (!u || !alive(u) || u.team !== 'player') return; armyIdx = u.army.id; Sim.setCtrl(S, u.army, u); selTarget = null; beginSelect(); }
+function pick(u) { if (!u || !alive(u) || u.team !== 'player' || u.army.corps !== army().corps) return; armyIdx = u.army.id; Sim.setCtrl(S, u.army, u); selTarget = null; beginSelect(); }
 function cycleUnit(dir) {
   const list = army().units.filter(alive); if (!list.length) return;
   const i = list.indexOf(ctrlOf()); pick(list[i < 0 ? 0 : (i + dir + list.length) % list.length]);
@@ -602,7 +602,7 @@ function uiClick(id) {
   }
   if (id.startsWith('cmd:')) { useCommand(id.slice(4)); return; }
   if (id.startsWith('spell:')) { const u = ctrlOf(); if (u) Sim.selectSpell(u, +id.slice(6)); return; }
-  if (id === 'prev') cycleUnit(-1); else if (id === 'next') cycleUnit(1); else if (id === 'armyT') { armyIdx = nextArmy(1); beginSelect(); }
+  if (id === 'prev') cycleUnit(-1); else if (id === 'next') cycleUnit(1); else if (id === 'armyT') { armyIdx = nextCorps(); cancelSelect(); snapCam(); }
   else if (id === 'm:act') act(false); else if (id === 'm:alt') act(true);
   else if (id === 'm:spell') { const u = ctrlOf(); if (u && u.spells.length) Sim.selectSpell(u, (u.spellSel + 1) % u.spells.length); }
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:pad') padVisible = !padVisible;

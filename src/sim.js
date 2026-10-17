@@ -178,7 +178,7 @@ function createBattle(seed = 1, opts = {}) {
     const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' ? reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
     if (d.team === 'enemy' && reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, name: d.name, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: d.support ? 'charge' : 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: d.support ? 'charge' : 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad }, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
