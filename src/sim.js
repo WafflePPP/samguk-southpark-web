@@ -186,7 +186,7 @@ function createBattle(seed = 1, opts = {}) {
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
-        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false };
+        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false, manual: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isSquadLeader) u.squad.leader = u; if (u.isLeader) A.leader = u;
     });
@@ -318,7 +318,7 @@ const stepDur = (S, u, nx, ny) => TILE * (nx !== u.tx && ny !== u.ty ? 1.414 : 1
 const isBack = x => x.range > 0 || x.cls === 'cleric';   // 후열: 궁병·법사·성직
 function canSwap(S, u, n) {   // 가만히 서 있는(이동·공격·돌진 중이 아니고 적과 맞붙지도 않은) 같은 편이 그 칸에 있으면 자리를 맞바꿔 지나갈 수 있다
   const o = n && S.units[S.occ[ti(n.tx, n.ty)] - 1];
-  return o && o !== u && o.team === u.team && live(o) && (o !== o.army.ctrl || S.auto) && !(isBack(u) && !isBack(o) && u.order.type !== 'retreat' && u.order.type !== 'flee') &&   // 플레이어가 조작하는 캐릭터는 AI 가 밀지 못한다
+  return o && o !== u && o.team === u.team && live(o) && (o !== o.army.ctrl || (S.auto && !o.manual)) && !(isBack(u) && !isBack(o) && u.order.type !== 'retreat' && u.order.type !== 'flee') &&   // 수동 조작 중인 캐릭터는 AI 가 밀지 못한다
      !o.mv && !o.dashQ && o.anim <= 0 && o.stun <= 0 && !S.units.some(e => live(e) && e.team !== o.team && cheb(o, e) <= 1) && diagOk(S, u.tx, u.ty, n.tx - u.tx, n.ty - u.ty) ? o : null;
 }
 function beginSwap(S, a, b) {   // 두 유닛이 서로의 칸으로 동시에 이동 (점유표는 도착할 때 한꺼번에 갱신) → 어느 순간에도 한 칸에 둘이 멈춰 있지 않다
@@ -475,11 +475,11 @@ function updateUnit(S, u, dt) {
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
   const ctrl = u === u.army.ctrl && u.team === 'player';
-  if (ctrl && !S.auto && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 조작 캐릭터: 방향 입력이 있으면 그 칸으로 (적이 있으면 밀어붙여 공격)
-  if (ctrl && S.auto && o.type === 'stop') o = u.order = { type: 'idle' };   // 자동 전투 중에는 조작 캐릭터도 AI 가 움직인다
+  if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 자동 중에도 입력한 조작 장수만 직접 움직인다
+  if (ctrl && S.auto && !u.manual && o.type === 'stop') o = u.order = { type: 'idle' };   // 자동 전투 중에는 조작 캐릭터도 AI 가 움직인다
   if (o.type === 'charge' && u.autoCharge && !S.auto) o = u.order = { type: ctrl ? 'stop' : 'idle' };   // 자동전투를 끄면 자동으로 돌격 중이던 유닛은 평상시로
-  if (o.type === 'idle' && ((S.auto && u.team === 'player') || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
-  const aggressive = u.team === 'enemy' || S.auto || o.type === 'charge';
+  if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
+  const aggressive = u.team === 'enemy' || (S.auto && !u.manual) || o.type === 'charge';
   if (autoAbilities(S, u, aggressive)) return;
   if (u.cls === 'cleric') {   // 성직자는 직접 싸우지 않고, 정지·고정이 아니면(자유·돌격·자동) 조작 캐릭터(없으면 대장) 곁을 따라다닌다
     if (o.type !== 'stop') { const c = u.army.ctrl, a = c && c !== u && live(c) ? c : u.army.leader; if (a && a !== u && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); }
@@ -565,10 +565,11 @@ const mine = units => units.filter(u => live(u) && u.team === 'player');
 // 퍼스트퀸4 조작: 군단마다 "조작 캐릭터" 한 명을 직접 움직이고(방향 입력 = 한 칸 이동, 적이 있는 칸으로 밀면 공격), 나머지는 AI + 군단 명령(돌격·정지·후퇴·자유)
 function setCtrl(S, A, u) {
   if (!u || !live(u) || A.ctrl === u) return;
-  const old = A.ctrl; A.ctrl = u; if (u.order.type !== 'retreat') u.order = { type: 'stop' };   // 후퇴 중인 캐릭터가 조작 캐릭터가 되어도 후퇴 명령은 유지 u.ctrlIn = null; u.autoCharge = false; u.path = null;
-  if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: A.order }; old.ctrlIn = null; }   // 풀려난 캐릭터는 군단 명령을 따른다
+  const old = A.ctrl; A.ctrl = u; u.manual = false; if (u.order.type !== 'retreat') u.order = { type: S.auto ? 'charge' : 'stop' }; u.ctrlIn = null; u.autoCharge = S.auto; u.path = null;
+  if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: S.auto ? 'charge' : A.order }; old.ctrlIn = null; old.manual = false; old.autoCharge = S.auto; }   // 풀려난 캐릭터는 군단 명령을 따른다
 }
-function control(S, u, dx, dy) { u.ctrlIn = { dx, dy, t: S.t }; }   // 방향 입력 (누르고 있는 동안 매 프레임 호출)
+function takeControl(S, u) { if (S.auto && u.team === 'player' && u === u.army.ctrl && !u.manual) { u.manual = true; u.order = { type: 'stop' }; u.autoCharge = false; u.path = null; } }
+function control(S, u, dx, dy) { takeControl(S, u); u.ctrlIn = { dx, dy, t: S.t }; }   // 자동 중에는 현재 장수만 수동으로 전환
 function directMove(S, u, dx, dy) {
   if (u.root > 0) return;   // 속박(거미줄) 중에는 걷지 못한다
   const nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
@@ -583,7 +584,7 @@ function aimAt(S, u, range) {   // 바라보는 방향 ±55° 안의 가장 가�
   return best ? [best.x, best.y] : [u.x + Math.cos(u.face) * 150, u.y + Math.sin(u.face) * 150];
 }
 function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(보조): 마법 보유자는 특수기, 그 밖은 화살
-  if (!live(u) || u.stun > 0) return false; cur = S;
+  if (!live(u) || u.stun > 0) return false; takeControl(S, u); cur = S;
   const sel = !alt && u.spells.length, sp = sel ? u.spells[u.spellSel] : null;
   if (sp === 'heal') { let t = null, bd = 1; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; } return t ? castSpell(S, u, 'heal', t.x, t.y) : false; }
   if (sp) { const [x, y] = aimAt(S, u, SPELL[sp].range); return castSpell(S, u, sp, x, y); }
@@ -592,6 +593,13 @@ function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(�
   return false;
 }
 function selectSpell(u, i) { if (u.spells[i]) u.spellSel = i; }
+function setAuto(S, on) {
+  S.auto = on;
+  for (const u of S.units) if (live(u) && u.team === 'player') {
+    u.manual = false;
+    if (on) { u.order = { type: 'charge' }; u.autoCharge = true; u.path = null; }
+  }
+}
 function armyOrder(S, A, type, directCtrl = A.ctrl) {   // 현재 직접 조작 중인 캐릭터만 제외 (후퇴는 전원)
   if (type === 'retreat' && A.order !== 'retreat') notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 후퇴합니다.');
   A.order = type;
@@ -631,6 +639,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
