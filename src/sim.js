@@ -175,10 +175,10 @@ function createBattle(seed = 1, opts = {}) {
       if (!leader || leader.generic || leader.name.startsWith('적 ') || q.units.filter(k => k === q.leader).length !== 1) throw new Error(d.name + ': 분대장은 이름 있는 장수 1명이어야 함');
       q.units.forEach(key => members.push({ key, squad }));
     });
-    const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' && (reserves || enemyField + keys.length > ENEMY_FIELD_MAX);
-    if (reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
+    const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' ? reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
+    if (d.team === 'enemy' && reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, name: d.name, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, name: d.name, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: d.support ? 'charge' : 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad }, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
@@ -610,6 +610,7 @@ function deployArmy(S, A, directCtrl = A.ctrl) {
   let count = 0;
   if (A.team === 'player') {
     for (const u of A.units) if (recall(S, u, true, directCtrl)) count++;
+    if (count) { A.state = 'advance'; A.order = 'charge'; for (const u of A.units) if (live(u)) u.order = { type: 'charge' }; setFormation(A, A.formation); }
   } else {
     for (const u of A.units) {
       if (!u.out || u.dead || u.fled) continue;
