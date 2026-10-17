@@ -1,12 +1,12 @@
 ﻿'use strict';
 // 렌더 · 입력 · HUD — 퍼스트퀸4 전투 화면/조작: 군단마다 "조작 캐릭터" 한 명을 방향키(숫자패드)로 직접 움직이고 Space 로 특수기·마법,
-// 나머지는 AI + 상단 아이콘의 군단 명령(돌격·정지·후퇴). ←→ 조작 캐릭터 변경, ↑↓ 군단 변경, Ctrl 가속, 적을 클릭하면 집중 공격.
+// 나머지는 AI + 하단 부대별 군단 명령(돌격·정지·후퇴). ←→ 조작 캐릭터 변경, ↑↓ 군단 변경, Ctrl 가속, 적을 클릭하면 집중 공격.
 // 모바일(터치): 같은 조작을 큰 버튼으로 — 왼쪽 이동패드(누르고 있기·멀티터치), 오른쪽 행동/보조/마법 버튼, 상단 두 군단 초상 줄·군단 명령, 왼쪽 중간 미니맵, 왼쪽 아래 시스템.
 // 전투 규칙은 sim.js, 도형은 art.js.
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const { TILE, WW, WH, SPELL, SPECIAL, CATEGORY_NAME, FORMATION_NAME } = Sim;
 const VW = 1280, VH = 720;
-let TB_H = 88, LEFT_W = 150, VPW = VW - LEFT_W, FS = 1, mobile = false;   // 레이아웃은 PC/모바일 모드에 따라 바뀐다 (setMobile)
+let TB_H = 44, LEFT_W = 150, VPW = VW - LEFT_W, FS = 1, mobile = false;   // 레이아웃은 PC/모바일 모드에 따라 바뀐다 (setMobile)
 const ORDER_NAME = { idle: '자유', attack: '공격', charge: '돌격', stop: '정지', retreat: '후퇴', flee: '도주' };
 const SPEEDS = [1, 2, 3];
 // 방향 입력: 숫자패드(NumLock 꺼져 있어도 code 는 Numpad*) + 노트북용 WASD/QEZC
@@ -18,7 +18,7 @@ let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확�
 let selectMode = false;   // 캐릭터 선택 단계: 전투가 멈추고 능력치 창이 뜬다 (확정하면 재개)
 let tutorialStep = -1, tutorialSeen = false;
 try { tutorialSeen = localStorage.getItem('sgsp-tutorial') === '1'; } catch (e) { /* 저장소를 못 쓰면 매번 안내 */ }
-let armyIdx = 0, tblOpen = true, tblAbility = false, speedIdx = 0, padVisible = false;
+let armyIdx = 0, tblAbility = false, speedIdx = 0, padVisible = false;
 let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null, stick = null;   // stick: 모바일 가상 조이스틱 {id, ox, oy, kx, ky}
 // 표시 옵션: 피해량 숫자 / 버프·효과 표기(회복·방어·회피·레벨업). 시스템 메뉴에서 켜고 끄며 브라우저에 기억한다
 const SHOW = { dmg: true, buff: true, pauseSel: true };   // pauseSel: PC(조작 캐릭터) 선택 중 전투 일시정지
@@ -34,9 +34,9 @@ loadZoom(false);
 let wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
-function layout() { tblH = mobile ? 0 : (tblOpen ? 236 : 64); vh = VH - TB_H - tblH; }
+function layout() { tblH = mobile ? 0 : 236; vh = VH - TB_H - tblH; }
 function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 상태창, 글자 확대
-  mobile = on; loadZoom(on); TB_H = on ? 0 : 88; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
+  mobile = on; loadZoom(on); TB_H = on ? 0 : 44; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
 function startBattle() {
   S = Sim.createBattle((Date.now() % 100000) + 1); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
@@ -128,16 +128,6 @@ function drawWorld() {
 }
 
 // ---------- HUD (PC) ----------
-function drawArmyOrders() {
-  const h = mobile ? 56 : 36, list = pArmies(), gw = Math.floor((VW - 8) / list.length), bw = Math.floor((gw - 94) / 5) - 2;
-  list.forEach((A, j) => {
-    const x = 4 + j * gw, i = A.id;
-    button('army' + i, x, 4, 90, h, j + 1 + ' ' + A.name, armyIdx === i, mobile ? 20 : 16);
-    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], k) => {
-      button('order:' + i + ':' + id, x + 94 + k * (bw + 2), 4, bw, h, title, A.order === id, mobile ? 20 : 16);
-    });
-  });
-}
 function drawPortraits(x0, y0, w, h, step, A = army(), vert = false, cols = 2) {   // 군단 초상: 클릭 = 조작 캐릭터로 선택(그 군단으로 전환), 더블클릭 = 화면 이동
   A.units.forEach((u, i) => {
     const x = vert ? x0 + (i % cols) * (w + 2) : x0 + i * step, y = vert ? y0 + Math.floor(i / cols) * step : y0, on = A === army() && u === ctrlOf(), cx = x + w / 2, k = h / 36;
@@ -151,11 +141,10 @@ function drawPortraits(x0, y0, w, h, step, A = army(), vert = false, cols = 2) {
 }
 function drawToolbar() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, TB_H); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, TB_H - 2, VW, 2);
-  drawArmyOrders();
   const u = ctrlOf();
-  label('조작: ' + (armyIdx + 1) + ' ' + army().name + (u ? ' · ' + u.name : ''), 12, 66, 17, COLORS.gold);
-  label('Space 행동 · ← → 장수 · ↑ ↓ 부대', 270, 66, 16, COLORS.silver2);
-  button('cmd:menu', 1046, 48, 230, 36, '시스템', false);
+  label('조작: ' + (pArmies().indexOf(army()) + 1) + ' ' + army().name + (u ? ' · ' + u.name : ''), 12, 22, 17, COLORS.gold);
+  label('Space 행동 · ← → 장수 · ↑ ↓ 부대', 290, 22, 16, COLORS.silver2);
+  button('cmd:menu', 1046, 4, 230, 36, '시스템', false);
 }
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
@@ -194,17 +183,22 @@ function drawPad() {   // 보조키 윈도우: 마우스로 누르고 있으면 
 }
 function drawTable() {
   const y0 = TB_H + vh; ctx.fillStyle = COLORS.ink; ctx.fillRect(0, y0, VW, tblH); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, y0, VW, 2);
-  const names = tblOpen ? (tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST']) : ['NAME', 'HP'], rh = 28, cw = VPW / 12;
-  const hpRow = tblOpen ? (tblAbility ? -1 : 2) : 1;
-  names.forEach((r, i) => label(r, 10, y0 + 18 + i * rh, 16, COLORS.silver2));
-  army().units.forEach((u, c) => {
-    const x = LEFT_W + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
-    if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, y0 + 4, cw, tblH - 6); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y0 + 5, cw - 2, tblH - 8); }
-    if (!gone && hpRow >= 0) { ctx.fillStyle = 'rgba(79,176,255,.3)'; ctx.fillRect(x + 3, y0 + 6 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); }
+  const groups = pArmies(), names = tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST'], rh = 22, headH = 54, gw = VPW / groups.length, cw = gw / 6, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2;
+  names.forEach((r, i) => label(r, 10, dataY + 12 + i * rh, 15, COLORS.silver2));
+  groups.forEach((A, j) => {
+    const gx = LEFT_W + j * gw, bw = (gw - 94) / 5;
+    button('army' + A.id, gx + 2, y0 + 6, 88, 30, (j + 1) + ' ' + A.name, armyIdx === A.id, 15);
+    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], k) => button('order:' + A.id + ':' + id, gx + 94 + k * bw, y0 + 6, bw - 2, 30, title, A.order === id, 14));
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.strokeRect(gx, y0 + 2, gw, tblH - 4);
+    A.units.forEach((u, c) => {
+      const x = gx + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
+      if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
+      if (!gone && hpRow >= 0) { ctx.fillStyle = 'rgba(79,176,255,.3)'; ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-    const cells = tblOpen ? (tblAbility ? [u.name, u.atk.toFixed(0), u.df, u.ad, u.md, u.aa + '%', u.hr, stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(u.ft), u.xp, stText(u)]) : [u.name, Math.ceil(u.hp)];
-    cells.forEach((v, i) => label(String(v), x + cw / 2, y0 + 18 + i * rh, 16, !tblAbility && tblOpen && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
-    btns.push({ id: 'col' + u.id, x, y: y0, w: cw, h: tblH });
+      const cells = tblAbility ? [u.name, u.atk.toFixed(0), u.df, u.ad, u.md, u.aa + '%', u.hr, stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(u.ft), u.xp, stText(u)];
+      cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
+      btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
+    });
   });
 }
 
@@ -304,7 +298,7 @@ function drawTutorial() {
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 시스템의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '보조키의 가운데 버튼으로도 주 행동을 사용할 수 있습니다.'],
-    ['부대 지휘', '상단에서 돌격·정지·후퇴·자유·출진을 지시합니다.', '←→ 캐릭터, ↑↓ 부대를 바꾸고 적을 클릭하면 집중 공격합니다.'],
+    ['부대 지휘', '하단 부대 그룹에서 돌격·정지·후퇴·자유·출진을 지시합니다.', '←→ 캐릭터, ↑↓ 부대를 바꾸고 적을 클릭하면 집중 공격합니다.'],
     ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '시스템에서 자동·거리·속도를 조정하고 Esc로 열 수 있습니다.']
   ];
   const p = pages[tutorialStep], x = 250, y = 190, w = 780, h = 340;
@@ -336,7 +330,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.50', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.51', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 그 왼쪽: 자동·조작 장수 정보 · 왼쪽 위: 시스템·거리'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
