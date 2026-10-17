@@ -247,10 +247,11 @@ function drawToolbarMobile() {   // 오른쪽 한 열에는 부대 버튼만: 1�
     ORDERS.forEach(([id, title], k) => button('order:' + i + ':' + id, x0 + 2 + k * 43, y0 + 174, 41, 58, title, A.order === id, 15));
   });
 }
-function drawMobileSide() {   // 시스템·카메라는 왼쪽, 자동은 오른쪽 장수 정보 위
+function drawMobileSide() {   // 자주 쓰는 전투 설정은 왼쪽 상단에 모은다
   button('cmd:menu', 6, 6, 112, 56, '시스템', false, 18);
-  button('m:zoom', 124, 6, 130, 56, '거리 ×' + Z(), false, 18);
-  button('cmd:auto', VW - 334, 6, 112, 56, S.auto ? '자동 ON' : '자동 OFF', S.auto, 18);
+  button('cmd:auto', 124, 6, 112, 56, S.auto ? '자동 ON' : '자동 OFF', S.auto, 18);
+  button('m:speed', 242, 6, 128, 56, '속도 ×' + SPEEDS[speedIdx], false, 18);
+  button('m:zoom', 376, 6, 130, 56, '거리 ×' + Z(), false, 18);
 }
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
   ctx.fillStyle = on ? 'rgba(80,60,16,.75)' : 'rgba(10,12,20,.6)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
@@ -266,9 +267,9 @@ function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마
   if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 838, 662, 46, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
   if (u.spells.length > 1) roundBtn('m:spell', 850, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
 }
-function drawMobileStatus() {   // 오른쪽 자동 버튼 아래에 조작 중인 장수의 정보를 최대한 (표시 전용 — 터치는 그대로 전달되어 이동·탭 정보 입력이 된다)
+function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 중인 장수 정보를 표시한다
   const u = ctrlOf(); if (!u) return;
-  const w = 262, x = VW - 216 - 6 - w, y = 6 + 56 + 6, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
+  const w = 262, x = 6, y = 68, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
   const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 22 : 0) + 26 + 14;
   panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.55)');
   let yy = y + 20; label(u.name, x + 10, yy, 20, COLORS.gold); label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right');
@@ -312,8 +313,8 @@ function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 �
   button('sel:ok', LEFT_W + VPW / 2 - 110, TB_H + vh - (mobile ? 92 : 70), 220, mobile ? 64 : 44, foe ? (mobile ? '확정 (집중 공격)' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
 }
 function drawMenu() {   // 시스템: 표시 설정·전투 설정
-  const items = [['m:auto', `자동 전투 [${S.auto ? 'ON' : 'OFF'}]`, S.auto], ['m:zoom', `카메라 거리 ×${Z()}`], ['m:speed', `게임 속도 ×${SPEEDS[speedIdx]}`], ['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`, SHOW.buff]];
-  if (!mobile) items.push(['m:formation', `진형 변경: ${FORMATION_NAME[army().formation]}`], ['m:pad', `보조키 표시 [${padVisible ? 'ON' : 'OFF'}]`, padVisible], ['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
+  const items = [['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`, SHOW.buff]];
+  if (!mobile) items.push(['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
   items.push(['m:tutorial', '튜토리얼 다시 보기'], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일'], ['m:restart', '전투 다시 시작'], ['m:close', '닫기 (Esc)']);
   const ih = mobile ? 54 : 38, st = mobile ? 62 : 44, w = 480, h = 70 + items.length * st, x = (VW - w) / 2, y = Math.max(6, (VH - h) / 2);
   panel(x, y, w, h, COLORS.gold, 3); label('시스템', x + w / 2, y + 30, 22, COLORS.gold, 'center');
@@ -328,9 +329,9 @@ function drawTutorial() {
     ['이동과 카메라', '전장 왼쪽을 누른 채 끌면 가상패드가 생기고, 손을 떼면 멈춥니다.', '끌지 않고 짧게 터치만 하면 그 자리의 장수 정보가 나옵니다.'],
     ['공격과 기술', '오른쪽 행동 버튼으로 특수기·마법을 사용합니다.', '버튼 아래 숫자는 다시 사용할 수 있을 때까지 남은 시간입니다.'],
     ['부대 지휘', '오른쪽 끝에 부대들이 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
-    ['전투 정보', '오른쪽 위 자동 버튼 아래에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위 시스템·거리 버튼에서 거리·속도를 조정합니다.']
+    ['전투 정보', '왼쪽 위 전투 설정 아래에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위에서 자동·속도·거리와 시스템을 조정합니다.']
   ] : [
-    ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 시스템의 카메라 거리로 화면을 조정합니다.'],
+    ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 상단의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '보조키의 가운데 버튼으로도 주 행동을 사용할 수 있습니다.'],
     ['부대 지휘', '하단 부대 그룹에서 돌격·정지·후퇴·자유·출진을 지시합니다.', '←→ 캐릭터, ↑↓ 부대를 바꾸고 적을 클릭하면 집중 공격합니다.'],
     ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '상단에서 자동·거리·속도를 조정하고 Esc로 시스템을 엽니다.']
@@ -364,8 +365,8 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.53', 24, 30, 16, COLORS.silver2);
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 그 왼쪽: 자동·조작 장수 정보 · 왼쪽 위: 시스템·거리'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.54', 24, 30, 16, COLORS.silver2);
+  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function drawStageMap() {
