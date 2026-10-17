@@ -167,7 +167,7 @@ function createBattle(seed = 1, opts = {}) {
   const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
-    const squadDefs = d.squads || [{ leader: d.leader, units: d.units }];
+    const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
     if (squadDefs.length > SQUAD_MAX) throw new Error(d.name + ': 분대는 최대 ' + SQUAD_MAX + '개');
     const members = [];
     squadDefs.forEach((q, squad) => {
@@ -177,7 +177,7 @@ function createBattle(seed = 1, opts = {}) {
     });
     const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' && (reserves || enemyField + keys.length > ENEMY_FIELD_MAX);
     if (reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
-    const leaderKey = d.leader || squadDefs[0].leader;
+    const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
     const A = { id: ai, team: d.team, name: d.name, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, state: d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad }, i) => {
@@ -542,8 +542,8 @@ function commanderDialogue(S) {
   }
 }
 function checkEnd(S) {
-  const lord = S.units.find(u => u.key === 'guan');
-  if (lord.dead || !S.units.some(u => u.team === 'player' && !u.dead)) S.over = 'lose';
+  const lord = S.armies.find(A => A.team === 'player' && A.units.length)?.leader;
+  if (!lord || lord.dead || !S.units.some(u => u.team === 'player' && !u.dead)) S.over = 'lose';
   else if (!S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
 }
 function step(S, dt) {

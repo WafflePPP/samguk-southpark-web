@@ -31,11 +31,13 @@ let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select'
 const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
 const corpsName = corps => corps.units[0] ? Sim.U[corps.units[0]].name + ' 군단' : corps.name;
 function rosterError() {
-  for (let army = 0; army < roster.length; army++) for (let start = 0; start < 18; start += 6) {
-    const squad = roster[army].units.slice(start, start + 6);
-    if (squad.some(Boolean) && !namedRosterUnit(squad[0])) return `${corpsName(roster[army])} ${start / 6 + 1}분대의 첫 칸에 이름 있는 장수가 필요합니다.`;
+  for (let army = 0; army < roster.length; army++) {
+    if (!namedRosterUnit(roster[army].units[0])) return `${corpsName(roster[army])}의 1분대장은 이름 있는 장수여야 합니다.`;
+    for (let start = 6; start < 18; start += 6) {
+      const squad = roster[army].units.slice(start, start + 6);
+      if (squad.some(Boolean) && !namedRosterUnit(squad[0])) return `${corpsName(roster[army])} ${start / 6 + 1}분대의 첫 칸에 이름 있는 장수가 필요합니다.`;
+    }
   }
-  for (let start = 0; start < 18; start += 6) if (!roster[0].units.slice(start, start + 6).some(Boolean)) return `출전 군단의 ${start / 6 + 1}분대는 비울 수 없습니다.`;
   return '';
 }
 function rosterArmies() {
@@ -106,7 +108,7 @@ function finishBattle() {
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
-const pArmies = () => S.armies.filter(A => A.team === 'player');
+const pArmies = () => S.armies.filter(A => A.team === 'player' && A.units.length);
 const nextArmy = dir => { const l = pArmies(), i = l.indexOf(army()); return l[(i + dir + l.length) % l.length].id; };   // 조작 부대 순환
 const alive = u => Sim.live(u);
 function camTarget() { const u = ctrlOf(), z = Z(); return u ? [u.x - VPW / z / 2, u.y - vh / z / 2] : [cam.x, cam.y]; }
@@ -399,7 +401,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.63', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.64', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -455,6 +457,7 @@ function drawRoster() {
       label(`${squad + 1}분대`, 70, 359 + squad * 82, 18, members.length ? COLORS.gold : COLORS.dim);
       label(members.length ? members.map(k => Sim.U[k].name).join(' · ') : '비어 있음', 150, 359 + squad * 82, 15, members.length ? COLORS.silver : COLORS.dim);
     }
+    if (rosterSource > 0) button('roster:dismiss', 52, 574, 508, 38, '빈 군단 해산', false, 15);
     panel(622, 94, 630, 536, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 646, 126, 20, COLORS.gold);
     const targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), page = targets.slice(rosterPage * 10, rosterPage * 10 + 10);
@@ -541,6 +544,10 @@ function uiClick(id) {
     state = 'map'; rosterPick = null; campaign.notice = '편성이 저장되었습니다.'; return;
   }
   if (id === 'roster:source:prev' || id === 'roster:source:next') { const d = id.endsWith('next') ? 1 : -1; rosterSource = (rosterSource + d + roster.length) % roster.length; rosterPage = 0; return; }
+  if (id === 'roster:dismiss') {
+    if (rosterSource === 0 || roster[rosterSource].units.some(Boolean)) { campaign.notice = '병력이 없는 예비 군단만 해산할 수 있습니다.'; return; }
+    roster.splice(rosterSource, 1); rosterSource = 0; rosterPage = 0; campaign.notice = '빈 예비 군단을 해산했습니다.'; return;
+  }
   if (id.startsWith('roster:target:')) { rosterTarget = +id.slice(14); rosterMode = 'exchange'; rosterPick = null; campaign.notice = '장수를 선택한 뒤 반대쪽 교환 위치를 선택하세요.'; return; }
   if (id === 'roster:new') {
     if (roster.length >= ROSTER_MAX) { campaign.notice = '군단은 최대 100개까지 보유할 수 있습니다.'; return; }
