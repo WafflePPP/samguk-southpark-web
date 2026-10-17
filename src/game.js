@@ -144,7 +144,10 @@ function drawToolbar() {
   const u = ctrlOf();
   label('조작: ' + (pArmies().indexOf(army()) + 1) + ' ' + army().name + (u ? ' · ' + u.name : ''), 12, 22, 17, COLORS.gold);
   label('Space 행동 · ← → 장수 · ↑ ↓ 부대', 290, 22, 16, COLORS.silver2);
-  button('cmd:menu', 1046, 4, 230, 36, '시스템', false);
+  button('m:zoom', 674, 4, 140, 36, '거리 ×' + Z(), false);
+  button('cmd:auto', 820, 4, 128, 36, S.auto ? '자동 ON' : '자동 OFF', S.auto);
+  button('m:speed', 954, 4, 128, 36, '속도 ×' + SPEEDS[speedIdx], false);
+  button('cmd:menu', 1088, 4, 188, 36, '시스템', false);
 }
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
@@ -299,7 +302,7 @@ function drawTutorial() {
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 시스템의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '보조키의 가운데 버튼으로도 주 행동을 사용할 수 있습니다.'],
     ['부대 지휘', '하단 부대 그룹에서 돌격·정지·후퇴·자유·출진을 지시합니다.', '←→ 캐릭터, ↑↓ 부대를 바꾸고 적을 클릭하면 집중 공격합니다.'],
-    ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '시스템에서 자동·거리·속도를 조정하고 Esc로 열 수 있습니다.']
+    ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '상단에서 자동·거리·속도를 조정하고 Esc로 시스템을 엽니다.']
   ];
   const p = pages[tutorialStep], x = 250, y = 190, w = 780, h = 340;
   ctx.fillStyle = 'rgba(4,6,12,.78)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, COLORS.gold, 4, 'rgba(18,21,31,.98)');
@@ -330,7 +333,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.51', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.52', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 그 왼쪽: 자동·조작 장수 정보 · 왼쪽 위: 시스템·거리'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
