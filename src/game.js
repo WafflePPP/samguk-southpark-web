@@ -16,18 +16,14 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false;
 // 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
 const STAGES = [
-  { id: 'tak', name: '탁현', x: 510, y: 150, owner: 'player', links: ['luoyang', 'beiping'] },
-  { id: 'beiping', name: '북평', x: 755, y: 135, owner: 'enemy', links: ['tak'] },
-  { id: 'luoyang', name: '낙양', x: 470, y: 285, owner: 'enemy', links: ['tak', 'xuchang', 'xinye'] },
-  { id: 'xuchang', name: '허창', x: 625, y: 370, owner: 'enemy', links: ['luoyang', 'xinye', 'jiangling'] },
-  { id: 'xinye', name: '신야', x: 465, y: 455, owner: 'enemy', links: ['luoyang', 'xuchang', 'xiangyang'] },
-  { id: 'xiangyang', name: '양양', x: 405, y: 565, owner: 'enemy', links: ['xinye', 'jiangling'] },
-  { id: 'jiangling', name: '강릉', x: 600, y: 610, owner: 'enemy', links: ['xuchang', 'xiangyang', 'changsha', 'jianye'] },
-  { id: 'changsha', name: '장사', x: 770, y: 630, owner: 'enemy', links: ['jiangling'] },
-  { id: 'jianye', name: '건업', x: 920, y: 500, owner: 'enemy', links: ['jiangling'] },
+  { id: 'beiping', name: '북평', stage: 1, difficulty: '초급', note: '출발·정비', x: 790, y: 145, owner: 'player', links: ['tak'], reinforce: 0, mapSeed: 5 },
+  { id: 'tak', name: '탁현', stage: 2, difficulty: '중급', note: '기본 적군', x: 630, y: 335, owner: 'enemy', links: ['beiping', 'luoyang'], reinforce: 0, mapSeed: 7 },
+  { id: 'luoyang', name: '낙양', stage: 3, difficulty: '상급', note: '대규모 증원', x: 470, y: 545, owner: 'enemy', links: ['tak'], reinforce: 2, mapSeed: 19 },
 ];
 const stageById = id => STAGES.find(s => s.id === id);
-const campaign = { at: 'tak', battle: null, notice: '탁현에서 원정을 시작한다.' };
+const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy'), BASE_ENEMY_COUNT = BASE_ENEMIES.reduce((n, a) => n + a.units.length, 0);
+const stageEnemyCount = stage => stage.stage === 1 ? 0 : BASE_ENEMY_COUNT + BASE_ENEMIES.length * stage.reinforce;
+const campaign = { at: 'beiping', from: null, battle: null, notice: '북평에서 낙양 원정을 시작한다.' };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [{ id: 1, name: '신규 군단 1', units: Sim.ARMIES.filter(a => a.team === 'player').flatMap(a => a.units) }];
@@ -48,6 +44,16 @@ function rosterArmies() {
     if (a.team !== 'player') return a;
     const start = i++ * 6, units = roster[0].units.slice(start, start + 6).filter(Boolean);
     return { ...a, name: i + '분대', leader: roster[0].units[start], units };
+  });
+}
+function stageArmies(stage) {
+  const armies = rosterArmies(), add = stage ? stage.reinforce : 0;
+  if (!add) return armies;
+  let enemy = 0;
+  return armies.map(a => {
+    if (a.team !== 'enemy') return a;
+    const n = enemy++;
+    return { ...a, units: a.units.concat(Array.from({ length: add }, (_, i) => ['esword', 'eshield', 'earcher'][(n + i) % 3])) };
   });
 }
 let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확정하면 군단이 그 적을 집중 공격)
@@ -76,7 +82,8 @@ function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 �
 }
 function startBattle(stage) {
   campaign.battle = stage || campaign.battle;
-  S = Sim.createBattle((Date.now() % 100000) + 1, { armies: rosterArmies() }); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
+  S = Sim.createBattle((Date.now() % 100000) + 1, { armies: stageArmies(campaign.battle), mapSeed: campaign.battle ? campaign.battle.mapSeed : 7 }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
+  if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: `${campaign.battle.stage}지역 ${campaign.battle.name} · 난이도 ${campaign.battle.difficulty} · ${campaign.battle.note}` });
   state = 'play'; overAt = 0; paused = false; menuOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
 }
@@ -87,14 +94,15 @@ function moveCampaign(id) {
   const here = stageById(campaign.at), next = stageById(id);
   if (!next || next === here) return;
   if (!here.links.includes(next.id)) { campaign.notice = '연결된 거점으로만 이동할 수 있습니다.'; return; }
+  campaign.from = here.id;
   campaign.at = next.id;
   if (next.owner === 'enemy') { campaign.notice = `${next.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(next); }
   else campaign.notice = `${next.name}으로 이동했다.`;
 }
 function finishBattle() {
   if (S && S.over === 'win' && campaign.battle) { campaign.battle.owner = 'player'; campaign.notice = `${campaign.battle.name}을 점령했다.`; }
-  else campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`;
-  campaign.battle = null; S = null; state = 'map'; overAt = 0; menuOpen = false; selectMode = false;
+  else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.from) campaign.at = campaign.from; }
+  campaign.from = null; campaign.battle = null; S = null; state = 'map'; overAt = 0; menuOpen = false; selectMode = false;
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
@@ -391,7 +399,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.62', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.63', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -406,7 +414,8 @@ function drawStageMap() {
     const on = s === here, friendly = s.owner === 'player', reachable = here.links.includes(s.id); const col = friendly ? COLORS.ally : COLORS.danger;
     ctx.fillStyle = on ? COLORS.gold : col; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 22 : 16, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? '#fff3c0' : '#161722'; ctx.lineWidth = 3; ctx.stroke();
     ctx.fillStyle = friendly ? '#e9f4ff' : '#ffd8cb'; ctx.beginPath(); ctx.moveTo(s.x + 10, s.y - 26); ctx.lineTo(s.x + 10, s.y - 4); ctx.lineTo(s.x + 36, s.y + 2); ctx.lineTo(s.x + 10, s.y + 8); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#28211a'; ctx.lineWidth = 2; ctx.stroke();
-    label(s.name, s.x, s.y + 38, 18, on ? COLORS.goldSel : '#f3eed8', 'center');
+    label(`${s.stage}. ${s.name}`, s.x, s.y + 38, 18, on ? COLORS.goldSel : '#f3eed8', 'center');
+    label(`${s.difficulty} · ${s.note}`, s.x, s.y + 61, 14, s.stage === 3 ? '#ffb06a' : COLORS.silver2, 'center');
     if (reachable) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y, 25, 0, TAU); ctx.stroke(); }
     btns.push({ id: 'stage:' + s.id, x: s.x - 32, y: s.y - 36, w: 72, h: 84 });
   }
@@ -414,12 +423,13 @@ function drawStageMap() {
   label('삼국지 원정', 1130, 76, 30, COLORS.gold, 'center');
   label(`${corpsName(roster[0])} · 3분대 / 보유 ${roster.length}군단`, 1030, 120, 18, COLORS.silver);
   label(`현재 위치: ${here.name}`, 1030, 158, 19, COLORS.goldSel);
-  label(`점령 거점  ${STAGES.filter(s => s.owner === 'player').length} / ${STAGES.length}`, 1030, 192, 18, COLORS.silver);
+  label(`1장 진행  ${STAGES.filter(s => s.owner === 'player').length} / ${STAGES.length}`, 1030, 192, 18, COLORS.silver);
   ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.beginPath(); ctx.moveTo(1025, 220); ctx.lineTo(1235, 220); ctx.stroke();
-  label('이동 규칙', 1030, 252, 18, COLORS.gold);
-  label('금색 고리의 연결 거점을 선택', 1030, 284, 15, COLORS.silver2);
-  label('적 주둔지에 도착하면 즉시 전투', 1030, 310, 15, COLORS.silver2);
-  label('승리하면 해당 거점을 점령', 1030, 336, 15, COLORS.silver2);
+  label('북평 → 탁현 → 낙양', 1030, 248, 18, COLORS.gold);
+  STAGES.forEach((s, i) => {
+    label(`${s.stage}지역 ${s.name}`, 1030, 282 + i * 32, 15, s === here ? COLORS.goldSel : COLORS.silver);
+    label(s.stage === 1 ? '정비' : `적 ${stageEnemyCount(s)}명`, 1225, 282 + i * 32, 14, s.stage === 3 ? '#ffb06a' : COLORS.silver2, 'right');
+  });
   button('campaign:roster', 1025, 375, 210, 46, '장수 편성 · 군단 교환', false, 16);
   panel(1025, 525, 210, 112, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');
   label(campaign.notice, 1130, 560, 16, COLORS.silver, 'center');

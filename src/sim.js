@@ -164,7 +164,7 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const armyDefs = opts.armies || ARMIES;
-  const S = { t: 0, map: genMap(7, armyDefs), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const squadDefs = d.squads || [{ leader: d.leader, units: d.units }];
