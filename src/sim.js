@@ -1,6 +1,6 @@
 'use strict';
 // 퍼스트퀸4 식 실시간 전투 시뮬레이션 (DOM 없음 → node 에서도 돌려 테스트한다).
-// 군단(최대 12명)의 캐릭터를 하나씩 지휘한다: 이동·공격·돌격·정지·이동불가·후퇴·특수기·마법.
+// 군단(최대 6명)의 캐릭터를 하나씩 지휘한다: 이동·공격·돌격·정지·이동불가·후퇴·특수기·마법.
 // 이동은 정사각형 타일 격자: 한 칸에는 한 명만 설 수 있고, 한 번에 한 칸씩(8방향) 걸어간다. 이동 중에는 출발·도착 두 칸을 모두 점유한다.
 // 유닛은 명령이 없으면 시야 안의 적과 알아서 싸운다. 피로도·레벨업·방패 방어·번개 잠금·대장 전사 시 도주·철수 후 재출진을 갖는다.
 const Sim = (() => {
@@ -63,7 +63,7 @@ const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, 
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
 const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기' };
-const ENEMY_FIELD_MAX = 36, ARMY_MAX = 12;
+const ENEMY_FIELD_MAX = 36, ARMY_MAX = 6;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
 //  지진=약한 피해·아군 안 맞음, 번개·지진·거미줄·마법의 벽·소환은 쓰면 모든 마법이 한동안 잠김(lock), 한 캐릭터 마법 최대 5개.
@@ -88,8 +88,8 @@ const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', c
 
 // 군단 편성. at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
 const ARMIES = [
-  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'sword', 'sword', 'sword', 'spear', 'spear', 'spear', 'spear', 'spear', 'archer', 'archer', 'huang'] },
-  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav', 'cav'] },
+  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'shield', 'sword', 'shield'] },
+  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'enemy', name: '장료대', at: [37, 19], leader: 'jang', units: ['jang', 'ecap', 'esword'], trig: { near: 15, t: 25 } },
   { team: 'enemy', name: '여포대', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'enemy', name: '순욱대', at: [45, 7], leader: 'xun', units: ['xun', 'esage'], trig: { near: 14, t: 70 } },
@@ -99,8 +99,9 @@ const ARMIES = [
   { team: 'enemy', name: '문추대', at: [45, 27], leader: 'wen', units: ['wen'], trig: { near: 14, t: 70 } },
   { team: 'enemy', name: '고순대', at: [53, 13], leader: 'gao', units: ['gao'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'enemy', name: '안량대', at: [53, 27], leader: 'yan', units: ['yan'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'player', name: '궁병대', at: [5, 11], leader: 'huang', units: ['huang', 'archer', 'archer', 'archer', 'archer', 'archer'] },   // 아군 3부대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
-for (let i = 0; i < 3; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
+for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;

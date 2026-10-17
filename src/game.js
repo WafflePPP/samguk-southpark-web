@@ -24,19 +24,19 @@ let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = 
 const SHOW = { dmg: true, buff: true, pauseSel: true };   // pauseSel: PC(조작 캐릭터) 선택 중 전투 일시정지
 try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ }
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
-// 카메라 거리(줌): 기본 ×1.3. 시스템 메뉴·[ ] 키로 조절하고 모드별로 기억한다
-const ZOOMS = [[1, '멀리'], [1.3, '기본'], [1.67, '가까이'], [2, '더 가까이'], [2.5, '아주 가까이']];
+// 카메라 거리(줌): 기본 ×3(퍼스트퀸4 화면과 같은 확대). 시스템 메뉴·[ ] 키로 조절하고 모드별로 기억한다
+const ZOOMS = [[1, '멀리'], [1.3, '기본'], [1.67, '가까이'], [2, '더 가까이'], [2.5, '아주 가까이'], [3, '원작']];
 let zoomIdx = 2;
 const Z = () => ZOOMS[zoomIdx][0];
-function loadZoom(on) { zoomIdx = 1; try { const z = localStorage.getItem('sgsp-zoom-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
-function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
+function loadZoom(on) { zoomIdx = 5; try { const z = localStorage.getItem('sgsp-zoom2-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
+function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom2-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
 loadZoom(false);
 let wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
 function layout() { tblH = mobile ? 0 : (tblOpen ? 236 : 64); vh = VH - TB_H - tblH; }
 function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 상태창, 글자 확대
-  mobile = on; loadZoom(on); TB_H = on ? 128 : 88; LEFT_W = on ? 118 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
+  mobile = on; loadZoom(on); TB_H = on ? 0 : 88; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
 function startBattle() {
   S = Sim.createBattle((Date.now() % 100000) + 1); terrain = terrain || buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
@@ -45,11 +45,10 @@ function startBattle() {
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
+const pArmies = () => S.armies.filter(A => A.team === 'player');
+const nextArmy = dir => { const l = pArmies(), i = l.indexOf(army()); return l[(i + dir + l.length) % l.length].id; };   // 조작 부대 순환
 const alive = u => Sim.live(u);
-let look = null, mini = null, miniPtr = -1;   // look: 미니맵으로 잠시 둘러보기, mini: 이번 프레임 미니맵 영역
-function lookAt(p) { look = { x: (p.x - mini.x) / mini.k, y: (p.y - mini.y) / mini.k, until: T + 4 }; }
-const inMini = p => mini && p.x >= mini.x && p.x < mini.x + mini.w && p.y >= mini.y && p.y < mini.y + mini.h;
-function camTarget() { const u = ctrlOf(), z = Z(); if (look && T < look.until) return [look.x - VPW / z / 2, look.y - vh / z / 2]; return u ? [u.x - VPW / z / 2, u.y - vh / z / 2 - 20 / z] : [cam.x, cam.y]; }
+function camTarget() { const u = ctrlOf(), z = Z(); return u ? [u.x - VPW / z / 2, u.y - vh / z / 2 - 20 / z] : [cam.x, cam.y]; }
 function clampCam() { const z = Z(); cam.x = Math.max(0, Math.min(WW - VPW / z, cam.x)); cam.y = Math.max(0, Math.min(WH - vh / z, cam.y)); }
 function snapCam() { const [x, y] = camTarget(); cam.x = x; cam.y = y; clampCam(); }
 const toWorld = (sx, sy) => [(sx - LEFT_W) / Z() + cam.x, (sy - TB_H) / Z() + cam.y];
@@ -83,7 +82,7 @@ const cooldownText = a => a.cd > 0 ? a.cd.toFixed(1) + '초' : a.ready ? '준비
 
 // ---------- 월드 그리기 ----------
 function drawUnit(u) {
-  const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && u === S.armies[1 - armyIdx].ctrl;
+  const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && pArmies().some(A => A !== army() && A.ctrl === u);
   ctx.save(); ctx.lineWidth = mine ? 4 : 3; ctx.strokeStyle = mine ? COLORS.gold : ally ? COLORS.ally : COLORS.danger;   // 팀 표시(아트방향 5-5): 아군 청 실선 / 적 주홍 점선 / 조작 중 금
   ctx.setLineDash(ally || mine ? [] : [6, 5]); ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, u.r * 1.3, u.r * 0.7, 0, 0, TAU); ctx.stroke(); ctx.restore();
   const swing = u.anim > 0 ? -1.3 + 2.6 * (1 - u.anim / 0.28) : 0.9;
@@ -130,22 +129,22 @@ function drawWorld() {
 
 // ---------- HUD (PC) ----------
 function drawArmyOrders() {
-  const h = mobile ? 56 : 36;
-  S.armies.slice(0, 2).forEach((A, i) => {
-    const x = 4 + i * 640;
-    button('army' + i, x, 4, 104, h, i + 1 + ' ' + A.name, armyIdx === i, mobile ? 20 : 16);
-    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], j) => {
-      button('order:' + i + ':' + id, x + 108 + j * 104, 4, 100, h, title, A.order === id, mobile ? 20 : 16);
+  const h = mobile ? 56 : 36, list = pArmies(), gw = Math.floor((VW - 8) / list.length), bw = Math.floor((gw - 94) / 5) - 2;
+  list.forEach((A, j) => {
+    const x = 4 + j * gw, i = A.id;
+    button('army' + i, x, 4, 90, h, j + 1 + ' ' + A.name, armyIdx === i, mobile ? 20 : 16);
+    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], k) => {
+      button('order:' + i + ':' + id, x + 94 + k * (bw + 2), 4, bw, h, title, A.order === id, mobile ? 20 : 16);
     });
   });
 }
-function drawPortraits(x0, y, w, h, step, A = army()) {   // 군단 초상: 클릭 = 조작 캐릭터로 선택(그 군단으로 전환), 더블클릭 = 화면 이동
+function drawPortraits(x0, y0, w, h, step, A = army(), vert = false, cols = 2) {   // 군단 초상: 클릭 = 조작 캐릭터로 선택(그 군단으로 전환), 더블클릭 = 화면 이동
   A.units.forEach((u, i) => {
-    const x = x0 + i * step, on = A === army() && u === ctrlOf(), cx = x + w / 2, k = h / 36;
+    const x = vert ? x0 + (i % cols) * (w + 2) : x0 + i * step, y = vert ? y0 + Math.floor(i / cols) * step : y0, on = A === army() && u === ctrlOf(), cx = x + w / 2, k = h / 36;
     panel(x, y, w, h, on ? COLORS.gold : 'rgba(255,255,255,.25)', on ? 3 : 1);
     ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip(); ctx.globalAlpha = u.dead ? 0.25 : u.out ? 0.45 : 1;
     drawBody(ctx, cx, y + h, 9 * k, Math.PI / 2, { ...styleOf(u), weapon: null, horse: null }, { t: T }); ctx.restore();
-    if (!u.dead && !u.out) bar(x + 2, y + h - 4, w - 4, 3 * k, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
+    if (!u.dead && !u.out) { bar(x + 2, y + h - 4, w - 4, 3 * k, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); if (vert && u.maxMp) bar(x + 2, y + h - 9, w - 4, 3, u.mp / u.maxMp, '#8a6aff'); }
     if (u.dead) label('✕', cx, y + h / 2, 22, COLORS.danger, 'center'); else if (u.out) label('철', cx, y + h / 2, 16, COLORS.silver2, 'center');
     btns.push({ id: 'slot' + u.id, x, y, w, h });
   });
@@ -156,9 +155,8 @@ function drawToolbar() {
   label('조작: ' + (armyIdx + 1) + ' ' + army().name, 8, 66, 16, COLORS.gold);
   drawPortraits(LEFT_W + 6, 48, 36, 36, 38);
   const a = actionInfo(ctrlOf());
-  button('cmd:act', 616, 48, 212, 36, '행동 ' + (a.cd > 0 ? cooldownText(a) : '␣'), a.ready);
-  button('m:tbl', 836, 48, 212, 36, tblOpen ? '상태 축소' : '상태 확대', tblOpen);
-  button('cmd:menu', 1056, 48, 220, 36, '시스템', false);
+  button('cmd:act', 616, 48, 420, 36, '행동 ' + (a.cd > 0 ? cooldownText(a) : '␣'), a.ready);
+  button('cmd:menu', 1046, 48, 230, 36, '시스템', false);
 }
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
@@ -167,13 +165,6 @@ function drawLeftPanel() {
   label(u.name, 10, TB_H + 18, 20, COLORS.gold); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
-  drawMinimap(6, TB_H + vh - Math.round((LEFT_W - 12) * Sim.MH / Sim.MW) - 6, LEFT_W - 12);
-}
-function drawMinimap(mx, my, mw) {
-  const mh = Math.round(mw * Sim.MH / Sim.MW), k = mw / WW; mini = { x: mx, y: my, w: mw, h: mh, k };
-  ctx.drawImage(terrain, mx, my, mw, mh); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
-  for (const e of S.units) if (alive(e)) { ctx.fillStyle = e.team === 'player' ? '#4fb0ff' : '#ff5a4a'; ctx.fillRect(mx + e.x * k - 1, my + e.y * k - 1, e.isLeader ? 4 : 2.5, e.isLeader ? 4 : 2.5); }
-  ctx.strokeStyle = COLORS.gold; ctx.strokeRect(mx + cam.x * k, my + cam.y * k, VPW / Z() * k, vh / Z() * k);
 }
 function drawSpellPanel() {
   const u = ctrlOf(); if (!u || !u.spells.length) return;
@@ -184,7 +175,7 @@ function drawSpellPanel() {
 }
 function drawStick() {   // 맹장전 조이스틱: 누른 자리에 반투명 링, 노브가 손가락을 따라간다 (방향이 잡히면 금색)
   if (!stick) {   // 손가락이 없을 때는 어디를 눌러 끌면 되는지 희미하게 안내
-    if (!selectMode && !menuOpen && !S.over) { ctx.save(); ctx.globalAlpha = 0.16; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(LEFT_W + 150, TB_H + vh - 120, STICK_R, 0, TAU); ctx.stroke(); ctx.globalAlpha = 0.3; label('이동', LEFT_W + 150, TB_H + vh - 120, 18, '#fff', 'center'); ctx.restore(); }
+    if (!selectMode && !menuOpen && !S.over) { ctx.save(); ctx.globalAlpha = 0.16; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(190, TB_H + vh - 120, STICK_R, 0, TAU); ctx.stroke(); ctx.globalAlpha = 0.3; label('누른 채 끌기', 190, TB_H + vh - 120, 16, '#fff', 'center'); ctx.restore(); }
     return;
   }
   ctx.save(); ctx.globalAlpha = 0.55; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(stick.ox, stick.oy, STICK_R, 0, TAU); ctx.stroke();
@@ -219,15 +210,19 @@ function drawTable() {
 }
 
 // ---------- HUD (모바일) ----------
-function drawToolbarMobile() {
-  ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, TB_H); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, TB_H - 2, VW, 2);
-  drawArmyOrders();
-  S.armies.slice(0, 2).forEach((A, i) => { const step = Math.min(52, Math.floor(630 / Math.max(1, A.units.length))); drawPortraits(4 + i * 640, 68, step - 2, 56, step, A); });   // 두 군단 모두 (위 군단 명령 줄과 같은 칸)
+function drawToolbarMobile() {   // 오른쪽 한 열에는 부대 버튼만: 1부대 · 2부대 · 3부대 (초상 3열×2줄 + 명령 한 줄). 장수 정보는 이 열 바로 왼쪽에 붙는다
+  const ORDERS = [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']], x0 = VW - 216;
+  ctx.fillStyle = 'rgba(8,10,18,.84)'; ctx.fillRect(x0, 0, 216, VH);
+  pArmies().forEach((A, j) => {
+    const y0 = j * 240, i = A.id;
+    button('army' + i, x0 + 2, y0 + 2, 212, 22, j + 1 + ' ' + A.name, armyIdx === i, 14);
+    drawPortraits(x0 + 2, y0 + 26, 69, 70, 72, A, true, 3);
+    ORDERS.forEach(([id, title], k) => button('order:' + i + ':' + id, x0 + 2 + k * 43, y0 + 174, 41, 58, title, A.order === id, 15));
+  });
 }
-function drawMobileSide() {   // 왼쪽 중단 미니맵, 왼쪽 하단 시스템 (조이스틱은 상태창 오른쪽 전장 왼쪽 절반)
-  const mw = LEFT_W - 8, mh = Math.round(mw * Sim.MH / Sim.MW);
-  drawMinimap(4, TB_H + Math.round((vh - mh) / 2) - 14, mw);
-  button('cmd:menu', 6, VH - 66, LEFT_W - 12, 58, '시스템', false, 17);
+function drawMobileSide() {   // 왼쪽 위: 자동·시스템
+  button('cmd:auto', 6, 6, 112, 56, S.auto ? '자동 ON' : '자동 OFF', S.auto, 18);
+  button('cmd:menu', 124, 6, 112, 56, '시스템', false, 18);
 }
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
   ctx.fillStyle = on ? 'rgba(80,60,16,.75)' : 'rgba(10,12,20,.6)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
@@ -236,37 +231,56 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
 }
 function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법과 진형 3종
   const u = ctrlOf(); if (!u) return;
-  Object.entries(FORMATION_NAME).forEach(([key, name], i) => roundBtn('m:form:' + key, 1030 + i * 96, 458, 40, name, '', army().formation === key ? COLORS.gold : COLORS.silver2, army().formation === key));   // 진형 3종, 조작 장수가 속한 부대에 적용
+  Object.entries(FORMATION_NAME).forEach(([key, name], i) => roundBtn('m:form:' + key, 822 + i * 92, 458, 40, name, '', army().formation === key ? COLORS.gold : COLORS.silver2, army().formation === key));   // 진형 3종, 조작 장수가 속한 부대에 적용
   if (S.auto) return;
   const primary = actionInfo(u), alt = actionInfo(u, true), sp = u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
-  roundBtn('m:act', 1168, 614, 74, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
-  if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 1028, 662, 46, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
-  if (u.spells.length > 1) roundBtn('m:spell', 1040, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
+  roundBtn('m:act', 978, 614, 74, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
+  if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 838, 662, 46, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
+  if (u.spells.length > 1) roundBtn('m:spell', 850, 556, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
 }
-function drawMobileStatus() {   // 약식: 이름·병종·HP/MP·피로도만 (조이스틱을 가리지 않게 좁고 투명하게)
-  panel(0, TB_H, LEFT_W, 134, 'rgba(255,255,255,.2)', 1, 'rgba(10,12,20,.45)');
+function drawMobileStatus() {   // 부대 버튼 열(오른쪽) 바로 옆에 붙여 조작 중인 장수의 정보를 최대한 (표시 전용 — 터치는 그대로 전달). 왼쪽 전체는 이동 영역
   const u = ctrlOf(); if (!u) return;
-  btns.push({ id: 'm:info', x: 0, y: TB_H, w: LEFT_W, h: 134 });   // 탭 = 능력치 상세 창
-  label(u.name, 8, TB_H + 18, 18, COLORS.gold); label(`${u.subclass} Lv${u.lv}`, 8, TB_H + 40, 14, COLORS.silver);
-  bar(8, TB_H + 52, LEFT_W - 16, 7, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
-  if (u.maxMp) bar(8, TB_H + 62, LEFT_W - 16, 5, u.mp / u.maxMp, '#8a6aff');
-  label(`HP ${Math.ceil(u.hp)}`, 8, TB_H + 84, 14, COLORS.silver2); label(`FT ${Math.round(u.ft)}`, 8, TB_H + 102, 14, u.ft > 50 ? '#ffb04d' : COLORS.silver2);
-  if (u.maxMp) label(`MP ${Math.floor(u.mp)}`, 8, TB_H + 120, 14, '#b9a6ff');
+  const w = 262, x = VW - 216 - w - 2, y = 6, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
+  const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 22 : 0) + 26 + 14;
+  panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.55)');
+  let yy = y + 20; label(u.name, x + 10, yy, 20, COLORS.gold); label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right');
+  yy += 24; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver);
+  yy += 18; bar(x + 10, yy, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 22; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, COLORS.silver, 'right');
+  yy += 22; if (u.maxMp) bar(x + 10, yy - 12, w - 20, 7, u.mp / u.maxMp, '#8a6aff'); label('MP', x + 10, yy + 4, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy + 4, fs, COLORS.silver, 'right');
+  yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft)), x + 40, yy, fs, u.ft > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${u.lv * 60}`, x + 142, yy, fs, COLORS.silver);
+  const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, COLORS.silver); };
+  yy += rh; cell('AT', u.atk.toFixed(0), 0, 0); cell('DF', u.df, 1, 0); cell('AA', u.aa + '%', 2, 0);
+  cell('AR', '—', 0, 1); cell('DR', '—', 1, 1); cell('AD', u.ad, 2, 1);
+  cell('MD', u.md, 0, 2); cell('HR', u.hr, 1, 2); cell('SP', u.sp, 2, 2);
+  yy += 3 * rh; label('ST', x + 10, yy, fs, orange); label(stText(u), x + 42, yy, fs, COLORS.silver); label('지형', x + 130, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 172, yy, fs, COLORS.silver);
+  yy += rh; label('ITEM', x + 10, yy, fs, orange); label(WEAPON_NAME[(styleOf(u) || {}).weapon] || '—', x + 62, yy, fs, COLORS.silver);
+  if (sp.length) { yy += 22; label('마법', x + 10, yy, fs, orange); sp.forEach((k, i) => { yy += 22; label(`${i + 1} ${SPELL[k].name}  ${SPELL[k].mp}MP`, x + 16, yy, 15, u.spellSel === i ? COLORS.gold : u.mp >= SPELL[k].mp ? COLORS.silver : COLORS.dim); }); }
+  yy += 26; label('행동 ' + pr.name, x + 10, yy, 15, COLORS.silver2); label(pr.cd > 0 ? cooldownText(pr) : '가능', x + w - 10, yy, 15, pr.ready ? COLORS.gold : COLORS.silver2, 'right');
 }
 
+const TERRAIN_NAME = ['평지', '숲', '바위', '물', '여울'], WEAPON_NAME = { glaive: '청룡언월도', halberd: '방천화극', lance: '창', twin: '쌍철극', sword: '검', spear: '창', bow: '활', fan: '부채' };
+function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치 창과 같은 줄 구성. AR·DR·EL+ 는 이 프로토에 없는 능력치라 빈 값으로 둔다
+  const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, COLORS.silver); };
+  label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, col); label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
+  const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = WEAPON_NAME[(styleOf(u) || {}).weapon] || '—';
+  label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, COLORS.silver); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(u.hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
+  cell('AT', u.atk.toFixed(0), 0, 1); cell('DF', u.df, 1, 1); cell('AA', u.aa + '%', 2, 1);
+  cell('AR', '—', 0, 2); cell('DR', '—', 1, 2); cell('AD', u.ad, 2, 2);
+  cell('MD', u.md, 0, 3); cell('FT', Math.round(u.ft), 1, 3); cell('EL+', '----', 2, 3);
+  label('ST', x + 8, y + top + 4 * rh, fs, orange); label(stText(u), x + 8 + fs * 2.2, y + top + 4 * rh, fs, COLORS.silver); label('지형', x + 8 + 1.6 * c, y + top + 4 * rh, fs, orange); label(terrain, x + 8 + 1.6 * c + fs * 2.6, y + top + 4 * rh, fs, COLORS.silver);
+  label('ITEM', x + 8, y + top + 5 * rh, fs, orange); label(wp, x + 8 + fs * 3, y + top + 5 * rh, fs, COLORS.silver);
+  return top + 5 * rh + 14;
+}
 function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 창 + 확정 버튼, 전투는 멈춰 있다 (적을 눌렀으면 그 적의 정보)
   const u = selTarget && alive(selTarget) ? selTarget : ctrlOf(); if (!u) return; const foe = u.team === 'enemy';
   label(foe ? '적 정보 — 전투 일시정지' : '캐릭터 선택 중 — 전투 일시정지', LEFT_W + VPW / 2, TB_H + 22, 20, foe ? COLORS.danger : COLORS.gold, 'center');
-  const z = Z(), sx = LEFT_W + (u.x - cam.x) * z, sy = TB_H + (u.y - cam.y) * z, w = 296, h = 204, col = foe ? COLORS.danger : COLORS.gold;
+  const z = Z(), sx = LEFT_W + (u.x - cam.x) * z, sy = TB_H + (u.y - cam.y) * z, w = mobile ? 380 : 300, h = mobile ? 260 : 232, col = foe ? COLORS.danger : COLORS.gold;
   if (foe) { ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 3; ctx.strokeRect(sx - 20 * z, sy - 36 * z, 40 * z, 44 * z); }   // 가리킨 적 표시
   const x = Math.max(LEFT_W + 6, Math.min(LEFT_W + VPW - w - 6, sx + 36)), y = Math.max(TB_H + 40, Math.min(TB_H + vh - h - 90, sy - h / 2));
   panel(x, y, w, h, col, 3, 'rgba(10,12,20,.95)');
-  label(u.name, x + 12, y + 20, 20, col); label(`${CATEGORY_NAME[u.category]}·${u.subclass} LV ${u.lv}`, x + w - 12, y + 20, 16, COLORS.silver, 'right');
-  const rows = [['HP', Math.ceil(u.hp) + '/' + u.maxHp, 'HR', u.hr], ['AT', u.atk.toFixed(0), 'DF', u.df], ['AA', u.aa + '%', 'AD', u.ad], ['MD', u.md, 'FT', Math.round(u.ft)]];
-  rows.forEach((q, i) => { const yy = y + 50 + i * 26; label(q[0], x + 12, yy, 16, COLORS.silver2); label(String(q[1]), x + 70, yy, 16, COLORS.silver); label(q[2], x + 190, yy, 16, COLORS.silver2); label(String(q[3]), x + w - 12, yy, 16, COLORS.silver, 'right'); });
-  label('ST', x + 12, y + 156, 16, COLORS.silver2); label(stText(u), x + 70, y + 156, 16, COLORS.silver);
-  if (u.range > 0) label('사거리 ' + Math.round(u.range / TILE) + '칸', x + 12, y + 182, 16, COLORS.silver2);
-  if (u.spells && u.spells.length) label(u.spells.map(k => SPELL[k].name).join('·'), x + w - 12, y + 182, 14, COLORS.silver2, 'right');
+  const gh = drawStatGrid(u, x, y, w, mobile ? 20 : 16, col);
+  if (u.range > 0) label('사거리 ' + Math.round(u.range / TILE) + '칸', x + 8, y + gh + 12, 15, COLORS.silver2);
+  if (u.spells && u.spells.length) label(u.spells.map(k => SPELL[k].name).join('·'), x + w - 8, y + gh + 12, 14, COLORS.silver2, 'right');
   button('sel:ok', LEFT_W + VPW / 2 - 110, TB_H + vh - (mobile ? 92 : 70), 220, mobile ? 64 : 44, foe ? (mobile ? '확정 (집중 공격)' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
 }
 function drawMenu() {   // 시스템: 표시 설정·전투 설정
@@ -283,10 +297,10 @@ function finishTutorial() {
 }
 function drawTutorial() {
   const pages = mobile ? [
-    ['이동과 카메라', '전장 왼쪽을 누른 채 끌면 가상패드가 생깁니다.', '왼쪽 미니맵을 누르거나 끌면 다른 지역을 잠시 봅니다.'],
+    ['이동과 카메라', '전장 왼쪽을 누른 채 끌면 가상패드가 생기고, 손을 떼면 멈춥니다.', '끌지 않고 짧게 터치만 하면 그 자리의 장수 정보가 나옵니다.'],
     ['공격과 기술', '오른쪽 행동 버튼으로 특수기·마법을 사용합니다.', '버튼 아래 숫자는 다시 사용할 수 있을 때까지 남은 시간입니다.'],
-    ['부대 지휘', '상단 초상으로 조작 캐릭터를 고르고 군단 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
-    ['전투 정보', '왼쪽 상태창을 누르면 상세 능력치를 확인합니다.', '왼쪽 아래 시스템에서 자동·거리·속도를 조정합니다.']
+    ['부대 지휘', '오른쪽 위에 1부대·2부대가 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
+    ['전투 정보', '조작 부대 블록 옆에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위 자동·시스템 버튼에서 자동 전투와 거리·속도를 조정합니다.']
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 시스템의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '상단 행동 버튼에 다시 사용할 수 있을 때까지 남은 시간이 표시됩니다.'],
@@ -322,12 +336,12 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.35', 24, 30, 16, COLORS.silver2);
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '위 초상: 캐릭터 선택·군단 명령 · 왼쪽 아래: 시스템 · 왼쪽 중간: 미니맵'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.46', 24, 30, 16, COLORS.silver2);
+  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 1부대·2부대 버튼, 바로 옆: 조작 장수 정보 · 왼쪽 위: 자동·시스템 · 왼쪽: 이동'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 전투 시작' : '클릭 / Enter 로 전투 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
 function draw() {
-  btns = []; mini = null;
+  btns = [];
   if (state === 'title') { drawTitle(); return; }
   layout(); clampCam();
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
@@ -355,7 +369,7 @@ function confirmSelect() {   // 확정: 보던 적이 있으면 군단이 그 �
 }
 function cancelSelect() { selTarget = null; selectMode = false; }   // 취소(Esc): 지시 없이 재개
 function beginSelect() { if (SHOW.pauseSel && !S.over && !menuOpen) selectMode = true; }
-function pick(u) { if (!u || !alive(u) || u.team !== 'player') return; look = null; armyIdx = u.army.id; Sim.setCtrl(S, u.army, u); selTarget = null; beginSelect(); }
+function pick(u) { if (!u || !alive(u) || u.team !== 'player') return; armyIdx = u.army.id; Sim.setCtrl(S, u.army, u); selTarget = null; beginSelect(); }
 function cycleUnit(dir) {
   const list = army().units.filter(alive); if (!list.length) return;
   const i = list.indexOf(ctrlOf()); pick(list[i < 0 ? 0 : (i + dir + list.length) % list.length]);
@@ -379,19 +393,19 @@ function uiClick(id) {
   }
   if (id.startsWith('cmd:')) { useCommand(id.slice(4)); return; }
   if (id.startsWith('spell:')) { const u = ctrlOf(); if (u) Sim.selectSpell(u, +id.slice(6)); return; }
-  if (id === 'prev') cycleUnit(-1); else if (id === 'next') cycleUnit(1); else if (id === 'armyT') { armyIdx = 1 - armyIdx; beginSelect(); }
+  if (id === 'prev') cycleUnit(-1); else if (id === 'next') cycleUnit(1); else if (id === 'armyT') { armyIdx = nextArmy(1); beginSelect(); }
   else if (id === 'm:act') act(false); else if (id === 'm:alt') act(true);
   else if (id === 'm:spell') { const u = ctrlOf(); if (u && u.spells.length) Sim.selectSpell(u, (u.spellSel + 1) % u.spells.length); }
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:pad') padVisible = !padVisible;
   else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);
-  else if (id === 'm:info') { look = null; selTarget = null; selectMode = true; }
+  else if (id === 'm:info') { selTarget = null; selectMode = true; }
   else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
   else if (id === 'm:formation') { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(army().formation); Sim.setFormation(army(), forms[(i + 1) % forms.length]); }
   else if (id === 'm:pausesel') { SHOW.pauseSel = !SHOW.pauseSel; saveShow(); if (!SHOW.pauseSel) cancelSelect(); }
   else if (id === 'm:dmg') { SHOW.dmg = !SHOW.dmg; saveShow(); } else if (id === 'm:buff') { SHOW.buff = !SHOW.buff; saveShow(); }
   else if (id === 'm:tutorial') { menuOpen = false; selectMode = false; tutorialStep = 0; }
   else if (id === 'm:mode') setMobile(!mobile);
-  else if (id === 'm:tbl') tblOpen = !tblOpen; else if (id === 'm:abil') tblAbility = !tblAbility;
+  else if (id === 'm:abil') tblAbility = !tblAbility;
   else if (id === 'm:auto') S.auto = !S.auto; else if (id === 'm:restart') startBattle(); else if (id === 'm:close') menuOpen = false;
 }
 function mapClick(sx, sy, right) {   // 적을 클릭 = 군단이 그 적을 집중 공격, 아군을 클릭 = 그 캐릭터를 조작, 우클릭 = 집중 공격 해제
@@ -407,9 +421,10 @@ function pos(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX -
 const hitBtn = (x, y) => [...btns].reverse().find(b => b.r ? Math.hypot(x - b.cx, y - b.cy) <= b.r + 6 : x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
 const padOf = id => { const [dx, dy] = id.slice(4).split(',').map(Number); return [dx, dy]; };
 const STICK_R = 70, D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
-const inStickZone = (x, y) => mobile && x >= LEFT_W && x < LEFT_W + VPW * 0.5 && y > TB_H;   // 맹장전 방식: 상태창을 제외한 왼쪽 전장에 플로팅 조이스틱
+const inStickZone = (x, y) => mobile && x >= LEFT_W && x < VW * 0.5 && y > TB_H;   // 맹장전 방식: 상태창을 제외한 왼쪽 전장에 플로팅 조이스틱
 function stickMove(x, y) {   // 손가락 위치 → 노브 위치(반지름 제한) + 8방향
   const dx = x - stick.ox, dy = y - stick.oy, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1; stick.kx = dx * k; stick.ky = dy * k;
+  if (d > 10) stick.moved = true;
   stick.dir = d > 10 ? D8[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8] : null;
 }
 const refreshPad = () => { const v = [...padPtrs.values()]; padDir = stick && stick.dir ? stick.dir : v.length ? v[v.length - 1] : null; };
@@ -425,7 +440,6 @@ cv.addEventListener('pointerdown', e => {
   if (S.events.length) { S.events.shift(); return; }
   if (S.over) { if (T - overAt > 1) startBattle(); return; }
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
-  if (!menuOpen && !b && inMini(p)) { miniPtr = e.pointerId; lookAt(p); return; }   // 미니맵: 누르거나 끌면 그 위치를 잠시 본다
   if (menuOpen) { if (b && /^m:(?!act$|alt$|spell$)/.test(b.id)) uiClick(b.id); return; }
   if (b && b.id.startsWith('order:')) { cancelSelect(); uiClick(b.id); return; }
   if (selectMode && mobile && !b && inStickZone(p.x, p.y)) confirmSelect();   // 모바일: 조이스틱을 잡으면 확정하고 바로 이동
@@ -435,20 +449,27 @@ cv.addEventListener('pointerdown', e => {
     if (!b && inView(p.x, p.y)) { const [wx, wy] = toWorld(p.x, p.y), hit = Sim.unitAt(S, wx, wy); if (hit && hit.team === 'player') pick(hit); else if (hit && hit.team === 'enemy') selTarget = hit; else confirmSelect(); return; }   // 아군을 누르면 그 캐릭터로, 빈 곳·적이면 확정
     confirmSelect();   // 보조키·명령 버튼은 확정하고 그대로 입력
   }
-  if (!b && mobile && inView(p.x, p.y)) { const [wx, wy] = toWorld(p.x, p.y), hit = Sim.unitAt(S, wx, wy); if (hit && hit.team === 'player') { pick(hit); return; } }   // 아군 탭은 조이스틱보다 우선해 조작 장수 변경
-  if (!b && !stick && inStickZone(p.x, p.y)) { stick = { id: e.pointerId, ox: p.x, oy: p.y, kx: 0, ky: 0, dir: null }; stickMove(p.x, p.y); refreshPad(); return; }
+  if (!b && !stick && inStickZone(p.x, p.y)) { stick = { id: e.pointerId, ox: p.x, oy: p.y, kx: 0, ky: 0, dir: null, t0: T, moved: false }; stickMove(p.x, p.y); refreshPad(); return; }
   if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) { padPtrs.set(e.pointerId, [dx, dy]); refreshPad(); } else if (!mobile) act(false); return; }
   if (b) { uiClick(b.id); return; }
   if (inView(p.x, p.y)) { if (mobile && !mapClick(p.x, p.y, false)) act(false); else if (!mobile) mapClick(p.x, p.y, e.button === 2); }
 });
 cv.addEventListener('pointermove', e => {
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
-  if (miniPtr === e.pointerId) { if (mini) lookAt({ x: Math.max(mini.x, Math.min(mini.x + mini.w, p.x)), y: Math.max(mini.y, Math.min(mini.y + mini.h, p.y)) }); return; }
   if (stick && stick.id === e.pointerId) { stickMove(p.x, p.y); refreshPad(); return; }
   if (padPtrs.has(e.pointerId)) { const b = hitBtn(p.x, p.y); if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) padPtrs.set(e.pointerId, [dx, dy]); else padPtrs.delete(e.pointerId); } else padPtrs.delete(e.pointerId); refreshPad(); }   // 패드 위에서 손가락을 미끄러뜨리면 방향 전환
 });
-const endPtr = e => { if (miniPtr === e.pointerId) miniPtr = -1; padPtrs.delete(e.pointerId); if (stick && stick.id === e.pointerId) stick = null; refreshPad(); };
-addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
+function tapInfo(x, y) {   // 가상패드 영역을 끌지 않고 짧게 터치만 하면 그 자리의 정보를 보여준다 (아군=조작 전환, 적=적 정보, 빈 곳=조작 장수 정보)
+  const hit = inView(x, y) ? Sim.unitAt(S, ...toWorld(x, y)) : null;
+  if (hit && hit.team === 'player') pick(hit); else selTarget = hit && hit.team === 'enemy' ? hit : null;
+  selectMode = true;
+}
+const endPtr = (e, cancel) => {
+  padPtrs.delete(e.pointerId);
+  if (stick && stick.id === e.pointerId) { const t = stick; stick = null; if (!cancel && !t.moved && T - t.t0 < 0.4 && state === 'play' && !menuOpen && !S.over && !S.events.length && tutorialStep < 0) tapInfo(t.ox, t.oy); }
+  refreshPad();
+};
+addEventListener('pointerup', e => endPtr(e, false)); addEventListener('pointercancel', e => endPtr(e, true));
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
@@ -465,7 +486,7 @@ addEventListener('keydown', e => {
   if (k === 'Escape' || k === 'F10') { menuOpen = !menuOpen; return; }
   if (menuOpen) return;
   if (k === 'ArrowLeft') cycleUnit(-1); else if (k === 'ArrowRight') cycleUnit(1);
-  else if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'Tab') { armyIdx = 1 - armyIdx; beginSelect(); }
+  else if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'Tab') { armyIdx = nextArmy(k === 'ArrowUp' ? -1 : 1); beginSelect(); }
   else if (k === ' ') act(false); else if (k === 'x') act(true);
   else if (k === '[') setZoom(zoomIdx - 1); else if (k === ']') setZoom(zoomIdx + 1);
   else if (k === 'f') useCommand('charge'); else if (k === 'v') useCommand('stop'); else if (k === 'r') useCommand('retreat'); else if (k === 'b') useCommand('idle');
