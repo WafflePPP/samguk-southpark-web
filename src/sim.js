@@ -204,7 +204,7 @@ function createBattle(seed = 1, opts = {}) {
     squadDefs.forEach((q, squad) => {
       const leader = U[q.leader];
       if (!leader || leader.generic || leader.name.startsWith('적 ') || q.units.filter(k => k === q.leader).length !== 1) throw new Error(d.name + ': 분대장은 이름 있는 장수 1명이어야 함');
-      q.units.forEach(key => members.push({ key, squad }));
+      q.units.forEach((key, index) => members.push({ key, squad, growth: (q.growth || d.growth || [])[index], rosterSlot: (q.rosterSlots || d.rosterSlots || [])[index] }));
     });
     const keys = members.slice(0, ARMY_MAX), forcedReserve = d.team === 'enemy' && !!d.reserve;
     const reserve = d.team === 'enemy' ? forcedReserve || reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
@@ -212,12 +212,13 @@ function createBattle(seed = 1, opts = {}) {
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
     const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
-    keys.forEach(({ key, squad }, i) => {
-      const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
+    keys.forEach(({ key, squad, growth, rosterSlot }, i) => {
+      const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
+      const baseHp = T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
+        hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
+        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false, manual: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isSquadLeader) u.squad.leader = u; if (u.isLeader) A.leader = u;
@@ -251,15 +252,19 @@ function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
 function gainXp(S, u, n) {
   if (!live(u)) return; u.xp += n;
   while (u.xp >= u.lv * 60) {   // 레벨업: 능력치 상승 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
-    u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.atk = Math.round(u.atk * 1.05 * 10) / 10; u.maxMp = Math.round(u.maxMp * 1.05);
+    u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.maxMp = Math.round(u.maxMp * 1.05);
+    for (const stat of ['atk', 'df', 'ad', 'md']) u[stat] = Math.round(u[stat] * 1.05 * 10) / 10;
+    u.aa = Math.min(80, u.aa + 1); u.hr = Math.min(100, u.hr + 1); u.sp = Math.round(u.sp * 1.01 * 10) / 10;
     text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
 }
+const gainCombatXp = (S, u, base) => gainXp(S, u, Math.max(1, Math.round(base * (u.named ? 1.5 : 1))));
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
-  if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else { S.stats.kills++; if (killer && killer.team === 'player') gainXp(S, killer, 18 + u.lv * 6); }
+  if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
+  if (killer && killer.team !== u.team) gainCombatXp(S, killer, 12 + u.lv * 4);
   if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
@@ -282,24 +287,25 @@ function surrender(S, u) {
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
-  const tier = from && from.team !== t.team ? matchup(from.category, t.category) : 0;
-  if (from && from.team !== t.team) dmg *= classMultiplier(from.category, t.category);
+  const opposed = from && from.team !== t.team, tier = opposed ? matchup(from.category, t.category) : 0;
+  if (opposed) dmg *= classMultiplier(from.category, t.category);
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
+  if (opposed) gainCombatXp(S, from, 1);
   t.hitState = tier; t.hitDuration = tier > 0 ? 0.24 : tier < 0 ? 0.48 : 0.35; t.hitT = t.hitDuration;
   t.hitMag = clamp(dmg / (t.maxHp * 0.06), 0.5, 1.6) * (tier > 0 ? 0.65 : tier < 0 ? 1.35 : 1); t.hitAng = from && from !== t ? Math.atan2(t.y - from.y, t.x - from.x) : cur.rnd() * 6.283;
   S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
   if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), tier < 0 ? '#ff9a32' : tier > 0 ? '#999999' : '#ffffff', 'dmg');
   if (t.team === 'enemy' && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= 0.2) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < 0.25) surrender(S, t); }
-  if (t.hp <= 0) die(S, t, from);
+  if (t.hp <= 0) die(S, t, from); else if (opposed) gainCombatXp(S, t, 1);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
   ring(S, x, y, r, col, 0.45);
   for (const e of S.units) if (live(e) && e !== from && (friendly || e.team !== from.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
 }
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
-  if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
-  if (S.rnd() < t.aa / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
+  if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
+  if (S.rnd() < t.aa / 100) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
   hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), t.ad * ftDef(t))) * DMG);
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
