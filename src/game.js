@@ -97,7 +97,7 @@ function startBattle(stage, explore = false) {
   campaign.battle = stage || campaign.battle;
   campaign.explore = explore;
   const armies = stageArmies(campaign.battle).filter(a => !explore || a.team === 'player');
-  S = Sim.createBattle((Date.now() % 100000) + 1, { armies, mapSeed: campaign.battle ? campaign.battle.mapSeed : 7, explore, surrenderSlots: roster.reduce((n, c) => n + c.units.filter(x => !x).length, 0) }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
+  S = Sim.createBattle((Date.now() % 100000) + 1, { armies, mapSeed: campaign.battle ? campaign.battle.mapSeed : 7, explore, attackingTeam: campaign.invasion ? 'enemy' : 'player', surrenderSlots: roster.reduce((n, c) => n + c.units.filter(x => !x).length, 0) }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
   if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: campaign.invasion ? `적 군단이 ${campaign.battle.name}을 침공했습니다!` : `${campaign.battle.stage}지역 ${campaign.battle.name} · 난이도 ${campaign.battle.difficulty} · ${campaign.battle.note}` });
   state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
@@ -193,7 +193,7 @@ function button(id, x, y, w, h, text, on, size = 16) {
 }
 const styleOf = u => u.key !== 'guan' && u.category === 'sword' ? { ...STYLES[u.style], weapon: 'sword' } : STYLES[u.style];
 const stText = u => u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
-const hpCol = p => p > 0.5 ? COLORS.ally : p > 0.25 ? '#ffb04d' : COLORS.danger;
+const hpCol = (p, current = COLORS.ally) => p > 0.3 ? current : p > 0.1 ? '#999999' : COLORS.danger;
 function actionInfo(u, alt = false) {
   const spell = !alt && u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
   const special = u.special && (!alt || u.spells.length) ? SPECIAL[u.special] : null;
@@ -216,9 +216,9 @@ function drawUnit(u) {
   drawBody(ctx, x, y, u.r * 1.15, u.face, styleOf(u), { flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4), bob: u.moving ? Math.abs(Math.sin(T * 9 + u.id)) * 1.5 : 0 });
   ctx.restore();
   const top = y - u.r * 4.4 - (u.style === 'lubu' ? 22 : 0) - (styleOf(u).horse ? 10 : 0), w = u.r * 2.4;
-  if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, ally ? hpCol(u.hp / u.maxHp) : COLORS.danger); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); }
+  if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, hpCol(u.hp / u.maxHp, ally ? COLORS.ally : COLORS.danger)); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); }
   if (mine || other) { ctx.fillStyle = mine ? COLORS.gold : COLORS.ally; ctx.beginPath(); ctx.moveTo(x - 7, top - 14); ctx.lineTo(x + 7, top - 14); ctx.lineTo(x, top - 4); ctx.closePath(); ctx.fill(); }
-  if (u.named || u.isLeader || mine) label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0', 'center');   // 이름 있는 장수는 항상 표기 (아군 금색 · 적 붉은색)
+  if (u.named || u.isLeader || mine) { const current = u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0'; label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, hpCol(u.hp / u.maxHp, current), 'center'); }   // 이름도 HP 30%·10% 구간을 같이 표시
 }
 function drawWorld() {
   ctx.save(); ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
@@ -278,9 +278,9 @@ function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
   const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft)], ['XP', `${u.xp}/${u.lv * 60}`], ['AT', u.atk.toFixed(0)], ['DF', u.df], ['AD', u.ad], ['MD', u.md], ['AA', u.aa + '%'], ['HR', u.hr], ['SP', u.sp], ['상태', stText(u)]];
-  label(u.name, 10, TB_H + 18, 20, COLORS.gold); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
+  label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
-  rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
+  rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
 }
 function drawSpellPanel() {
   const u = ctrlOf(); if (!u || !u.spells.length) return;
@@ -324,10 +324,10 @@ function drawTable() {
     A.units.forEach((u, c) => {
       const x = gx + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
       if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
-      if (!gone && hpRow >= 0) { ctx.fillStyle = 'rgba(79,176,255,.3)'; ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); }
+      if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
       const cells = tblAbility ? [u.name, u.atk.toFixed(0), u.df, u.ad, u.md, u.aa + '%', u.hr, stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(u.ft), u.xp, stText(u)];
-      cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
+      cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
       btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
     });
   });
@@ -372,9 +372,9 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   const w = 262, x = 6, y = 68, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
   const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 22 : 0) + 26 + 14;
   panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.55)');
-  let yy = y + 20; label(u.name, x + 10, yy, 20, COLORS.gold); label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right');
+  let yy = y + 20; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right');
   yy += 24; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver);
-  yy += 18; bar(x + 10, yy, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 22; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, COLORS.silver, 'right');
+  yy += 18; bar(x + 10, yy, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 22; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
   yy += 22; if (u.maxMp) bar(x + 10, yy - 12, w - 20, 7, u.mp / u.maxMp, '#8a6aff'); label('MP', x + 10, yy + 4, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy + 4, fs, COLORS.silver, 'right');
   yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft)), x + 40, yy, fs, u.ft > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${u.lv * 60}`, x + 142, yy, fs, COLORS.silver);
   const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, COLORS.silver); };
@@ -390,9 +390,9 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
 const TERRAIN_NAME = ['평지', '숲', '바위', '물', '여울'], WEAPON_NAME = { glaive: '청룡언월도', halberd: '방천화극', lance: '창', twin: '쌍철극', sword: '검', spear: '창', bow: '활', fan: '부채' };
 function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치 창과 같은 줄 구성. AR·DR·EL+ 는 이 프로토에 없는 능력치라 빈 값으로 둔다
   const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, COLORS.silver); };
-  label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, col); label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
+  label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, hpCol(u.hp / u.maxHp, col)); label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
   const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = WEAPON_NAME[(styleOf(u) || {}).weapon] || '—';
-  label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, COLORS.silver); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(u.hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
+  label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(u.hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
   cell('AT', u.atk.toFixed(0), 0, 1); cell('DF', u.df, 1, 1); cell('AA', u.aa + '%', 2, 1);
   cell('AR', '—', 0, 2); cell('DR', '—', 1, 2); cell('AD', u.ad, 2, 2);
   cell('MD', u.md, 0, 3); cell('FT', Math.round(u.ft), 1, 3); cell('EL+', '----', 2, 3);
@@ -468,7 +468,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.73', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.74', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }

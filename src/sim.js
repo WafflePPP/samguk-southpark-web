@@ -50,6 +50,17 @@ const CLONES = { yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '�
 for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = 1; }   // 복제 장수는 일반 대장 등급 (정예 3배로 두면 독립 군단 9개가 한꺼번에 몰려 자동 전투 승률 0%)
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
+const HERO_DEFAULT = {
+  warrior: { aa: 12, hr: 10, sp: 173, cd: 1, r: 14, mp: 0, range: 0 }, cavalry: { aa: 8, hr: 10, sp: 252, cd: 0.8, r: 15, mp: 0, range: 0 },
+  archer: { aa: 20, hr: 8, sp: 166, cd: 1.3, r: 13, mp: 0, range: 270 }, mage: { aa: 18, hr: 8, sp: 166, cd: 1.4, r: 12, mp: 999, range: 200 },
+  cleric: { aa: 20, hr: 12, sp: 180, cd: 1, r: 12, mp: 999, range: 0 }, shield: { aa: 8, hr: 10, sp: 153, cd: 1.1, r: 14, mp: 0, range: 0 },
+};
+const HERO_STATS = [...STAT5, 'aa', 'hr', 'sp', 'cd', 'r', 'mp', 'range'];
+for (const u of Object.values(U)) if (!u.generic) {
+  STAT5.forEach((f, i) => { if (!Number.isFinite(u[f])) u[f] = CAPTAIN[u.cls][i]; });
+  for (const [f, value] of Object.entries(HERO_DEFAULT[u.cls])) if (!Number.isFinite(u[f])) u[f] = value;
+  if (HERO_STATS.some(f => !Number.isFinite(u[f]))) throw new Error(u.name + ': 누락된 능력치가 있습니다.');
+}
 // 일반 병사만 현재 전투 능력치의 2.5배. 이동·사거리·공격 간격·MP와 장수 등급은 유지한다.
 for (const u of Object.values(U)) if (u.generic) for (const f of [...STAT5, 'aa', 'hr']) u[f] *= 2.5;
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
@@ -163,7 +174,12 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 // ---------- 전투 생성 ----------
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-  const armyDefs = opts.armies || ARMIES;
+  const sourceDefs = opts.armies || ARMIES, teamOrder = { player: 0, enemy: 0 };
+  const armyDefs = opts.attackingTeam ? sourceDefs.map(d => {
+    const n = teamOrder[d.team]++, rank = Math.floor(n / 6), attack = d.team === opts.attackingTeam;
+    const tx = d.team === 'player' ? (attack ? 5 : 14) + rank * 5 : (attack ? 58 : 49) - rank * 5;
+    return { ...d, at: [tx, 4 + (n % 6) * 6], role: attack ? 'attack' : 'defense' };
+  }) : sourceDefs;
   const unique = new Set();
   for (const d of armyDefs) for (const key of d.units) {
     const u = U[key];
@@ -185,7 +201,7 @@ function createBattle(seed = 1, opts = {}) {
     const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' ? reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
     if (d.team === 'enemy' && reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad }, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
