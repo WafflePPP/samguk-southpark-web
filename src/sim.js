@@ -46,7 +46,11 @@ const U = {
 const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };
 const ELITE = { guan: 4, lubu: 4, zhao: 3, huang: 3, dian: 3, diao: 2, kong: 2, hua: 3, jang: 3, xun: 2 };   // 아군 정예 + 적 정예(화웅·장료·순욱)
 const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
-const CLONES = { yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'] };   // 이름만 다른 적 정예 장수
+const CLONES = {
+  yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
+  gong: ['jang', '공손찬'], yuan: ['hua', '원소'], cao: ['hua', '조조'], dong: ['hua', '동탁'], zhanghe: ['hua', '장합'],
+  xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
+};   // 이름만 다른 고유 장수를 스테이지 예비 군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = 1; }   // 복제 장수는 일반 대장 등급 (정예 3배로 두면 독립 군단 9개가 한꺼번에 몰려 자동 전투 승률 0%)
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
@@ -115,18 +119,22 @@ const ARMIES = [
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // ---------- 지형 / 격자 ----------
-function genMap(seed = 7, armies = ARMIES) {
+function genMap(seed = 7, armies = ARMIES, theme = 'riverside') {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const m = new Uint8Array(MW * MH), set = (x, y, t) => { if (x >= 0 && y >= 0 && x < MW && y < MH) m[y * MW + x] = t; };
-  for (let i = 0; i < 22; i++) {   // 숲
+  const forests = theme === 'plains' ? 8 : theme === 'mountain' ? 16 : theme === 'fortress' ? 6 : 22;
+  for (let i = 0; i < forests; i++) {   // 숲
     const cx = 10 + rnd() * 52, cy = rnd() * MH, rx = 2 + rnd() * 4, ry = 2 + rnd() * 3;
     for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 1 && rnd() < 0.9) set(x, y, FOREST);
   }
-  for (let y = 0; y < MH; y++) {   // 강: 세 곳의 여울로만 건널 수 있다
+  if (theme === 'riverside') for (let y = 0; y < MH; y++) {   // 강: 세 곳의 여울로만 건널 수 있다
     const rx = Math.round(28 + 2 * Math.sin(y * 0.35));
     for (let x = rx - 1; x <= rx + 1; x++) set(x, y, (y >= 6 && y <= 11) || (y >= 18 && y <= 23) || (y >= 30 && y <= 34) ? ROAD : WATER);
   }
-  for (let i = 0; i < 40; i++) { const x = 8 + Math.floor(rnd() * 54), y = Math.floor(rnd() * MH); if (m[y * MW + x] === GRASS || m[y * MW + x] === FOREST) set(x, y, ROCK); }
+  if (theme === 'plains') for (let x = 4; x < MW - 4; x++) set(x, 20, ROAD);
+  if (theme === 'fortress') for (const x of [38, 39]) for (let y = 2; y < MH - 2; y++) set(x, y, (y >= 8 && y <= 12) || (y >= 27 && y <= 31) ? ROAD : ROCK);
+  const rocks = theme === 'mountain' ? 130 : theme === 'plains' ? 12 : theme === 'fortress' ? 24 : 40;
+  for (let i = 0; i < rocks; i++) { const x = 8 + Math.floor(rnd() * 54), y = Math.floor(rnd() * MH); if (m[y * MW + x] === GRASS || m[y * MW + x] === FOREST) set(x, y, ROCK); }
   for (const a of armies) for (let y = -4; y <= 4; y++) for (let x = -5; x <= 5; x++) { const tx = a.at[0] + x, ty = a.at[1] + y; if (tx >= 0 && ty >= 0 && tx < MW && ty < MH && m[ty * MW + tx] !== WATER && m[ty * MW + tx] !== ROAD) m[ty * MW + tx] = GRASS; }
   for (let y = 0; y < MH; y++) for (const x of [0, 1, MW - 2, MW - 1]) if (m[y * MW + x] === ROCK) m[y * MW + x] = GRASS;
   return m;
@@ -187,7 +195,7 @@ function createBattle(seed = 1, opts = {}) {
     if (unique.has(u.name)) throw new Error(u.name + ': 고유 장수는 한 명만 편성할 수 있습니다.');
     unique.add(u.name);
   }
-  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
@@ -198,10 +206,11 @@ function createBattle(seed = 1, opts = {}) {
       if (!leader || leader.generic || leader.name.startsWith('적 ') || q.units.filter(k => k === q.leader).length !== 1) throw new Error(d.name + ': 분대장은 이름 있는 장수 1명이어야 함');
       q.units.forEach(key => members.push({ key, squad }));
     });
-    const keys = members.slice(0, ARMY_MAX), reserve = d.team === 'enemy' ? reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
-    if (d.team === 'enemy' && reserve) reserves = true; else if (d.team === 'enemy') enemyField += keys.length;
+    const keys = members.slice(0, ARMY_MAX), forcedReserve = d.team === 'enemy' && !!d.reserve;
+    const reserve = d.team === 'enemy' ? forcedReserve || reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
+    if (d.team === 'enemy' && !forcedReserve) { if (reserve) reserves = true; else enemyField += keys.length; }
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad }, i) => {
       const T = U[key], sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
@@ -561,6 +570,7 @@ function updateProj(S, dt) {
 function enemyAI(S) {
   let field = S.units.filter(u => u.team === 'enemy' && live(u)).length;
   for (const A of S.armies) if (A.team === 'enemy' && A.state === 'reserve') {
+    if (A.stagedReserve && S.t < 20 && !S.armies.some(B => B.team === 'enemy' && B !== A && B.routed)) continue;
     const ready = A.units.filter(u => !u.dead && !u.fled).length; if (!ready || field + ready > ENEMY_FIELD_MAX) continue;
     field += deployArmy(S, A);
   }
