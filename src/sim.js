@@ -164,7 +164,7 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const armyDefs = opts.armies || ARMIES;
-  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs), occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
@@ -185,7 +185,7 @@ function createBattle(seed = 1, opts = {}) {
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), maxHp: T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1), mp: T.mp || 0, maxMp: T.mp || 0, lv: 1, xp: 0, ft: 0, atk: T.atk, df: T.df, ad: T.ad, md: T.md, sp: T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
+        aa: T.aa, hr: T.hr, named: !T.generic && !T.name.startsWith('적 '), originTeam: d.team, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false, manual: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isSquadLeader) u.squad.leader = u; if (u.isLeader) A.leader = u;
@@ -225,15 +225,26 @@ function gainXp(S, u, n) {
 }
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
-  if (u.team === 'player') S.stats.lost++; else { S.stats.kills++; if (killer && killer.team === 'player') gainXp(S, killer, 18 + u.lv * 6); }
+  if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else { S.stats.kills++; if (killer && killer.team === 'player') gainXp(S, killer, 18 + u.lv * 6); }
+  if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
-    dialogue(S, u, u.team === 'player' ? '내 뜻을 이어 전투를 계속하라…' : '내가 여기서 쓰러지다니…');
+    if (u.team === 'enemy') dialogue(S, u, '내가 여기서 쓰러지다니…');
     if (u.team === 'enemy') {
       let fleeing = false; for (const m of u.army.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
       if (fleeing) notice(S, 'enemy', '적 ' + u.army.name + '가 후퇴합니다.');
     }
   }
+}
+function surrender(S, u) {
+  const A = S.armies.find(a => a.team === 'player' && a.units.filter(x => !x.dead).length < 6); if (!A) return false;
+  const old = u.army, oi = old.units.indexOf(u); if (oi >= 0) old.units.splice(oi, 1);
+  if (old.leader === u) { old.leader = null; old.routed = true; }
+  if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); if (u.squad.leader === u) u.squad.leader = null; }
+  const squad = A.squads[0] || (A.squads[0] = { id: 0, leader: null, units: [] });
+  u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.isSquadLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = 0;
+  A.units.push(u); squad.units.push(u); if (A.support) A.state = 'player'; S.surrenderSlots--;
+  dialogue(S, u, '목숨을 살려주십시오. 아군으로 싸우겠습니다!'); return true;
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
@@ -245,6 +256,7 @@ function hurt(S, from, t, dmg) {
   S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
   if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), tier < 0 ? '#ff9a32' : tier > 0 ? '#999999' : '#ffffff', 'dmg');
+  if (t.team === 'enemy' && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= 0.2) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < 0.25) surrender(S, t); }
   if (t.hp <= 0) die(S, t, from);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
@@ -544,7 +556,7 @@ function commanderDialogue(S) {
 function checkEnd(S) {
   const lord = S.armies.find(A => A.team === 'player' && A.units.length)?.leader;
   if (!lord || lord.dead || !S.units.some(u => u.team === 'player' && !u.dead)) S.over = 'lose';
-  else if (!S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
+  else if (!S.explore && !S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
 }
 function step(S, dt) {
   if (S.over) return;
