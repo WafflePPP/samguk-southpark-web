@@ -225,6 +225,8 @@ function gainXp(S, u, n) {
 }
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
+  const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
+  if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else { S.stats.kills++; if (killer && killer.team === 'player') gainXp(S, killer, 18 + u.lv * 6); }
   if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
   if (u.isLeader && !u.army.routed) {
