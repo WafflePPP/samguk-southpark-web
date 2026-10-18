@@ -50,7 +50,7 @@ const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
   gong: ['jang', '공손찬'], yuan: ['hua', '원소'], cao: ['hua', '조조'], dong: ['hua', '동탁'], zhanghe: ['hua', '장합'],
   xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
-};   // 이름만 다른 고유 장수를 스테이지 예비 군단장으로 사용
+};   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) { U[k] = { ...U[src], name }; ELITE[k] = 1; }   // 복제 장수는 일반 대장 등급 (정예 3배로 두면 독립 군단 9개가 한꺼번에 몰려 자동 전투 승률 0%)
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
