@@ -21,9 +21,10 @@ const STAGES = [
   { id: 'luoyang', name: '낙양', stage: 3, difficulty: '상급', note: '대규모 증원', x: 470, y: 545, owner: 'enemy', links: ['tak'], reinforce: 2, mapSeed: 19 },
 ];
 const stageById = id => STAGES.find(s => s.id === id);
-const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy'), BASE_ENEMY_COUNT = BASE_ENEMIES.reduce((n, a) => n + a.units.length, 0);
-const stageEnemyCount = stage => stage.owner === 'player' ? 0 : Math.max(0, BASE_ENEMY_COUNT + BASE_ENEMIES.length * stage.reinforce - Object.values(stage.deadEnemies || {}).reduce((a, b) => a + b, 0));
-const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, destination: null, turn: 1, notice: '북평에서 낙양 원정을 시작한다.' };
+const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy');
+const enemyForces = BASE_ENEMIES.map((army, id) => { const at = id < 4 ? 'tak' : 'luoyang', add = stageById(at).reinforce; return { id, at, active: true, army: { ...army, units: army.units.concat(Array.from({ length: add }, (_, i) => ['esword', 'eshield', 'earcher'][(id + i) % 3])) } }; });
+const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
+const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, turn: 1, notice: '북평에서 낙양 원정을 시작한다.' };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [
@@ -34,7 +35,12 @@ let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select'
 const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
 const corpsName = corps => corps.units[0] ? Sim.U[corps.units[0]].name + ' 군단' : corps.name;
 function rosterError() {
+  const unique = new Set();
+  for (const force of enemyForces.filter(f => f.active)) for (const key of force.army.units) if (namedRosterUnit(key)) {
+    const name = Sim.U[key].name; if (unique.has(name)) return `${name}은 고유 장수라 한 명만 존재할 수 있습니다.`; unique.add(name);
+  }
   for (let army = 0; army < roster.length; army++) {
+    for (const key of roster[army].units) if (namedRosterUnit(key)) { const name = Sim.U[key].name; if (unique.has(name)) return `${name}은 고유 장수라 한 명만 편성할 수 있습니다.`; unique.add(name); }
     if (!namedRosterUnit(roster[army].units[0])) return `${corpsName(roster[army])}의 1분대장은 이름 있는 장수여야 합니다.`;
     for (let start = 6; start < 18; start += 6) {
       const squad = roster[army].units.slice(start, start + 6);
@@ -43,11 +49,11 @@ function rosterError() {
   }
   return '';
 }
+{ const error = rosterError(); if (error) throw new Error(error); }
 function rosterArmies() {
   const active = roster[campaign.corps] || roster[0];
   let i = 0;
-  const armies = Sim.ARMIES.map(a => {
-    if (a.team !== 'player') return a;
+  const armies = Sim.ARMIES.filter(a => a.team === 'player').map(a => {
     const start = i++ * 6, units = namedRosterUnit(active.units[start]) ? active.units.slice(start, start + 6).filter(Boolean) : [];
     return { ...a, name: i + '분대', leader: active.units[start], units, corps: active.id, squadIndex: i - 1 };
   });
@@ -61,14 +67,7 @@ function rosterArmies() {
   return armies;
 }
 function stageArmies(stage) {
-  const armies = rosterArmies(), add = stage ? stage.reinforce : 0;
-  let enemy = 0, losses = { ...(stage && stage.deadEnemies) };
-  return armies.map(a => {
-    if (a.team !== 'enemy') return a;
-    const n = enemy++;
-    const units = a.units.concat(Array.from({ length: add }, (_, i) => ['esword', 'eshield', 'earcher'][(n + i) % 3])).filter(key => losses[key] ? !(losses[key]--) : true);
-    return { ...a, units: units.includes(a.leader) ? units : [] };
-  });
+  return rosterArmies().concat(enemyForces.filter(f => f.active && f.at === stage.id).map(f => ({ ...f.army, units: [...f.army.units], forceId: f.id })));
 }
 let selTarget = null;   // 선택 단계에서 정보를 보고 있는 적 (확정하면 군단이 그 적을 집중 공격)
 let selectMode = false;   // 캐릭터 선택 단계: 전투가 멈추고 능력치 창이 뜬다 (확정하면 재개)
@@ -99,7 +98,7 @@ function startBattle(stage, explore = false) {
   campaign.explore = explore;
   const armies = stageArmies(campaign.battle).filter(a => !explore || a.team === 'player');
   S = Sim.createBattle((Date.now() % 100000) + 1, { armies, mapSeed: campaign.battle ? campaign.battle.mapSeed : 7, explore, surrenderSlots: roster.reduce((n, c) => n + c.units.filter(x => !x).length, 0) }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
-  if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: `${campaign.battle.stage}지역 ${campaign.battle.name} · 난이도 ${campaign.battle.difficulty} · ${campaign.battle.note}` });
+  if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: campaign.invasion ? `적 군단이 ${campaign.battle.name}을 침공했습니다!` : `${campaign.battle.stage}지역 ${campaign.battle.name} · 난이도 ${campaign.battle.difficulty} · ${campaign.battle.note}` });
   state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
 }
@@ -116,6 +115,16 @@ function moveCampaign(id) {
   campaign.destination = campaign.destination === next.id ? null : next.id;
   campaign.notice = campaign.destination ? `${next.name}을 목적지로 선택했다. 턴 종료 후 이동 군단을 선택하세요.` : `${next.name} 목적지 선택을 취소했다.`;
 }
+function advanceEnemyForces() {
+  for (const force of enemyForces) if (force.active) { const path = route(force.at, 'beiping'); if (path.length > 1) force.at = path[1]; }
+  for (const stage of STAGES) {
+    if (!enemyForces.some(f => f.active && f.at === stage.id)) continue;
+    const defender = roster.findIndex(c => c.at === stage.id && c.units.some(Boolean));
+    if (stage.owner === 'player') stage.owner = 'enemy';
+    if (defender >= 0) return { stage, index: defender, from: stage.id, invasion: true };
+  }
+  return null;
+}
 function endCampaignTurn() {
   campaign.turn++; let encounter = null;
   roster.forEach((corps, index) => {
@@ -123,7 +132,8 @@ function endCampaignTurn() {
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
     const stage = stageById(corps.at); if (!encounter && stage.owner === 'enemy') encounter = { stage, index, from };
   });
-  if (encounter) { campaign.corps = encounter.index; campaign.at = encounter.stage.id; campaign.from = encounter.from; campaign.notice = `${encounter.stage.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(encounter.stage); }
+  if (!encounter) encounter = advanceEnemyForces();
+  if (encounter) { campaign.corps = encounter.index; campaign.at = encounter.stage.id; campaign.from = encounter.from; campaign.invasion = !!encounter.invasion; campaign.notice = campaign.invasion ? `적 군단이 ${encounter.stage.name}을 침공했다.` : `${encounter.stage.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(encounter.stage); }
   else { campaign.at = roster[campaign.corps].at; campaign.notice = `${campaign.turn}턴 이동을 완료했다.`; }
 }
 function exploreCampaign() {
@@ -135,18 +145,21 @@ function applyBattleResults() {
   for (const u of S.units.filter(x => x.dead && x.originTeam === 'player')) {
     const corps = roster.find(c => c.id === u.army.corps); if (!corps) continue; const start = u.army.squadIndex * 6, slot = corps.units.slice(start, start + 6).indexOf(u.key); if (slot >= 0) corps.units[start + slot] = null;
   }
-  const losses = campaign.battle.deadEnemies || (campaign.battle.deadEnemies = {});
-  for (const u of S.units.filter(x => x.originTeam === 'enemy' && (x.dead || x.team === 'player'))) losses[u.key] = (losses[u.key] || 0) + 1;
+  for (const u of S.units.filter(x => x.originTeam === 'enemy' && (x.dead || x.team === 'player'))) { const force = enemyForces.find(f => f.id === u.forceId); if (!force) continue; const slot = force.army.units.indexOf(u.key); if (slot >= 0) force.army.units.splice(slot, 1); }
+  for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) force.active = false;
   for (const u of S.units.filter(x => !x.dead && x.originTeam === 'enemy' && x.team === 'player')) {
     const corps = roster.find(c => c.id === u.army.corps) || roster[campaign.corps], slot = corps.units.findIndex((x, i) => !x && i % 6); if (slot >= 0) corps.units[slot] = u.key;
   }
 }
 function finishBattle() {
   applyBattleResults(); const active = roster[campaign.corps];
-  if (S && S.over === 'win' && campaign.battle) { campaign.battle.owner = 'player'; campaign.notice = `${campaign.battle.name}을 점령했다.`; }
+  if (S && S.over === 'win' && campaign.battle) {
+    for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id)) { const path = route(force.at, 'luoyang'); if (path.length > 1) force.at = path[1]; else force.active = false; }
+    campaign.battle.owner = 'player'; campaign.notice = `${campaign.battle.name}을 점령했다.`;
+  }
   else if (campaign.explore) campaign.notice = `${campaign.battle.name} 탐색을 마쳤다.`;
   else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.from) active.at = campaign.from; }
-  campaign.at = active.at; campaign.from = null; campaign.battle = null; campaign.explore = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false;
+  campaign.at = active.at; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false;
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
@@ -455,7 +468,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.72', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.73', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
