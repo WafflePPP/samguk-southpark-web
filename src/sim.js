@@ -402,6 +402,7 @@ function nearestEnemy(S, u, maxD) {
 }
 function inReach(u, t) { return u.range > 0 ? Math.hypot((u.tx - t.tx) * TILE, (u.ty - t.ty) * TILE) <= u.range : cheb(u, t) <= 1; }   // 근접 = 인접한 8칸
 function engage(S, u, t, canMove) {
+  if (!t || !live(t) || t.team === u.team) return;
   if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
   if (!canMove) return;
   if (u.range > 0) { stepToward(S, u, t.tx, t.ty); return; }
@@ -499,7 +500,7 @@ function updateUnit(S, u, dt) {
     if (o.type !== 'stop') { const c = u.army.ctrl, a = c && c !== u && live(c) ? c : u.army.leader; if (a && a !== u && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); }
     return;
   }
-  if (o.type === 'attack') { if (!o.target || !live(o.target)) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
+  if (o.type === 'attack') { if (!o.target || !live(o.target) || o.target.team === u.team) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     if (!o.tgt || !live(o.tgt) || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (!o.tgt || !live(o.tgt) || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
