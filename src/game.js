@@ -202,16 +202,26 @@ function advanceEnemyForces() {
     campaign.intel.push({ text: note, mode: d.mode, force: force.army.name, power: d.mine, from, to: force.at });
     if (from !== force.at) campaign.movement.push({ text: note, name: `적 ${force.army.name}`, commander: Sim.U[force.army.leader] ? Sim.U[force.army.leader].name : force.army.name, from, to: force.at, team: 'enemy' });
   }
-  for (const stage of STAGES) {
-    if (!enemyForces.some(f => f.active && f.at === stage.id)) continue;
-    if (stage.owner !== 'player') continue;
-    const responders = roster.map((c, index) => ({ c, index })).filter(({ c }) => c.units.some(Boolean) && (c.at === stage.id || stage.links.includes(c.at))).map(({ index }) => index);
-    if (responders.length) return { stage, responders, invasion: true };
-    stage.owner = 'enemy'; if (stage.id === 'beiping') { defeatCampaign('북평이 함락되어 원정에 패배했습니다.'); return { defeat: true }; }
-  }
-  return null;
 }
 const intelSummary = () => { const n = {}; for (const i of campaign.intel || []) n[i.mode] = (n[i.mode] || 0) + 1; const t = Object.entries(n).map(([k, v]) => `${k} ${v}`).join('·'); return t ? ` 적 동향: ${t}` : ''; };
+function movementEncounter(move) {
+  const stage = stageById(move.to); if (!stage) return null;
+  if (move.team === 'player') {
+    if (stage.owner !== 'enemy') return null;
+    if (!enemyForces.some(f => f.active && f.at === stage.id)) return { stage, invasion: false, capture: true };
+    const corps = roster[move.corpsIndex]; return corps && corps.units.some(Boolean) ? { stage, responders: [move.corpsIndex], invasion: false, from: move.from, moverIndex: move.corpsIndex } : null;
+  }
+  if (stage.owner !== 'player' || !enemyForces.some(f => f.active && f.at === stage.id)) return null;
+  const responders = roster.map((c, index) => ({ c, index })).filter(({ c }) => c.units.some(Boolean) && (c.at === stage.id || stage.links.includes(c.at))).map(({ index }) => index);
+  if (!responders.length) return { stage, responders, invasion: true, from: move.from, unopposed: true };
+  return { stage, responders, invasion: true, from: move.from };
+}
+function finishMovementStep() {
+  campaign.pendingEncounter = null; campaign.responsePage = 0;
+  if (campaign.movementPage < campaign.movement.length - 1) campaign.movementPage++;
+  else { campaign.movement = []; campaign.movementPage = 0; continueCampaignTurn(); }
+  saveCampaign();
+}
 function continueCampaignTurn() {
   const encounter = campaign.pendingEncounter; campaign.pendingEncounter = null;
   if (!encounter) { campaign.at = roster[campaign.corps].at; campaign.destination = roster[campaign.corps].target; campaign.notice = `${campaign.turn}턴 이동을 완료했다.${intelSummary()}`; saveCampaign(); return; }
@@ -219,14 +229,13 @@ function continueCampaignTurn() {
   campaign.corps = encounter.index; campaign.at = encounter.stage.id; campaign.from = encounter.from; campaign.destination = roster[encounter.index].target; campaign.invasion = false; campaign.notice = `${encounter.stage.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(encounter.stage);
 }
 function endCampaignTurn() {
-  campaign.turn++; campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; let encounter = null;
+  campaign.turn++; campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null;
   roster.forEach((corps, index) => {
     const from = corps.at;
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
-    if (from !== corps.at) campaign.movement.push({ text: `${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name} · 1턴 이동`, name: corpsName(corps), commander: corps.units[0] && Sim.U[corps.units[0]] ? Sim.U[corps.units[0]].name : corpsName(corps), from, to: corps.at, team: 'player' });
-    const stage = stageById(corps.at); if (!encounter && stage.owner === 'enemy') encounter = { stage, index, from };
+    if (from !== corps.at) campaign.movement.push({ text: `${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name} · 1턴 이동`, name: corpsName(corps), commander: corps.units[0] && Sim.U[corps.units[0]] ? Sim.U[corps.units[0]].name : corpsName(corps), from, to: corps.at, team: 'player', corpsIndex: index });
   });
-  const invasion = advanceEnemyForces(); if (invasion && invasion.defeat) return; campaign.pendingEncounter = invasion || encounter; saveCampaign();
+  advanceEnemyForces(); saveCampaign();
   if (!campaign.movement.length) continueCampaignTurn();
 }
 function exploreCampaign() {
@@ -260,7 +269,7 @@ function applyBattleResults() {
   }
 }
 function finishBattle() {
-  applyBattleResults(); const active = roster[campaign.corps], lostBeiping = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === 'beiping';
+  const turnEncounter = campaign.pendingEncounter; applyBattleResults(); const active = roster[campaign.corps], lostBeiping = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === 'beiping';
   const routed = new Set(S ? S.armies.filter(A => A.team === 'enemy' && A.routed).map(A => A.forceId) : []);
   for (const force of enemyForces.filter(f => f.active && routed.has(f.id) && campaign.battle && f.at === campaign.battle.id)) {
     const fallback = route(force.at, 'luoyang'), back = force.prevAt && stageById(force.prevAt) ? force.prevAt : fallback[1]; if (back) force.at = back; else force.active = false; force.prevAt = null;
@@ -273,7 +282,7 @@ function finishBattle() {
   else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.invasion && campaign.battle) campaign.battle.owner = 'enemy'; if (campaign.from) active.at = campaign.from; }
   if (lostBeiping) { defeatCampaign('북평 방어에 실패하여 원정에 패배했습니다.'); return; }
   campaign.at = active.at; campaign.destination = active.target; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false;
-  saveCampaign();
+  if (turnEncounter) finishMovementStep(); else saveCampaign();
 }
 const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
@@ -582,7 +591,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.95', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.96', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -645,28 +654,26 @@ function drawStageMap() {
   label(campaign.notice, 1130, 654, 13, COLORS.silver, 'center');
   label('이동 지정 → 저장 → 턴 종료', 1130, 678, 12, COLORS.goldSel, 'center');
   if (moveSelectOpen) drawMoveSelect();
-  if (campaign.movement.length) drawMovementNotice();
-  else if (campaign.pendingEncounter && campaign.pendingEncounter.invasion) drawResponseSelect();
+  if (campaign.pendingEncounter) drawResponseSelect();
+  else if (campaign.movement.length) drawMovementNotice();
   if (saveSlotMode) drawSaveSlots();
 }
 function drawMovementNotice() {
   const x = 10, y = 10, w = 420, h = 116, pages = campaign.movement.length, move = campaign.movement[campaign.movementPage];
-  panel(x, y, w, h, move.team === 'enemy' ? COLORS.danger : COLORS.gold, 3, 'rgba(8,20,25,.96)'); label(`군단 이동 완료 · ${campaign.movementPage + 1}/${pages}`, x + w / 2, y + 28, 21, move.team === 'enemy' ? '#ff9a7d' : COLORS.gold, 'center');
+  const encounter = movementEncounter(move), event = encounter ? encounter.capture ? '점령 발생' : move.team === 'enemy' ? '요격 발생' : '공격 발생' : '군단 이동 완료'; panel(x, y, w, h, move.team === 'enemy' ? COLORS.danger : COLORS.gold, 3, 'rgba(8,20,25,.96)'); label(`${event} · ${campaign.movementPage + 1}/${pages}`, x + w / 2, y + 28, 21, move.team === 'enemy' ? '#ff9a7d' : COLORS.gold, 'center');
   label(move.text, x + w / 2, y + 60, 14, COLORS.silver, 'center');
-  button('campaign:movement:prev', x + 14, y + h - 38, 64, 30, '◀', false, 16);
   button('campaign:movement:close', x + w / 2 - 66, y + h - 38, 132, 30, campaign.movementPage < pages - 1 ? '다음 군단' : campaign.pendingEncounter ? '계속' : '확인', true, 14);
-  button('campaign:movement:next', x + w - 78, y + h - 38, 64, 30, '▶', false, 16);
 }
 function drawResponseSelect() {
   const encounter = campaign.pendingEncounter, pageSize = 8, pages = Math.ceil(encounter.responders.length / pageSize), shown = encounter.responders.slice(campaign.responsePage * pageSize, campaign.responsePage * pageSize + pageSize);
   ctx.fillStyle = 'rgba(10,12,20,.7)'; ctx.fillRect(0, 0, VW, VH);
   const x = 300, y = 110, w = 680, h = 500; panel(x, y, w, h, COLORS.danger, 3, 'rgba(8,20,25,.98)');
-  label(`${encounter.stage.name} 침공 · 대응 군단 선택`, x + w / 2, y + 42, 26, '#ffb06a', 'center');
-  label(`침공 적 전투력 ⚔${enemyPowerAt(encounter.stage)} · 대응 가능 아군 ⚔${playerPowerNear(encounter.stage)}`, x + w / 2, y + 92, 15, COLORS.goldSel, 'center');
-  label('같은 도시 또는 연결된 도시의 군단이 대응할 수 있습니다.', x + w / 2, y + 76, 16, COLORS.silver, 'center');
+  label(`${encounter.stage.name} ${encounter.invasion ? '요격' : '공격'} · 대응 군단 선택`, x + w / 2, y + 42, 26, '#ffb06a', 'center');
+  label(`적 전투력 ⚔${enemyPowerAt(encounter.stage)} · 대응 가능 아군 ⚔${encounter.responders.reduce((n, i) => n + corpsPow(roster[i]), 0)}`, x + w / 2, y + 92, 15, COLORS.goldSel, 'center');
+  label(encounter.invasion ? '같은 도시 또는 연결된 도시의 군단이 요격할 수 있습니다.' : '도착한 군단으로 공격을 시작합니다.', x + w / 2, y + 76, 16, COLORS.silver, 'center');
   shown.forEach((index, row) => { const corps = roster[index]; button(`campaign:response:${index}`, x + 40, y + 102 + row * 42, w - 80, 36, `${corpsName(corps)} · ${stageById(corps.at).name} · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, false, 16); });
   button('campaign:response:prev', x + 40, y + h - 50, 90, 36, '◀', false, 18);
-  button('campaign:response:abandon', x + w / 2 - 90, y + h - 50, 180, 36, '방어 포기', false, 16);
+  button('campaign:response:abandon', x + w / 2 - 90, y + h - 50, 180, 36, encounter.invasion ? '방어 포기' : '공격 포기', false, 16);
   button('campaign:response:next', x + w - 130, y + h - 50, 90, 36, '▶', false, 18);
   label(`${campaign.responsePage + 1}/${pages}`, x + w - 150, y + 44, 15, COLORS.silver, 'right');
 }
@@ -806,13 +813,12 @@ function uiClick(id) {
     return;
   }
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
-  if (id === 'campaign:movement:prev' || id === 'campaign:movement:next') { const pages = campaign.movement.length, d = id.endsWith('next') ? 1 : -1; campaign.movementPage = Math.max(0, Math.min(pages - 1, campaign.movementPage + d)); return; }
-  if (id === 'campaign:movement:close') { const pages = campaign.movement.length; if (campaign.movementPage < pages - 1) { campaign.movementPage++; return; } campaign.movement = []; campaign.movementPage = 0; continueCampaignTurn(); return; }
+  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.`; finishMovementStep(); return; } if (encounter && encounter.unopposed) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === 'beiping') { defeatCampaign('북평이 함락되어 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name}이 무방비로 함락되었습니다.`; finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = `${encounter.stage.name}에서 ${encounter.invasion ? '요격' : '공격'}할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
   if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / 8), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
-  if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; encounter.stage.owner = 'enemy'; campaign.pendingEncounter = null; campaign.responsePage = 0; if (encounter.stage.id === 'beiping') { defeatCampaign('북평 방어를 포기하여 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name} 방어를 포기했다.`; saveCampaign(); return; }
+  if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; if (encounter.invasion) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === 'beiping') { defeatCampaign('북평 방어를 포기하여 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name} 방어를 포기했다.`; } else { const mover = roster[encounter.moverIndex]; if (mover) mover.at = encounter.from; campaign.notice = `${encounter.stage.name} 공격을 포기하고 철수했다.`; } finishMovementStep(); return; }
   if (/^campaign:response:\d+$/.test(id)) {
     const encounter = campaign.pendingEncounter, index = +id.slice(18), corps = roster[index]; if (!encounter || !encounter.responders.includes(index) || !corps) return;
-    const from = corps.at; corps.at = encounter.stage.id; corps.target = null; campaign.corps = index; campaign.at = encounter.stage.id; campaign.from = from; campaign.destination = null; campaign.invasion = true; campaign.pendingEncounter = null; campaign.responsePage = 0; campaign.notice = `${corpsName(corps)}이 ${encounter.stage.name} 방어에 나선다.`; startBattle(encounter.stage); return;
+    const from = encounter.invasion || index !== encounter.moverIndex ? corps.at : encounter.from; corps.at = encounter.stage.id; campaign.corps = index; campaign.at = encounter.stage.id; campaign.from = from; campaign.destination = corps.target; campaign.invasion = encounter.invasion; campaign.responsePage = 0; campaign.notice = `${corpsName(corps)}이 ${encounter.stage.name} ${encounter.invasion ? '요격' : '공격'}에 나선다.`; startBattle(encounter.stage); return;
   }
   if (id === 'campaign:move') { moveSelectOpen = true; moveMode = 'corps'; movePage = Math.floor(campaign.corps / 8); campaign.notice = '이동할 군단을 선택하세요.'; return; }
   if (id === 'campaign:move:close') { moveSelectOpen = false; moveMode = 'corps'; return; }
@@ -901,7 +907,7 @@ cv.addEventListener('pointerdown', e => {
   const p = pos(e), b = hitBtn(p.x, p.y); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
   if (state === 'title') { if (mobile) goFullscreen(); if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); } else if (b && b.id === 'title:new') saveSlotMode = 'new'; else if (b && b.id === 'title:load') saveSlotMode = 'load'; return; }
-  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter && campaign.pendingEncounter.invasion; if (state !== 'map' || (campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : response ? b && b.id.startsWith('campaign:response:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
+  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (response ? b && b.id.startsWith('campaign:response:') : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { S.events.shift(); return; }
   if (S.over) { if (T - overAt > 1) finishBattle(); return; }
