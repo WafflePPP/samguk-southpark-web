@@ -6,8 +6,8 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
-const SOLDIER_HP = 0.5;   // 일반 병사(generic) 체력 배율 — 장수는 그대로
-const FRONTLINE_HP = 1.5; // 보병·방패병은 기존 일반 병사 체력의 3배
+const SOLDIER_HP = 3.5;   // 일반 병사(generic) 최종 체력 ×7 — 장수는 그대로
+const FRONTLINE_HP = 10.5; // 보병·방패병도 기존 비율(일반 병사의 3배)을 유지하며 ×7
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
