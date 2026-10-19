@@ -118,6 +118,30 @@ const ARMIES = [
   { team: 'player', name: '궁병대', at: [5, 11], leader: 'huang', units: ['huang', 'archer', 'archer', 'archer', 'archer', 'archer'] },   // 아군 3부대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
+// 병종별 기본 최대 체력. 일반 병사는 병종 기준 그대로, 이름 있는 장수·일반 대장은 같은 병종 병사의 1.5배 이상으로 보정한다.
+function baseMaxHp(key, team) {
+  const T = U[key], frontline = ['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key), ownHp = T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1);
+  const peerKey = (team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey];
+  const peerHp = peer && peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP);
+  return T.generic || !peer ? ownHp : Math.max(ownHp * 1.5, peerHp * 1.5);
+}
+
+// ---------- 전투력 ----------
+// 한 유닛의 능력치를 가중합해 하나의 수로 환산한다 (체력 100당 1, 공격·방어·명중 계열은 반영, 이동 속도는 약하게). 군단 전투력은 소속 유닛 전투력의 합.
+// 장수는 일반 병사의 약 3~10배가 되도록 능력치가 설계돼 있으므로 환산값도 그 비율을 따른다.
+const POWER_W = { maxHp: 0.01, atk: 1, df: 1, ad: 0.5, md: 1.5, aa: 0.5, hr: 1, sp: 0.1 };
+const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0));
+// 전투 전(원정 지도)에도 쓰도록 병종 키와 저장된 성장치(growth)만으로 능력치를 만든다.
+function unitStats(key, team = 'player', growth = null) {
+  const T = U[key], G = growth || {};
+  return { maxHp: G.maxHp ?? baseMaxHp(key, team), atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, sp: G.sp ?? T.sp };
+}
+const unitPower = (key, team = 'player', growth = null) => statPower(unitStats(key, team, growth));
+// keys: 병종 키 배열(빈 칸은 null/undefined), growth: 같은 순서의 성장치 배열(선택)
+const corpsPower = (keys, team = 'player', growth = []) => keys.reduce((n, k, i) => n + (k ? unitPower(k, team, growth[i]) : 0), 0);
+// 전투 중 군단의 현재 전투력: 살아 있는 유닛의 현재 능력치 기준 (체력은 현재값)
+const battlePower = A => A.units.filter(u => !u.dead && !u.fled).reduce((n, u) => n + statPower({ ...u, maxHp: u.hp }), 0);
+
 // ---------- 지형 / 격자 ----------
 function genMap(seed = 7, armies = ARMIES, theme = 'riverside', wideRiver = false) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -219,9 +243,7 @@ function createBattle(seed = 1, opts = {}) {
     keys.forEach(({ key, squad, growth, rosterSlot }, i) => {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
-      const frontline = ['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key), ownHp = T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1);
-      const peerKey = (d.team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey], peerHp = peer && peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP);
-      const baseHp = T.generic || !peer ? ownHp : Math.max(ownHp * 1.5, peerHp * 1.5);
+      const baseHp = baseMaxHp(key, d.team);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
@@ -718,6 +740,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
