@@ -52,16 +52,19 @@ const roster = [
   { id: 1, name: '신규 군단 1', at: 'beiping', target: null, units: Sim.ARMIES.filter(a => a.team === 'player').flatMap(a => a.units), growth: Array(18).fill(null) },
   { id: 2, name: '신규 군단 2', at: 'beiping', target: null, units: ['kong', 'diao', 'mage', 'mage', 'sword', 'shield', ...Array(12).fill(null)], growth: Array(18).fill(null) },
 ];
-const SAVE_KEY = 'sgsp-campaign-v1', INITIAL_CAMPAIGN = JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster });
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_SLOTS = 3, INITIAL_CAMPAIGN = JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster });
+let activeSaveSlot = 1, saveSlotMode = null;
+const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function resetCampaignData() {
   const data = JSON.parse(INITIAL_CAMPAIGN); STAGES.forEach((s, i) => s.owner = data.owners[i]); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
   Object.assign(campaign, { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, notice: '북평에서 낙양 원정을 시작한다.' });
 }
-function saveCampaign() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster, campaign: { ...campaign, battle: campaign.battle && campaign.battle.id, pendingEncounter: campaign.pendingEncounter && { ...campaign.pendingEncounter, stage: campaign.pendingEncounter.stage.id } } })); } catch (e) { /* 저장소를 못 쓰면 현재 플레이는 계속한다 */ }
+function saveCampaign(slot = activeSaveSlot) {
+  activeSaveSlot = slot;
+  try { localStorage.setItem(saveKey(slot), JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster, campaign: { ...campaign, battle: campaign.battle && campaign.battle.id, pendingEncounter: campaign.pendingEncounter && { ...campaign.pendingEncounter, stage: campaign.pendingEncounter.stage.id } } })); } catch (e) { /* 저장소를 못 쓰면 현재 플레이는 계속한다 */ }
 }
-function readCampaign() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
-function hasCampaign() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
+function readCampaign(slot = activeSaveSlot) { try { return JSON.parse(localStorage.getItem(saveKey(slot)) || (slot === 1 ? localStorage.getItem(SAVE_KEY) : '') || 'null'); } catch (e) { return null; } }
+function hasCampaign(slot = null) { try { return slot ? !!(localStorage.getItem(saveKey(slot)) || slot === 1 && localStorage.getItem(SAVE_KEY)) : Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).some(hasCampaign); } catch (e) { return false; } }
 function restoreCampaign(data) {
   if (!data || !Array.isArray(data.owners) || data.owners.length !== STAGES.length || !Array.isArray(data.enemyForces) || !Array.isArray(data.roster) || !data.roster.length || !data.campaign || data.roster.some(c => !stageById(c.at) || !Array.isArray(c.units)) || data.enemyForces.some(f => !stageById(f.at) || !f.army)) return false;
   const battle = data.campaign.battle && stageById(data.campaign.battle), pendingStage = data.campaign.pendingEncounter && stageById(data.campaign.pendingEncounter.stage); if (data.campaign.battle && !battle || data.campaign.pendingEncounter && !pendingStage) return false;
@@ -69,7 +72,7 @@ function restoreCampaign(data) {
   Object.assign(campaign, data.campaign); campaign.corps = Math.max(0, Math.min(roster.length - 1, campaign.corps || 0)); campaign.battle = battle; if (campaign.pendingEncounter) campaign.pendingEncounter.stage = pendingStage;
   return true;
 }
-function defeatCampaign(message) { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 무시 */ } S = null; state = 'title'; campaign.battle = null; moveSelectOpen = false; titleNotice = message; }
+function defeatCampaign(message) { try { localStorage.removeItem(saveKey(activeSaveSlot)); if (activeSaveSlot === 1) localStorage.removeItem(SAVE_KEY); } catch (e) { /* 무시 */ } S = null; state = 'title'; campaign.battle = null; moveSelectOpen = false; saveSlotMode = null; titleNotice = message; }
 let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, moveSelectOpen = false, moveMode = 'corps', movePage = 0;
 const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
 const corpsName = corps => corps.units[0] ? Sim.U[corps.units[0]].name + ' 군단' : corps.name;
@@ -147,8 +150,9 @@ function startCampaign() {
   state = 'map'; S = null; campaign.battle = null; moveSelectOpen = false; moveMode = 'corps'; campaign.notice = '이동 버튼에서 군단과 이동할 도시를 선택하세요.';
 }
 function startNewGame() { resetCampaignData(); titleNotice = ''; startCampaign(); saveCampaign(); }
-function loadGame() {
-  const data = readCampaign(); if (!restoreCampaign(data)) { if (state === 'title') titleNotice = '불러올 저장 데이터가 없습니다.'; else campaign.notice = '불러올 저장 데이터가 없습니다.'; return false; }
+function loadGame(slot = activeSaveSlot) {
+  const data = readCampaign(slot); if (!restoreCampaign(data)) { if (state === 'title') titleNotice = `${slot}번 슬롯에 불러올 데이터가 없습니다.`; else campaign.notice = `${slot}번 슬롯에 불러올 데이터가 없습니다.`; return false; }
+  activeSaveSlot = slot;
   const battle = campaign.battle, explore = campaign.explore, notice = campaign.notice; titleNotice = '';
   if (battle) startBattle(battle, explore); else { startCampaign(); campaign.notice = notice || `${campaign.turn}턴 원정을 불러왔습니다.`; }
   return true;
@@ -561,10 +565,20 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.89', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.90', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
+  if (saveSlotMode) drawSaveSlots();
+}
+function drawSaveSlots() {
+  const title = saveSlotMode === 'new' ? '새 게임 슬롯 선택' : saveSlotMode === 'save' ? '저장 슬롯 선택' : '불러오기 슬롯 선택';
+  panel(390, 145, 500, 370, COLORS.gold, 3, 'rgba(8,20,25,.97)'); label(title, 640, 182, 25, COLORS.gold, 'center');
+  for (let slot = 1; slot <= SAVE_SLOTS; slot++) {
+    const data = readCampaign(slot), saved = data && data.campaign, stage = saved && stageById(data.campaign.at);
+    button(`save-slot:${slot}`, 430, 215 + (slot - 1) * 70, 420, 54, saved ? `${slot}번 · ${data.campaign.turn || 1}턴 · ${stage ? stage.name : '원정'}` : `${slot}번 · 비어 있음`, slot === activeSaveSlot, 18);
+  }
+  button('save-slot:close', 540, 440, 200, 44, '닫기', false, 17);
 }
 function drawArmyFlag(x, y, name, col) {
   ctx.strokeStyle = '#e8e1c8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.lineTo(x, y - 24); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - 24); ctx.lineTo(x + 30, y - 15); ctx.lineTo(x, y - 6); ctx.closePath(); ctx.fill(); label(name, x + 15, y - 35, 13, col, 'center');
@@ -614,6 +628,7 @@ function drawStageMap() {
   if (moveSelectOpen) drawMoveSelect();
   if (campaign.movement.length) drawMovementNotice();
   else if (campaign.pendingEncounter && campaign.pendingEncounter.invasion) drawResponseSelect();
+  if (saveSlotMode) drawSaveSlots();
 }
 function drawMovementNotice() {
   const x = 10, y = 10, w = 420, h = 116, pages = campaign.movement.length, move = campaign.movement[campaign.movementPage];
@@ -762,8 +777,16 @@ function pickRosterUnit(side, slot) {
   campaign.notice = '군단 간 편성을 교환했습니다. 첫 칸의 군단장을 확인하세요.';
 }
 function uiClick(id) {
-  if (id === 'campaign:save') { campaign.notice = `${campaign.turn}턴 원정을 저장했습니다.`; saveCampaign(); return; }
-  if (id === 'campaign:load') { if (loadGame() && state === 'map') campaign.notice = `${campaign.turn}턴 원정을 불러왔습니다.`; return; }
+  if (id === 'campaign:save') { saveSlotMode = 'save'; return; }
+  if (id === 'campaign:load') { saveSlotMode = 'load'; return; }
+  if (id === 'save-slot:close') { saveSlotMode = null; return; }
+  if (/^save-slot:[1-3]$/.test(id)) {
+    const slot = +id.slice(10), mode = saveSlotMode; saveSlotMode = null;
+    if (mode === 'new') { activeSaveSlot = slot; startNewGame(); }
+    else if (mode === 'save') { campaign.notice = `${slot}번 슬롯에 ${campaign.turn}턴 원정을 저장했습니다.`; saveCampaign(slot); }
+    else if (mode === 'load' && loadGame(slot) && state === 'map') campaign.notice = `${slot}번 슬롯의 ${campaign.turn}턴 원정을 불러왔습니다.`;
+    return;
+  }
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
   if (id === 'campaign:movement:prev' || id === 'campaign:movement:next') { const pages = campaign.movement.length, d = id.endsWith('next') ? 1 : -1; campaign.movementPage = Math.max(0, Math.min(pages - 1, campaign.movementPage + d)); return; }
   if (id === 'campaign:movement:close') { const pages = campaign.movement.length; if (campaign.movementPage < pages - 1) { campaign.movementPage++; return; } campaign.movement = []; campaign.movementPage = 0; continueCampaignTurn(); return; }
@@ -859,8 +882,8 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
   const p = pos(e), b = hitBtn(p.x, p.y); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
-  if (state === 'title') { if (mobile) goFullscreen(); if (b && b.id === 'title:new') startNewGame(); else if (b && b.id === 'title:load') loadGame(); return; }
-  if (state === 'map' || state === 'roster') { const response = campaign.pendingEncounter && campaign.pendingEncounter.invasion; if (state !== 'map' || (campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : response ? b && b.id.startsWith('campaign:response:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
+  if (state === 'title') { if (mobile) goFullscreen(); if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); } else if (b && b.id === 'title:new') saveSlotMode = 'new'; else if (b && b.id === 'title:load') saveSlotMode = 'load'; return; }
+  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter && campaign.pendingEncounter.invasion; if (state !== 'map' || (campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : response ? b && b.id.startsWith('campaign:response:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { S.events.shift(); return; }
   if (S.over) { if (T - overAt > 1) finishBattle(); return; }
@@ -899,8 +922,8 @@ addEventListener('pointerup', e => endPtr(e, false)); addEventListener('pointerc
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
-  if (state === 'title') { if (e.key === 'Enter' || e.key.toLowerCase() === 'n') startNewGame(); else if (e.key.toLowerCase() === 'l') loadGame(); return; }
-  if (state === 'map') { if (moveSelectOpen && e.key === 'Escape') moveSelectOpen = false; return; }
+  if (state === 'title') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Enter' || e.key.toLowerCase() === 'n') saveSlotMode = 'new'; else if (e.key.toLowerCase() === 'l') saveSlotMode = 'load'; return; }
+  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (moveSelectOpen && e.key === 'Escape') moveSelectOpen = false; return; }
   if (state === 'roster') { if (e.code === 'Escape') uiClick('roster:back'); return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') finishTutorial(); else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 3 ? finishTutorial() : tutorialStep++; return; }
   if (S.events.length) { if (['Enter', ' ', 'Escape'].includes(e.key)) S.events.shift(); return; }
