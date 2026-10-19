@@ -496,16 +496,16 @@ function drawTable() {
 }
 
 // ---------- HUD (모바일) ----------
-function drawToolbarMobile() {   // 오른쪽 한 열에는 부대 버튼만: 1부대 · 2부대 · 3부대 (초상 3열×2줄 + 명령 한 줄). 장수 정보는 이 열 바로 왼쪽에 붙는다
-  const ORDERS = [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴']], x0 = VW - 216;
-  ctx.fillStyle = 'rgba(8,10,18,.84)'; ctx.fillRect(x0, 0, 216, VH);
+function drawToolbarMobile() {   // 군단별 장수·병사·진형·행동지침을 우측 하단에 모은다
+  const ORDERS = [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴']], x0 = VW - 216, top = VH - 456;
+  ctx.fillStyle = 'rgba(8,10,18,.84)'; ctx.fillRect(x0, top, 216, 456);
   armySlots().forEach((A, j) => {
-    const y0 = j * 240, i = A.id;
-    if (A.empty) { panel(x0 + 2, y0 + 2, 212, 230, 'rgba(255,255,255,.25)', 1); label(A.name, x0 + 12, y0 + 14, 14, COLORS.silver2); label('비어있음', x0 + 108, y0 + 116, 18, COLORS.dim, 'center'); return; }
+    const y0 = top + j * 152, i = A.id;
+    if (A.empty) { panel(x0 + 2, y0 + 2, 212, 148, 'rgba(255,255,255,.25)', 1); label(A.name, x0 + 12, y0 + 14, 14, COLORS.silver2); label('비어있음', x0 + 108, y0 + 78, 18, COLORS.dim, 'center'); return; }
     button('army' + i, x0 + 2, y0 + 2, 116, 22, A.name + ' ⚔' + Sim.battlePower(A), armyIdx === i, 13);
     button('form:' + i, x0 + 122, y0 + 2, 92, 22, '진형:' + FORMATION_NAME[A.formation], false, 12);
-    drawPortraits(x0 + 2, y0 + 26, 69, 70, 72, A, true, 3);
-    ORDERS.forEach(([id, title], k) => button('order:' + i + ':' + id, x0 + 2 + k * 53, y0 + 174, 51, 58, title, A.order === id, 15));
+    drawPortraits(x0 + 2, y0 + 26, 69, 43, 44, A, true, 3);
+    ORDERS.forEach(([id, title], k) => button('order:' + i + ':' + id, x0 + 2 + k * 53, y0 + 116, 51, 34, title, A.order === id, 14));
   });
 }
 function drawMobileSide() {   // 자주 쓰는 전투 설정은 왼쪽 상단에 모은다
@@ -594,7 +594,7 @@ function drawTutorial() {
   const pages = mobile ? [
     ['이동과 카메라', '전장 왼쪽을 누른 채 끌면 가상패드가 생기고, 손을 떼면 멈춥니다.', '끌지 않고 짧게 터치만 하면 그 자리의 장수 정보가 나옵니다.'],
     ['공격과 기술', '오른쪽 행동 버튼으로 특수기·마법을 사용합니다.', '버튼 아래 숫자는 다시 사용할 수 있을 때까지 남은 시간입니다.'],
-    ['부대 지휘', '오른쪽 끝에 부대들이 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
+    ['부대 지휘', '오른쪽 아래에 부대들이 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
     ['전투 정보', '왼쪽 위 전투 설정 아래에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위에서 자동·속도·거리와 시스템을 조정합니다.']
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 상단의 카메라 거리로 화면을 조정합니다.'],
@@ -631,7 +631,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.102', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.103', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
