@@ -57,11 +57,7 @@ function rosterError() {
   }
   for (let army = 0; army < roster.length; army++) {
     for (const key of roster[army].units) if (namedRosterUnit(key)) { const name = Sim.U[key].name; if (unique.has(name)) return `${name}은 고유 장수라 한 명만 편성할 수 있습니다.`; unique.add(name); }
-    if (!namedRosterUnit(roster[army].units[0])) return `${corpsName(roster[army])}의 1분대장은 이름 있는 장수여야 합니다.`;
-    for (let start = 6; start < 18; start += 6) {
-      const squad = roster[army].units.slice(start, start + 6);
-      if (squad.some(Boolean) && !namedRosterUnit(squad[0])) return `${corpsName(roster[army])} ${start / 6 + 1}분대의 첫 칸에 이름 있는 장수가 필요합니다.`;
-    }
+    if (!namedRosterUnit(roster[army].units[0])) return `${corpsName(roster[army])}의 첫 칸에는 이름 있는 군단장이 필요합니다.`;
   }
   return '';
 }
@@ -75,15 +71,15 @@ function rosterArmies() {
   };
   let i = 0;
   const armies = Sim.ARMIES.filter(a => a.team === 'player').map(a => {
-    const start = i++ * 6, data = namedRosterUnit(active.units[start]) ? squadData(active, start) : { units: [], growth: [], rosterSlots: [] };
-    return { ...a, ...data, name: i + '분대', leader: active.units[start], corps: active.id, squadIndex: i - 1 };
+    const start = i++ * 6, data = squadData(active, start);
+    return { ...a, ...data, name: i + '분대', leader: start === 0 ? active.units[0] : null, detachment: start > 0, corps: active.id, squadIndex: i - 1 };
   });
   roster.forEach((corps, corpsIndex) => {
     const battle = campaign.battle;
     if (corps === active || battle && corps.at !== battle.id && !battle.links.includes(corps.at)) return;
     for (let start = 0; start < 18; start += 6) {
-      const data = namedRosterUnit(corps.units[start]) ? squadData(corps, start) : { units: [], growth: [], rosterSlots: [] };
-      armies.push({ team: 'player', name: `${corpsName(corps)} ${start / 6 + 1}분대`, leader: corps.units[start], ...data, at: [5, 18 + corpsIndex * 2], corps: corps.id, squadIndex: start / 6, support: true });
+      const data = squadData(corps, start);
+      armies.push({ team: 'player', name: `${corpsName(corps)} ${start / 6 + 1}분대`, leader: start === 0 ? corps.units[0] : null, detachment: start > 0, ...data, at: [5, 18 + corpsIndex * 2], corps: corps.id, squadIndex: start / 6, support: true });
     }
   });
   return armies;
@@ -194,7 +190,7 @@ const activePlayerArmies = () => S.armies.filter(A => A.team === 'player' && A.u
 const corpsKey = A => String(A.corps);
 const pArmies = () => { const key = corpsKey(army()); return activePlayerArmies().filter(A => corpsKey(A) === key).slice(0, 3); };
 const armySlots = () => { const list = pArmies(); return Array.from({ length: 3 }, (_, i) => list.find(A => A.squadIndex === i) || { empty: true, name: `${i + 1}분대`, units: [] }); };
-const supportArmies = () => S.armies.filter(A => A.team === 'player' && A.support && A.state === 'support' && A.units.some(u => !u.dead && u.out));
+const supportArmies = () => { const all = S.armies.filter(A => A.team === 'player' && A.support && A.state === 'support' && A.units.some(u => !u.dead && u.out)); return all.filter((A, i) => all.findIndex(B => B.corps === A.corps) === i); };
 const nextArmy = dir => { const l = pArmies(), i = l.indexOf(army()); return l[(i + dir + l.length) % l.length].id; };   // 조작 부대 순환
 const nextCorps = () => { const all = activePlayerArmies(), l = all.filter((A, i) => all.findIndex(B => corpsKey(B) === corpsKey(A)) === i), n = l.findIndex(A => corpsKey(A) === corpsKey(army())); return l[(n + 1) % l.length].id; };
 const alive = u => Sim.live(u);
@@ -495,7 +491,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.77', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.78', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -593,13 +589,13 @@ function drawRoster() {
       label(`${corpsId + 1}군단 · ${corpsName(corps)}`, x + 18, 120, 22, COLORS.gold);
       label(`${corps.units.filter(Boolean).length}/18명`, x + 582, 120, 16, COLORS.silver, 'right');
       corps.units.forEach((key, slot) => {
-        const unit = key ? Sim.U[key] : null, ry = 142 + slot * 26, leader = slot % 6 === 0, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
-        panel(x + 10, ry, 580, 24, selected ? COLORS.goldSel : leader ? '#698b94' : 'rgba(206,231,224,.25)', selected ? 2 : 1, selected ? 'rgba(117,96,25,.65)' : leader ? 'rgba(23,72,84,.95)' : 'rgba(15,44,52,.75)');
+        const unit = key ? Sim.U[key] : null, ry = 142 + slot * 26, squadStart = slot % 6 === 0, commander = slot === 0, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
+        panel(x + 10, ry, 580, 24, selected ? COLORS.goldSel : squadStart ? '#698b94' : 'rgba(206,231,224,.25)', selected ? 2 : 1, selected ? 'rgba(117,96,25,.65)' : squadStart ? 'rgba(23,72,84,.95)' : 'rgba(15,44,52,.75)');
         label(String(slot + 1).padStart(2, '0'), x + 20, ry + 12, 13, COLORS.silver2);
-        label(leader ? `${slot / 6 + 1}분대` : '', x + 55, ry + 12, 13, COLORS.gold);
+        label(squadStart ? `${slot / 6 + 1}분대` : '', x + 55, ry + 12, 13, COLORS.gold);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
         label(unit ? (CLS_NAME[unit.cls] || unit.cls) : '', x + 380, ry + 12, 13, COLORS.silver2);
-        label(leader ? '분대장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right');
+        label(commander ? '군단장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right');
         btns.push({ id: `roster:unit:${side}:${slot}`, x: x + 10, y: ry, w: 580, h: 24 });
       });
     };
@@ -638,8 +634,8 @@ function drawSupport() {
   button('support:close', x + w - 82, y + 8, 68, 34, '닫기', false, 15);
   if (!list.length) label('연결된 도시에서 참전 가능한 군단이 없습니다.', x + w / 2, y + 78, 17, COLORS.silver2, 'center');
   list.forEach((A, i) => {
-    const yy = y + 52 + i * 58;
-    label(`${A.name} · ${A.units.length}명`, x + 18, yy + 24, mobile ? 19 : 16, COLORS.silver);
+    const yy = y + 52 + i * 58, groups = S.armies.filter(B => B.team === 'player' && B.support && B.corps === A.corps), corps = roster.find(c => c.id === A.corps);
+    label(`${corps ? corpsName(corps) : A.name} · ${groups.reduce((n, B) => n + B.units.filter(u => !u.dead).length, 0)}명`, x + 18, yy + 24, mobile ? 19 : 16, COLORS.silver);
     button('support:' + A.id, x + w - 150, yy + 7, 132, 42, '참전', false, 17);
   });
 }
@@ -672,7 +668,7 @@ function pickRosterUnit(side, slot) {
   const fromId = rosterPick.side === 'left' ? rosterSource : rosterTarget, from = roster[fromId], to = roster[corpsId];
   [from.units[rosterPick.slot], to.units[slot]] = [to.units[slot], from.units[rosterPick.slot]];
   [from.growth[rosterPick.slot], to.growth[slot]] = [to.growth[slot], from.growth[rosterPick.slot]]; rosterPick = null;
-  campaign.notice = '군단 간 편성을 교환했습니다. 6명마다 분대장 배치를 확인하세요.';
+  campaign.notice = '군단 간 편성을 교환했습니다. 첫 칸의 군단장을 확인하세요.';
 }
 function uiClick(id) {
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
@@ -713,7 +709,7 @@ function uiClick(id) {
   if (id === 'tut:skip') { finishTutorial(); return; }
   if (id.startsWith('order:')) { const [, index, command] = id.split(':'); useCommand(command, S.armies[+index]); return; }
   if (id === 'support:close') { supportOpen = false; return; }
-  if (id.startsWith('support:')) { const A = S.armies[+id.slice(8)]; if (A && Sim.deployArmy(S, A)) supportOpen = false; return; }
+  if (id.startsWith('support:')) { const A = S.armies[+id.slice(8)]; if (!A) return; const groups = S.armies.filter(B => B.team === 'player' && B.support && B.corps === A.corps); let count = 0; for (const B of groups) count += Sim.deployArmy(S, B, B.ctrl, true); if (count) { const corps = roster.find(c => c.id === A.corps); S.events.push({ type: 'notice', team: 'player', text: `아군 ${corps ? corpsName(corps) : A.name}이 참전했습니다.` }); supportOpen = false; } return; }
   if (id.startsWith('form:')) { cycleFormation(S.armies[+id.slice(5)]); return; }
   if (/^army\d/.test(id)) { armyIdx = +id.slice(4); beginSelect(); return; }
   if (id.startsWith('slot') || id.startsWith('col')) {

@@ -201,16 +201,18 @@ function createBattle(seed = 1, opts = {}) {
     const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
     if (squadDefs.length > SQUAD_MAX) throw new Error(d.name + ': 분대는 최대 ' + SQUAD_MAX + '개');
     const members = [];
+    if (d.units.length && !d.detachment) {
+      const leader = U[d.leader];
+      if (!leader || leader.generic || leader.name.startsWith('적 ') || d.units.filter(k => k === d.leader).length !== 1) throw new Error(d.name + ': 군단장은 이름 있는 장수 1명이어야 함');
+    }
     squadDefs.forEach((q, squad) => {
-      const leader = U[q.leader];
-      if (!leader || leader.generic || leader.name.startsWith('적 ') || q.units.filter(k => k === q.leader).length !== 1) throw new Error(d.name + ': 분대장은 이름 있는 장수 1명이어야 함');
       q.units.forEach((key, index) => members.push({ key, squad, growth: (q.growth || d.growth || [])[index], rosterSlot: (q.rosterSlots || d.rosterSlots || [])[index] }));
     });
     const keys = members.slice(0, ARMY_MAX), forcedReserve = d.team === 'enemy' && !!d.reserve;
     const reserve = d.team === 'enemy' ? forcedReserve || reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
     if (d.team === 'enemy' && !forcedReserve) { if (reserve) reserves = true; else enemyField += keys.length; }
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, units: [], squads: squadDefs.map((q, id) => ({ id, leader: null, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, units: [], squads: squadDefs.map((q, id) => ({ id, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad, growth, rosterSlot }, i) => {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
@@ -218,12 +220,12 @@ function createBattle(seed = 1, opts = {}) {
       const baseHp = T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, isSquadLeader: key === squadDefs[squad].leader, squad: A.squads[squad],
+        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, fled: false, moving: false, autoCharge: false, manual: false };
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
-      if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isSquadLeader) u.squad.leader = u; if (u.isLeader) A.leader = u;
+      if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
     });
-    if (d.team === 'player') setCtrl(S, A, A.leader);   // 군단마다 조작 캐릭터 한 명 (처음엔 대장)
+    if (d.team === 'player') setCtrl(S, A, A.leader || A.units[0]);   // 분견 분대는 첫 병사를 조작 대상으로 사용한다
   });
   return S;
 }
@@ -279,9 +281,9 @@ function surrender(S, u) {
   const A = S.armies.find(a => a.team === 'player' && a.units.filter(x => !x.dead).length < 6); if (!A) return false;
   const old = u.army, oi = old.units.indexOf(u); if (oi >= 0) old.units.splice(oi, 1);
   if (old.leader === u) { old.leader = null; old.routed = true; }
-  if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); if (u.squad.leader === u) u.squad.leader = null; }
-  const squad = A.squads[0] || (A.squads[0] = { id: 0, leader: null, units: [] });
-  u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.isSquadLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = 0;
+  if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
+  const squad = A.squads[0] || (A.squads[0] = { id: 0, units: [] });
+  u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = 0;
   A.units.push(u); squad.units.push(u); if (A.support) A.state = 'player'; S.surrenderSlots--;
   dialogue(S, u, '목숨을 살려주십시오. 아군으로 싸우겠습니다!'); return true;
 }
@@ -668,7 +670,7 @@ function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 철수한 
   }
   return false;
 }
-function deployArmy(S, A, directCtrl = A.ctrl) {
+function deployArmy(S, A, directCtrl = A.ctrl, quiet = false) {
   let count = 0;
   if (A.team === 'player') {
     for (const u of A.units) if (recall(S, u, true, directCtrl)) count++;
@@ -688,7 +690,7 @@ function deployArmy(S, A, directCtrl = A.ctrl) {
     }
     if (count) { A.state = 'advance'; setFormation(A, A.formation); }
   }
-  if (count) notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 참전했습니다.');
+  if (count && !quiet) notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 참전했습니다.');
   return count;
 }
 function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이까지) 클릭된 유닛
