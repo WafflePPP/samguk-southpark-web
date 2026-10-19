@@ -141,7 +141,7 @@ function moveCampaign(id) {
 function advanceEnemyForces() {
   for (const force of enemyForces) if (force.active) {
     const from = force.at, path = route(force.at, 'beiping'); if (path.length > 1) force.at = path[1];
-    if (from !== force.at) campaign.movement.push(`적 ${force.army.name} · ${stageById(from).name} → ${stageById(force.at).name}`);
+    if (from !== force.at) campaign.movement.push({ text: `적 ${force.army.name} · ${stageById(from).name} → ${stageById(force.at).name}`, name: `적 ${force.army.name}`, from, to: force.at, team: 'enemy' });
   }
   for (const stage of STAGES) {
     if (!enemyForces.some(f => f.active && f.at === stage.id)) continue;
@@ -163,7 +163,7 @@ function endCampaignTurn() {
   roster.forEach((corps, index) => {
     const from = corps.at;
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
-    if (from !== corps.at) campaign.movement.push(`${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name}`);
+    if (from !== corps.at) campaign.movement.push({ text: `${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name}`, name: corpsName(corps), from, to: corps.at, team: 'player' });
     const stage = stageById(corps.at); if (!encounter && stage.owner === 'enemy') encounter = { stage, index, from };
   });
   const invasion = advanceEnemyForces(); campaign.pendingEncounter = invasion || encounter;
@@ -355,7 +355,7 @@ function drawTable() {
     if (A.empty) { ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.strokeRect(gx, y0 + 2, gw, tblH - 4); label(A.name, gx + 12, y0 + 21, 14, COLORS.silver2); label('비어있음', gx + gw / 2, y0 + (compact ? 30 : 126), 18, COLORS.dim, 'center'); return; }
     button('army' + A.id, gx + 2, y0 + 6, 72, 30, A.name, armyIdx === A.id, 13);
     button('form:' + A.id, gx + 78, y0 + 6, 62, 30, FORMATION_NAME[A.formation], false, 13);
-    [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']].forEach(([id, title], k) => button('order:' + A.id + ':' + id, gx + 144 + k * bw, y0 + 6, bw - 2, 30, title, A.order === id, 14));
+    [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴'], ['deploy', '출진']].forEach(([id, title], k) => button('order:' + A.id + ':' + id, gx + 144 + k * bw, y0 + 6, bw - 2, 30, title, A.order === id, 14));
     ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.strokeRect(gx, y0 + 2, gw, tblH - 4);
     if (compact) return;
     A.units.forEach((u, c) => {
@@ -372,7 +372,7 @@ function drawTable() {
 
 // ---------- HUD (모바일) ----------
 function drawToolbarMobile() {   // 오른쪽 한 열에는 부대 버튼만: 1부대 · 2부대 · 3부대 (초상 3열×2줄 + 명령 한 줄). 장수 정보는 이 열 바로 왼쪽에 붙는다
-  const ORDERS = [['charge', '돌격'], ['stop', '정지'], ['retreat', '후퇴'], ['idle', '자유'], ['deploy', '출진']], x0 = VW - 216;
+  const ORDERS = [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴'], ['deploy', '출진']], x0 = VW - 216;
   ctx.fillStyle = 'rgba(8,10,18,.84)'; ctx.fillRect(x0, 0, 216, VH);
   armySlots().forEach((A, j) => {
     const y0 = j * 240, i = A.id;
@@ -407,7 +407,7 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   if (!SHOW.status) return;
   const u = ctrlOf(); if (!u) return;
   const w = 262, x = 6, y = 68, rh = 23, fs = 16, lo = 32, orange = '#ff9a3c', pr = actionInfo(u), sp = u.spells && u.spells.length ? u.spells : [];
-  const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 22 : 0) + 26 + 14;
+  const h = 34 + 20 + 3 * 22 + 3 * rh + 3 * rh + (sp.length ? 20 + sp.length * 24 : 0) + 26 + 14;
   panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.55)');
   let yy = y + 20; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right');
   yy += 24; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver);
@@ -420,7 +420,7 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   cell('MD', u.md, 0, 2); cell('HR', u.hr, 1, 2); cell('SP', u.sp, 2, 2);
   yy += 3 * rh; label('ST', x + 10, yy, fs, orange); label(stText(u), x + 42, yy, fs, COLORS.silver); label('지형', x + 130, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 172, yy, fs, COLORS.silver);
   yy += rh; label('ITEM', x + 10, yy, fs, orange); label(WEAPON_NAME[(styleOf(u) || {}).weapon] || '—', x + 62, yy, fs, COLORS.silver);
-  if (sp.length) { yy += 22; label('마법', x + 10, yy, fs, orange); sp.forEach((k, i) => { yy += 22; label(`${i + 1} ${SPELL[k].name}  ${SPELL[k].mp}MP`, x + 16, yy, 15, u.spellSel === i ? COLORS.gold : u.mp >= SPELL[k].mp ? COLORS.silver : COLORS.dim); }); }
+  if (sp.length) { yy += 22; label('마법 · 터치하여 선택', x + 10, yy, fs, orange); sp.forEach((k, i) => { yy += 24; button('spell:' + i, x + 10, yy - 11, w - 20, 22, `${i + 1} ${SPELL[k].name}  ${SPELL[k].mp}MP`, u.spellSel === i, 14); }); }
   yy += 26; label('행동 ' + pr.name, x + 10, yy, 15, COLORS.silver2); label(pr.cd > 0 ? cooldownText(pr) : '가능', x + w - 10, yy, 15, pr.ready ? COLORS.gold : COLORS.silver2, 'right');
 }
 
@@ -473,7 +473,7 @@ function drawTutorial() {
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 상단의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '보조키의 가운데 버튼으로도 주 행동을 사용할 수 있습니다.'],
-    ['부대 지휘', '하단 부대 그룹에서 돌격·정지·후퇴·자유·출진을 지시합니다.', '←→ 캐릭터, ↑↓ 부대를 바꾸고 적을 클릭하면 집중 공격합니다.'],
+    ['부대 지휘', '하단 부대 그룹에서 자유·정지·돌격·후퇴·출진을 지시합니다.', '←→ 캐릭터, ↑↓ 부대를 바꾸고 적을 클릭하면 집중 공격합니다.'],
     ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '상단에서 자동·거리·속도를 조정하고 Esc로 시스템을 엽니다.']
   ];
   const p = pages[tutorialStep], x = 250, y = 190, w = 780, h = 340;
@@ -505,7 +505,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.84', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.85', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -516,6 +516,7 @@ function drawStageMap() {
   ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 170; x < 980; x += 90) for (let y = 75; y < 690; y += 75) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
   const corps = roster[campaign.corps], here = stageById(corps.at);
   for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
+  for (const m of campaign.movement) { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) continue; const col = m.team === 'player' ? '#79bfff' : '#ff765f', ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; ctx.strokeStyle = col; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - Math.cos(ang - 0.55) * 20, b.y - Math.sin(ang - 0.55) * 20); ctx.lineTo(b.x - Math.cos(ang + 0.55) * 20, b.y - Math.sin(ang + 0.55) * 20); ctx.closePath(); ctx.fill(); label(m.name, mx, my - 16, 14, col, 'center'); }
   for (const s of STAGES) {
     const on = s === here, friendly = s.owner === 'player', targeted = s.id === (campaign.destination || corps.target); const col = friendly ? COLORS.ally : COLORS.danger;
     ctx.fillStyle = on ? COLORS.gold : col; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 22 : 16, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? '#fff3c0' : '#161722'; ctx.lineWidth = 3; ctx.stroke();
@@ -530,13 +531,13 @@ function drawStageMap() {
   label(`${corpsName(corps)} · ${campaign.turn}턴`, 1025, 88, 17, COLORS.silver);
   label(`${here.name} → ${corps.target ? stageById(corps.target).name : '대기'}`, 1025, 116, 17, COLORS.goldSel);
   label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${THEME_NAME[here.theme]}`, 1025, 144, 15, COLORS.silver);
-  button('campaign:prev', 1025, 160, 100, 34, '◀ 군단', false, 14); button('campaign:next', 1135, 160, 100, 34, '군단 ▶', false, 14);
+  label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : '군단 선택은 이동 버튼에서', 1130, 177, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
   label('북평 → 10개 지역 → 낙양', 1025, 218, 16, COLORS.gold);
   STAGES.forEach((s, i) => {
     label(`${s.stage}. ${s.name} · ${THEME_NAME[s.theme]}`, 1025, 244 + i * 21, 13, s === here ? COLORS.goldSel : COLORS.silver);
     label(s.stage === 1 && !stageEnemyCount(s) ? '정비' : `적 ${stageEnemyCount(s)}`, 1233, 244 + i * 21, 13, s.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'right');
   });
-  button('campaign:move', 1025, 466, 210, 36, '이동', moveSelectOpen, 16);
+  button('campaign:move', 1025, 466, 210, 36, moveMode === 'city' && !moveSelectOpen ? '지역 선택 중' : '이동', moveSelectOpen || moveMode === 'city', 16);
   button('campaign:roster', 1025, 508, 210, 36, '편성 · NEW TEAM · DISMISS', false, 14);
   button('campaign:explore', 1025, 550, 100, 38, '탐색', false, 16); button('campaign:end', 1135, 550, 100, 38, '턴 종료', true, 16);
   panel(1025, 598, 210, 82, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');
@@ -547,13 +548,12 @@ function drawStageMap() {
   else if (campaign.pendingEncounter && campaign.pendingEncounter.invasion) drawResponseSelect();
 }
 function drawMovementNotice() {
-  ctx.fillStyle = 'rgba(10,12,20,.66)'; ctx.fillRect(0, 0, VW, VH);
-  const x = 300, y = 140, w = 680, h = 440, pages = Math.ceil(campaign.movement.length / 8), shown = campaign.movement.slice(campaign.movementPage * 8, campaign.movementPage * 8 + 8);
-  panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.98)'); label(`군단 이동 완료 · ${campaign.movementPage + 1}/${pages}`, x + w / 2, y + 42, 27, COLORS.gold, 'center');
-  shown.forEach((line, row) => label(line, x + 42, y + 84 + row * 34, 17, COLORS.silver));
-  button('campaign:movement:prev', x + 40, y + h - 50, 100, 36, '◀', false, 18);
-  button('campaign:movement:close', x + w / 2 - 80, y + h - 50, 160, 36, campaign.pendingEncounter ? '계속' : '확인', true, 16);
-  button('campaign:movement:next', x + w - 140, y + h - 50, 100, 36, '▶', false, 18);
+  const x = 10, y = 10, w = 420, h = 116, pages = campaign.movement.length, move = campaign.movement[campaign.movementPage];
+  panel(x, y, w, h, move.team === 'enemy' ? COLORS.danger : COLORS.gold, 3, 'rgba(8,20,25,.96)'); label(`군단 이동 완료 · ${campaign.movementPage + 1}/${pages}`, x + w / 2, y + 28, 21, move.team === 'enemy' ? '#ff9a7d' : COLORS.gold, 'center');
+  label(move.text, x + w / 2, y + 60, 14, COLORS.silver, 'center');
+  button('campaign:movement:prev', x + 14, y + h - 38, 64, 30, '◀', false, 16);
+  button('campaign:movement:close', x + w / 2 - 66, y + h - 38, 132, 30, campaign.movementPage < pages - 1 ? '다음 군단' : campaign.pendingEncounter ? '계속' : '확인', true, 14);
+  button('campaign:movement:next', x + w - 78, y + h - 38, 64, 30, '▶', false, 16);
 }
 function drawResponseSelect() {
   const encounter = campaign.pendingEncounter, pageSize = 8, pages = Math.ceil(encounter.responders.length / pageSize), shown = encounter.responders.slice(campaign.responsePage * pageSize, campaign.responsePage * pageSize + pageSize);
@@ -571,12 +571,6 @@ function drawMoveSelect() {
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH);
   const x = 300, y = 70, w = 680, h = 580;
   panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
-  if (moveMode === 'city') {
-    const corps = roster[campaign.corps]; label('2. 이동할 도시 선택', x + w / 2, y + 40, 25, COLORS.gold, 'center');
-    label(`${corpsName(corps)} · 현재 ${stageById(corps.at).name}`, x + w / 2, y + 75, 16, COLORS.silver, 'center');
-    STAGES.forEach((stage, row) => button(`campaign:move:stage:${stage.id}`, x + 40, y + 100 + row * 40, w - 80, 34, `${stage.stage}. ${stage.name} · ${THEME_NAME[stage.theme]}${stage.id === corps.at ? ' · 현재 위치' : ''}`, false, 15));
-    button('campaign:move:back', x + 40, y + h - 50, 150, 36, '군단 다시 선택', false, 14); button('campaign:move:close', x + w - 190, y + h - 50, 150, 36, '닫기', false, 16); return;
-  }
   const page = roster.slice(movePage * 8, movePage * 8 + 8), status = moveMode === 'status';
   label(status ? '3. 이동 현황' : '1. 이동할 군단 선택', x + w / 2, y + 40, 25, COLORS.gold, 'center');
   label(status ? '계획된 이동은 턴 종료 시 시작됩니다.' : '군단을 선택하면 도시 선택으로 이동합니다.', x + w / 2, y + 75, 16, COLORS.silver, 'center');
@@ -699,22 +693,20 @@ function pickRosterUnit(side, slot) {
 }
 function uiClick(id) {
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
-  if (id === 'campaign:movement:prev' || id === 'campaign:movement:next') { const pages = Math.ceil(campaign.movement.length / 8), d = id.endsWith('next') ? 1 : -1; campaign.movementPage = Math.max(0, Math.min(pages - 1, campaign.movementPage + d)); return; }
-  if (id === 'campaign:movement:close') { const pages = Math.ceil(campaign.movement.length / 8); if (campaign.movementPage < pages - 1) { campaign.movementPage++; return; } campaign.movement = []; campaign.movementPage = 0; continueCampaignTurn(); return; }
+  if (id === 'campaign:movement:prev' || id === 'campaign:movement:next') { const pages = campaign.movement.length, d = id.endsWith('next') ? 1 : -1; campaign.movementPage = Math.max(0, Math.min(pages - 1, campaign.movementPage + d)); return; }
+  if (id === 'campaign:movement:close') { const pages = campaign.movement.length; if (campaign.movementPage < pages - 1) { campaign.movementPage++; return; } campaign.movement = []; campaign.movementPage = 0; continueCampaignTurn(); return; }
   if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / 8), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
   if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; encounter.stage.owner = 'enemy'; campaign.pendingEncounter = null; campaign.responsePage = 0; campaign.notice = `${encounter.stage.name} 방어를 포기했다.`; return; }
   if (/^campaign:response:\d+$/.test(id)) {
     const encounter = campaign.pendingEncounter, index = +id.slice(18), corps = roster[index]; if (!encounter || !encounter.responders.includes(index) || !corps) return;
     const from = corps.at; corps.at = encounter.stage.id; corps.target = null; campaign.corps = index; campaign.at = encounter.stage.id; campaign.from = from; campaign.destination = null; campaign.invasion = true; campaign.pendingEncounter = null; campaign.responsePage = 0; campaign.notice = `${corpsName(corps)}이 ${encounter.stage.name} 방어에 나선다.`; startBattle(encounter.stage); return;
   }
-  if (id === 'campaign:prev' || id === 'campaign:next') { const d = id.endsWith('next') ? 1 : -1; campaign.corps = (campaign.corps + d + roster.length) % roster.length; campaign.at = roster[campaign.corps].at; campaign.destination = roster[campaign.corps].target; campaign.notice = `${corpsName(roster[campaign.corps])}을 선택했다.`; return; }
-  if (id === 'campaign:move') { moveSelectOpen = !moveSelectOpen; moveMode = 'corps'; movePage = Math.floor(campaign.corps / 8); return; }
-  if (id === 'campaign:move:close') { moveSelectOpen = false; return; }
+  if (id === 'campaign:move') { moveSelectOpen = true; moveMode = 'corps'; movePage = Math.floor(campaign.corps / 8); campaign.notice = '이동할 군단을 선택하세요.'; return; }
+  if (id === 'campaign:move:close') { moveSelectOpen = false; moveMode = 'corps'; return; }
   if (id === 'campaign:move:back' || id === 'campaign:move:add') { moveMode = 'corps'; return; }
   if (id === 'campaign:move:prev' || id === 'campaign:move:next') { const pages = Math.max(1, Math.ceil(roster.length / 8)), d = id.endsWith('next') ? 1 : -1; movePage = (movePage + d + pages) % pages; return; }
-  if (/^campaign:move:\d+$/.test(id)) { const index = +id.slice(14), corps = roster[index]; if (!corps) return; campaign.corps = index; campaign.at = corps.at; campaign.destination = corps.target; moveMode = 'city'; return; }
-  if (id.startsWith('campaign:move:stage:')) { moveCampaign(id.slice(20)); moveMode = 'status'; movePage = Math.floor(campaign.corps / 8); return; }
-  if (id === 'campaign:end') { moveSelectOpen = false; endCampaignTurn(); return; }
+  if (/^campaign:move:\d+$/.test(id)) { const index = +id.slice(14), corps = roster[index]; if (!corps) return; campaign.corps = index; campaign.at = corps.at; campaign.destination = corps.target; moveMode = 'city'; moveSelectOpen = false; campaign.notice = `${corpsName(corps)}이 이동할 지역을 지도에서 선택하세요.`; return; }
+  if (id === 'campaign:end') { moveSelectOpen = false; moveMode = 'corps'; endCampaignTurn(); return; }
   if (id === 'campaign:explore') { exploreCampaign(); return; }
   if (id === 'roster:back') {
     if (rosterMode === 'exchange') {
@@ -737,7 +729,7 @@ function uiClick(id) {
   }
   if (id === 'roster:page:prev' || id === 'roster:page:next') { const pages = Math.max(1, Math.ceil((roster.length - 1) / 10)), d = id.endsWith('next') ? 1 : -1; rosterPage = (rosterPage + d + pages) % pages; return; }
   if (id.startsWith('roster:unit:')) { const [, , side, slot] = id.split(':'); pickRosterUnit(side, +slot); return; }
-  if (id.startsWith('stage:')) { campaign.notice = '이동 버튼에서 군단과 도시를 선택하세요.'; return; }
+  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); moveMode = 'status'; movePage = Math.floor(campaign.corps / 8); moveSelectOpen = true; } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
   if (id === 'tut:skip') { finishTutorial(); return; }

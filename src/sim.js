@@ -495,6 +495,7 @@ function homeOf(S, u) {
 const LEASH = 7, GATHER = 0.6;   // 슬롯에서 추격 한계(칸) / 대장 전진에 필요한 대장 4칸 이내 구성원 비율 (설계값)
 function formation(S, u, t) {   // 시야 안 적은 슬롯 7칸 이내일 때만 추격, 아니면 슬롯 복귀
   const h = homeOf(S, u);
+  if (u.team === 'player' && h && cheb(u, h) > 1) { stepToward(S, u, h.tx, h.ty); return; }   // 자유: 분대의 조작 장수를 따라 대형으로 복귀하는 것을 전투보다 우선한다
   if (t && (!h || cheb(u, h) < LEASH)) { engage(S, u, t, true); return; }
   if (h && cheb(u, h) > 1) stepToward(S, u, h.tx, h.ty);
 }
@@ -523,7 +524,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   }
   if (u.special && u.spT <= 0 && aggressive) {
     if (u.special === 'bless') { let n = 0; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp * 0.6 && dist(u, e) <= 150) n++; if (n >= 3 && useSpecial(S, u, u.x, u.y)) return true; }
-    else { const t = nearestEnemy(S, u, u.special === 'volley' ? u.range : u.special === 'dash' ? 200 : 70); if (t && useSpecial(S, u, t.x, t.y)) return true; }
+    else { const t = nearestEnemy(S, u, u.special === 'volley' ? u.range : u.special === 'dash' ? 1e9 : 70); if (t && useSpecial(S, u, t.x, t.y)) return true; }
   }
   return false;
 }
@@ -662,7 +663,7 @@ function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(�
   const sel = !alt && u.spells.length, sp = sel ? u.spells[u.spellSel] : null;
   if (sp === 'heal') { let t = null, bd = 1; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; } return t ? castSpell(S, u, 'heal', t.x, t.y) : false; }
   if (sp) { const [x, y] = aimAt(S, u, SPELL[sp].range); return castSpell(S, u, sp, x, y); }
-  if (u.special && (!alt || u.spells.length)) { const [x, y] = aimAt(S, u, u.special === 'volley' ? u.range : 150); return useSpecial(S, u, x, y); }
+  if (u.special && (!alt || u.spells.length)) { const [x, y] = aimAt(S, u, u.special === 'volley' ? u.range : u.special === 'dash' ? 1e9 : 150); return useSpecial(S, u, x, y); }
   if (u.range > 0 && u.cdT <= 0 && u.cls !== 'mage') { const [x, y] = aimAt(S, u, u.range); u.face = Math.atan2(y - u.y, x - u.x); u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); shoot(S, u, x, y); return true; }
   return false;
 }
