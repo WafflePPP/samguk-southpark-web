@@ -505,7 +505,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.85', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.86', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
@@ -516,6 +516,8 @@ function drawStageMap() {
   ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 170; x < 980; x += 90) for (let y = 75; y < 690; y += 75) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
   const corps = roster[campaign.corps], here = stageById(corps.at);
   for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
+  const targetRows = {};
+  for (const c of roster) if (c.target) { const path = route(c.at, c.target).map(stageById), goal = path[path.length - 1], row = targetRows[c.target] || 0; targetRows[c.target] = row + 1; if (path.length < 2) continue; ctx.save(); ctx.strokeStyle = '#75dcff'; ctx.lineWidth = 4; ctx.setLineDash([10, 7]); ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y); for (const s of path.slice(1)) ctx.lineTo(s.x, s.y); ctx.stroke(); ctx.restore(); const prev = path[path.length - 2], ang = Math.atan2(goal.y - prev.y, goal.x - prev.x); ctx.fillStyle = '#75dcff'; ctx.beginPath(); ctx.moveTo(goal.x, goal.y); ctx.lineTo(goal.x - Math.cos(ang - 0.55) * 16, goal.y - Math.sin(ang - 0.55) * 16); ctx.lineTo(goal.x - Math.cos(ang + 0.55) * 16, goal.y - Math.sin(ang + 0.55) * 16); ctx.closePath(); ctx.fill(); label(`${corpsName(c)} 이동 예정`, goal.x, goal.y - 42 - row * 16, 13, '#bcecff', 'center'); }
   for (const m of campaign.movement) { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) continue; const col = m.team === 'player' ? '#79bfff' : '#ff765f', ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; ctx.strokeStyle = col; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - Math.cos(ang - 0.55) * 20, b.y - Math.sin(ang - 0.55) * 20); ctx.lineTo(b.x - Math.cos(ang + 0.55) * 20, b.y - Math.sin(ang + 0.55) * 20); ctx.closePath(); ctx.fill(); label(m.name, mx, my - 16, 14, col, 'center'); }
   for (const s of STAGES) {
     const on = s === here, friendly = s.owner === 'player', targeted = s.id === (campaign.destination || corps.target); const col = friendly ? COLORS.ally : COLORS.danger;
@@ -531,7 +533,7 @@ function drawStageMap() {
   label(`${corpsName(corps)} · ${campaign.turn}턴`, 1025, 88, 17, COLORS.silver);
   label(`${here.name} → ${corps.target ? stageById(corps.target).name : '대기'}`, 1025, 116, 17, COLORS.goldSel);
   label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${THEME_NAME[here.theme]}`, 1025, 144, 15, COLORS.silver);
-  label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : '군단 선택은 이동 버튼에서', 1130, 177, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
+  label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 177, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
   label('북평 → 10개 지역 → 낙양', 1025, 218, 16, COLORS.gold);
   STAGES.forEach((s, i) => {
     label(`${s.stage}. ${s.name} · ${THEME_NAME[s.theme]}`, 1025, 244 + i * 21, 13, s === here ? COLORS.goldSel : COLORS.silver);
@@ -571,11 +573,11 @@ function drawMoveSelect() {
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH);
   const x = 300, y = 70, w = 680, h = 580;
   panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
-  const page = roster.slice(movePage * 8, movePage * 8 + 8), status = moveMode === 'status';
-  label(status ? '3. 이동 현황' : '1. 이동할 군단 선택', x + w / 2, y + 40, 25, COLORS.gold, 'center');
-  label(status ? '계획된 이동은 턴 종료 시 시작됩니다.' : '군단을 선택하면 도시 선택으로 이동합니다.', x + w / 2, y + 75, 16, COLORS.silver, 'center');
-  page.forEach((corps, row) => { const target = corps.target ? stageById(corps.target).name : '대기'; button(`campaign:move:${movePage * 8 + row}`, x + 40, y + 105 + row * 46, w - 80, 38, `${corpsName(corps)}  ${stageById(corps.at).name} → ${target}  · ${corps.units.filter(Boolean).length}/18명`, !status && campaign.corps === movePage * 8 + row, 16); });
-  button('campaign:move:prev', x + 40, y + h - 50, 100, 36, '◀', false, 18); if (status) button('campaign:move:add', x + w / 2 - 90, y + h - 50, 180, 36, '다른 군단 이동', false, 15); button('campaign:move:close', x + w - 140, y + h - 50, 100, 36, '닫기', false, 16); button('campaign:move:next', x + w - 250, y + h - 50, 100, 36, '▶', false, 18);
+  const page = roster.slice(movePage * 8, movePage * 8 + 8);
+  label('1. 이동할 군단 선택', x + w / 2, y + 40, 25, COLORS.gold, 'center');
+  label('군단을 선택한 뒤 스테이지 지도에서 목적지를 선택합니다.', x + w / 2, y + 75, 16, COLORS.silver, 'center');
+  page.forEach((corps, row) => { const target = corps.target ? stageById(corps.target).name : '대기'; button(`campaign:move:${movePage * 8 + row}`, x + 40, y + 105 + row * 46, w - 80, 38, `${corpsName(corps)}  ${stageById(corps.at).name} → ${target}  · ${corps.units.filter(Boolean).length}/18명`, campaign.corps === movePage * 8 + row, 16); });
+  button('campaign:move:prev', x + 40, y + h - 50, 100, 36, '◀', false, 18); button('campaign:move:close', x + w - 140, y + h - 50, 100, 36, '닫기', false, 16); button('campaign:move:next', x + w - 250, y + h - 50, 100, 36, '▶', false, 18);
 }
 function drawRoster() {
   ctx.fillStyle = '#0b3036'; ctx.fillRect(0, 0, VW, VH);
@@ -703,7 +705,6 @@ function uiClick(id) {
   }
   if (id === 'campaign:move') { moveSelectOpen = true; moveMode = 'corps'; movePage = Math.floor(campaign.corps / 8); campaign.notice = '이동할 군단을 선택하세요.'; return; }
   if (id === 'campaign:move:close') { moveSelectOpen = false; moveMode = 'corps'; return; }
-  if (id === 'campaign:move:back' || id === 'campaign:move:add') { moveMode = 'corps'; return; }
   if (id === 'campaign:move:prev' || id === 'campaign:move:next') { const pages = Math.max(1, Math.ceil(roster.length / 8)), d = id.endsWith('next') ? 1 : -1; movePage = (movePage + d + pages) % pages; return; }
   if (/^campaign:move:\d+$/.test(id)) { const index = +id.slice(14), corps = roster[index]; if (!corps) return; campaign.corps = index; campaign.at = corps.at; campaign.destination = corps.target; moveMode = 'city'; moveSelectOpen = false; campaign.notice = `${corpsName(corps)}이 이동할 지역을 지도에서 선택하세요.`; return; }
   if (id === 'campaign:end') { moveSelectOpen = false; moveMode = 'corps'; endCampaignTurn(); return; }
@@ -729,7 +730,7 @@ function uiClick(id) {
   }
   if (id === 'roster:page:prev' || id === 'roster:page:next') { const pages = Math.max(1, Math.ceil((roster.length - 1) / 10)), d = id.endsWith('next') ? 1 : -1; rosterPage = (rosterPage + d + pages) % pages; return; }
   if (id.startsWith('roster:unit:')) { const [, , side, slot] = id.split(':'); pickRosterUnit(side, +slot); return; }
-  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); moveMode = 'status'; movePage = Math.floor(campaign.corps / 8); moveSelectOpen = true; } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
+  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); moveMode = 'corps'; moveSelectOpen = false; } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
   if (id === 'tut:skip') { finishTutorial(); return; }
