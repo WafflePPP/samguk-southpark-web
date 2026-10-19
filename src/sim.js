@@ -76,7 +76,14 @@ const UNIT_CATEGORY = { guan: 'sword', dian: 'spear', sword: 'sword', shield: 's
 const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
+// 상성 우세(배율 > 1)의 피해 효율을 50% 더 높인다 (v0.1.101). 불리(배율 < 1)는 표 그대로.
+const MATCHUP_BONUS = 1.5;
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
+// ITEM: 이름 있는 장수만 장착. 능력치에 더해지며 떼면 사라진다. ar·dr 은 공격율·방어율(%, 기본 100).
+const ITEMS = { ironsword: { name: '철검', atk: 12 }, armor: { name: '철갑', df: 12 }, bowguard: { name: '궁갑', ad: 12 }, charm: { name: '마법 부적', md: 12 }, seal_ar: { name: '공격율 인장', ar: 10 }, seal_dr: { name: '방어율 인장', dr: 10 } };
+const ITEM_STATS = ['atk', 'df', 'ad', 'md', 'ar', 'dr'];
+const itemOf = key => ITEMS[key] || {};
+const itemBase = (u, k) => u[k] - (itemOf(u.item)[k] || 0);   // 아이템 보정을 뺀 값 (성장치 저장용)
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
 const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기', guard: '호위' };
 const ENEMY_FIELD_MAX = 36, ARMY_MAX = 18, SQUAD_MAX = 3;
@@ -131,11 +138,13 @@ function baseMaxHp(key, team) {
 // 한 유닛의 능력치를 가중합해 하나의 수로 환산한다 (체력 100당 1, 공격·방어·명중 계열은 반영, 이동 속도는 약하게). 군단 전투력은 소속 유닛 전투력의 합.
 // 장수는 일반 병사의 약 3~10배가 되도록 능력치가 설계돼 있으므로 환산값도 그 비율을 따른다.
 const POWER_W = { maxHp: 0.01, atk: 1, df: 1, ad: 0.5, md: 1.5, aa: 0.5, hr: 1, sp: 0.1 };
-const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0));
+const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0) + ((s.ar ?? 100) - 100 + (s.dr ?? 100) - 100) * 2);
 // 전투 전(원정 지도)에도 쓰도록 병종 키와 저장된 성장치(growth)만으로 능력치를 만든다.
 function unitStats(key, team = 'player', growth = null) {
   const T = U[key], G = growth || {};
-  return { maxHp: G.maxHp ?? baseMaxHp(key, team), atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, sp: G.sp ?? T.sp };
+  const s = { maxHp: G.maxHp ?? baseMaxHp(key, team), atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, sp: G.sp ?? T.sp, ar: G.ar ?? 100, dr: G.dr ?? 100 };
+  if (!T.generic) for (const k of ITEM_STATS) s[k] += itemOf(G.item)[k] || 0;
+  return s;
 }
 const unitPower = (key, team = 'player', growth = null) => statPower(unitStats(key, team, growth));
 // keys: 병종 키 배열(빈 칸은 null/undefined), growth: 같은 순서의 성장치 배열(선택)
@@ -247,8 +256,9 @@ function createBattle(seed = 1, opts = {}) {
       const baseHp = baseMaxHp(key, d.team);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
+        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
+      if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
     });
@@ -268,7 +278,7 @@ const ftDef = u => 1 - u.ft * FT.penalty;   // 방어 배율 (설계값, ftMul �
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
-const phys = (u, t, mul = 1) => Math.max(1, mitigate(u.atk * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), t.df * ftDef(t))) * DMG;
+const phys = (u, t, mul = 1) => Math.max(1, mitigate(u.atk * u.ar / 100 * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), t.df * t.dr / 100 * ftDef(t))) * DMG;
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
 function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
@@ -285,7 +295,7 @@ function gainXp(S, u, n) {
   while (u.xp >= u.lv * 60) {   // 레벨업: 능력치 상승 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
     u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.maxMp = Math.round(u.maxMp * 1.05);
     for (const stat of ['atk', 'df', 'ad', 'md']) u[stat] = Math.round(u[stat] * 1.05 * 10) / 10;
-    u.aa = Math.min(80, u.aa + 1); u.hr = Math.min(100, u.hr + 1); u.sp = Math.round(u.sp * 1.01 * 10) / 10;
+    u.aa = Math.min(80, u.aa + 1); u.hr = Math.min(100, u.hr + 1); u.ar += 1; u.dr += 1; u.sp = Math.round(u.sp * 1.01 * 10) / 10;
     text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
 }
@@ -295,13 +305,14 @@ function tryRout(S, A) {
   let fleeing = false; for (const m of A.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
   A.nextRoutCheck = 0; return fleeing;
 }
+// 군단장 생명력이 30% 이하가 되면 군단장 전투력에 따라 차등 확률(강할수록 낮음)로 군단이 후퇴한다. 판정은 12초마다.
+const RETREAT_HP = 0.3;
 function tryHpRetreat(S, A) {
-  if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !A.initialHp || S.t < A.nextHpRetreatCheck) return false;
-  const hp = A.units.reduce((n, u) => n + (live(u) ? Math.max(0, u.hp) : 0), 0); if (hp > A.initialHp * 0.5) return false;
+  const L = A.leader; if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !L || !live(L) || S.t < A.nextHpRetreatCheck || L.hp > L.maxHp * RETREAT_HP) return false;
   A.nextHpRetreatCheck = S.t + 12;
-  const power = A.leader ? statPower(A.leader) : 0, chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78); if (S.rnd() >= chance) return false;
+  const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78); if (S.rnd() >= chance) return false;
   A.routed = true; A.retreatByHp = true; for (const u of A.units) if (live(u)) { u.order = { type: 'flee' }; u.path = null; }
-  notice(S, 'enemy', `적 ${A.name}가 총 생명력 50% 이하로 후퇴합니다. · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`); return true;
+  notice(S, 'enemy', `적 ${A.name}가 군단장 생명력 30% 이하로 후퇴합니다. · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`); return true;
 }
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
@@ -337,7 +348,7 @@ function surrender(S, u) {
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
   const opposed = from && from.team !== t.team, tier = opposed ? matchup(from.category, t.category) : 0;
-  if (opposed) dmg *= classMultiplier(from.category, t.category);
+  if (opposed) { const m = classMultiplier(from.category, t.category); dmg *= m > 1 ? m * MATCHUP_BONUS : m; }
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
   if (opposed) gainCombatXp(S, from, 1);
   t.hitState = tier; t.hitDuration = tier > 0 ? 0.24 : tier < 0 ? 0.48 : 0.35; t.hitT = t.hitDuration;
@@ -756,6 +767,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { ITEMS, ITEM_STATS, itemBase, MATCHUP_BONUS, RETREAT_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

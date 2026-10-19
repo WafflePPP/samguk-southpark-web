@@ -53,7 +53,7 @@ for (let i = 0; i < BASE_ENEMIES.length; i++) {
   enemyForces.push(setEnemyRole({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: `${stage.name} 제2군단`, at: army.at, leader, reserve: true, reserveAt: EARLY_SUPPORT[stage.id] ?? 20, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(reserveUnits, pool, i + 1), trig: { near: 12, t: 60 } } }, stage, 'expedition'));
 }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
-const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, enemyRolesLv1: true, enemyWavesLv2: true, expeditionWaves: {}, notice: '북평에서 낙양 원정을 시작한다.' };
+const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, enemyRolesLv1: true, enemyWavesLv2: true, expeditionWaves: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1 }, notice: '북평에서 낙양 원정을 시작한다.' };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [
@@ -65,7 +65,7 @@ let activeSaveSlot = 1, saveSlotMode = null;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function resetCampaignData() {
   const data = JSON.parse(INITIAL_CAMPAIGN); STAGES.forEach((s, i) => s.owner = data.owners[i]); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
-  Object.assign(campaign, { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, enemyRolesLv1: true, enemyWavesLv2: true, expeditionWaves: {}, notice: '북평에서 낙양 원정을 시작한다.' });
+  Object.assign(campaign, { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, enemyRolesLv1: true, enemyWavesLv2: true, expeditionWaves: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1 }, notice: '북평에서 낙양 원정을 시작한다.' });
 }
 function saveCampaign(slot = activeSaveSlot) {
   activeSaveSlot = slot;
@@ -268,12 +268,12 @@ function exploreCampaign(index) {
 }
 function applyBattleResults() {
   if (!S || !campaign.battle) return;
-  const growthOf = u => ({ lv: u.lv, xp: u.xp, maxHp: u.maxHp, maxMp: u.maxMp, atk: u.atk, df: u.df, ad: u.ad, md: u.md, aa: u.aa, hr: u.hr, sp: u.sp });
+  const growthOf = u => ({ lv: u.lv, xp: u.xp, maxHp: u.maxHp, maxMp: u.maxMp, atk: Sim.itemBase(u, 'atk'), df: Sim.itemBase(u, 'df'), ad: Sim.itemBase(u, 'ad'), md: Sim.itemBase(u, 'md'), aa: u.aa, hr: u.hr, sp: u.sp, ar: Sim.itemBase(u, 'ar'), dr: Sim.itemBase(u, 'dr'), item: u.item });   // 아이템 보정은 빼고 저장 (떼면 사라지도록)
   for (const u of S.units.filter(x => !x.dead && x.originTeam === 'player')) {
     const corps = roster.find(c => c.id === u.army.corps); if (corps && Number.isInteger(u.rosterSlot)) corps.growth[u.rosterSlot] = growthOf(u);
   }
   for (const u of S.units.filter(x => x.dead && x.originTeam === 'player')) {
-    const corps = roster.find(c => c.id === u.army.corps); if (!corps || !Number.isInteger(u.rosterSlot)) continue; corps.units[u.rosterSlot] = null; corps.growth[u.rosterSlot] = null;
+    const corps = roster.find(c => c.id === u.army.corps); if (!corps || !Number.isInteger(u.rosterSlot)) continue; corps.units[u.rosterSlot] = null; corps.growth[u.rosterSlot] = null; if (u.item) campaign.items[u.item] = (campaign.items[u.item] || 0) + 1;
   }
   for (const u of S.units.filter(x => x.originTeam === 'enemy' && (x.dead || x.team === 'player'))) { const force = enemyForces.find(f => f.id === u.forceId); if (!force) continue; const slot = force.army.units.indexOf(u.key); if (slot >= 0) force.army.units.splice(slot, 1); }
   for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) force.active = false;
@@ -424,7 +424,7 @@ function drawToolbar() {
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
-  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft)], ['XP', `${u.xp}/${u.lv * 60}`], ['AT', u.atk.toFixed(0)], ['DF', u.df], ['AD', u.ad], ['MD', u.md], ['AA', u.aa + '%'], ['HR', u.hr], ['SP', u.sp], ['상태', stText(u)]];
+  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft)], ['XP', `${u.xp}/${u.lv * 60}`], ['AT', u.atk.toFixed(0)], ['DF', u.df], ['AR', u.ar], ['DR', u.dr], ['AD', u.ad], ['MD', u.md], ['AA', u.aa + '%'], ['HR', u.hr], ['SP', u.sp], ['상태', stText(u)]];
   label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
@@ -526,22 +526,23 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft)), x + 40, yy, fs, u.ft > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${u.lv * 60}`, x + 142, yy, fs, COLORS.silver);
   const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, COLORS.silver); };
   yy += rh; cell('AT', u.atk.toFixed(0), 0, 0); cell('DF', u.df, 1, 0); cell('AA', u.aa + '%', 2, 0);
-  cell('AR', '—', 0, 1); cell('DR', '—', 1, 1); cell('AD', u.ad, 2, 1);
+  cell('AR', u.ar, 0, 1); cell('DR', u.dr, 1, 1); cell('AD', u.ad, 2, 1);
   cell('MD', u.md, 0, 2); cell('HR', u.hr, 1, 2); cell('SP', u.sp, 2, 2);
   yy += 3 * rh; label('ST', x + 10, yy, fs, orange); label(stText(u), x + 42, yy, fs, COLORS.silver); label('지형', x + 130, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 172, yy, fs, COLORS.silver);
-  yy += rh; label('ITEM', x + 10, yy, fs, orange); label(WEAPON_NAME[(styleOf(u) || {}).weapon] || '—', x + 62, yy, fs, COLORS.silver);
+  yy += rh; label('ITEM', x + 10, yy, fs, orange); label(itemName(u), x + 62, yy, fs, COLORS.silver);
   if (sp.length) { yy += 22; label('마법 · 터치하여 선택', x + 10, yy, fs, orange); sp.forEach((k, i) => { yy += 24; button('spell:' + i, x + 10, yy - 11, w - 20, 22, `${i + 1} ${SPELL[k].name}  ${SPELL[k].mp}MP`, u.spellSel === i, 14); }); }
   yy += 26; label('행동 ' + pr.name, x + 10, yy, 15, COLORS.silver2); label(pr.cd > 0 ? cooldownText(pr) : '가능', x + w - 10, yy, 15, pr.ready ? COLORS.gold : COLORS.silver2, 'right');
 }
 
+const itemName = u => u.item ? Sim.ITEMS[u.item].name : WEAPON_NAME[(styleOf(u) || {}).weapon] || '—';
 const TERRAIN_NAME = ['평지', '숲', '바위', '물', '여울'], WEAPON_NAME = { glaive: '청룡언월도', halberd: '방천화극', lance: '창', twin: '쌍철극', sword: '검', spear: '창', bow: '활', fan: '부채' };
 function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치 창과 같은 줄 구성. AR·DR·EL+ 는 이 프로토에 없는 능력치라 빈 값으로 둔다
   const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, COLORS.silver); };
   label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, hpCol(u.hp / u.maxHp, col)); label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
-  const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = WEAPON_NAME[(styleOf(u) || {}).weapon] || '—';
+  const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = itemName(u);
   label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(u.hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
   cell('AT', u.atk.toFixed(0), 0, 1); cell('DF', u.df, 1, 1); cell('AA', u.aa + '%', 2, 1);
-  cell('AR', '—', 0, 2); cell('DR', '—', 1, 2); cell('AD', u.ad, 2, 2);
+  cell('AR', u.ar, 0, 2); cell('DR', u.dr, 1, 2); cell('AD', u.ad, 2, 2);
   cell('MD', u.md, 0, 3); cell('FT', Math.round(u.ft), 1, 3); cell('EL+', '----', 2, 3);
   label('ST', x + 8, y + top + 4 * rh, fs, orange); label(stText(u), x + 8 + fs * 2.2, y + top + 4 * rh, fs, COLORS.silver); label('지형', x + 8 + 1.6 * c, y + top + 4 * rh, fs, orange); label(terrain, x + 8 + 1.6 * c + fs * 2.6, y + top + 4 * rh, fs, COLORS.silver);
   label('ITEM', x + 8, y + top + 5 * rh, fs, orange); label(wp, x + 8 + fs * 3, y + top + 5 * rh, fs, COLORS.silver);
@@ -615,7 +616,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.100', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.101', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -722,7 +723,7 @@ function drawExploreSelect() {
 function drawRoster() {
   ctx.fillStyle = '#0b3036'; ctx.fillRect(0, 0, VW, VH);
   panel(18, 16, 1244, 54, COLORS.gold, 3, 'rgba(6,17,23,.9)');
-  label(rosterMode === 'select' ? '군단 편성 · 교환 군단 선택' : '군단 편성 · 군단 간 교환', 42, 43, 27, COLORS.gold);
+  label(rosterMode === 'select' ? '군단 편성 · 교환 군단 선택' : rosterMode === 'equip' ? '군단 편성 · 장비 관리' : '군단 편성 · 군단 간 교환', 42, 43, 27, COLORS.gold);
   label(`보유 ${roster.length} / ${ROSTER_MAX}군단 · 군단당 6명×3분대`, 520, 43, 17, COLORS.silver);
   button('roster:back', 1095, 25, 145, 36, rosterMode === 'select' ? '원정 지도로' : '군단 선택', false, 16);
   if (rosterMode === 'select') {
@@ -740,13 +741,27 @@ function drawRoster() {
       label(members.length ? members.map(k => Sim.U[k].name).join(' · ') : '비어 있음', 150, 359 + squad * 82, 15, members.length ? COLORS.silver : COLORS.dim);
       label(members.length ? `⚔${Sim.corpsPower(corps.units.slice(squad * 6, squad * 6 + 6), 'player', corps.growth.slice(squad * 6, squad * 6 + 6))}` : '', 548, 359 + squad * 82, 15, COLORS.goldSel, 'right');
     }
-    if (roster.length > 1) button('roster:dismiss', 52, 574, 508, 38, '군단 해제', false, 15);
+    button('roster:equip', 52, 574, 250, 38, '장비(ITEM) 관리', false, 15);
+    if (roster.length > 1) button('roster:dismiss', 310, 574, 250, 38, '군단 해제', false, 15);
     panel(622, 94, 630, 536, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 646, 126, 20, COLORS.gold);
     const targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), page = targets.slice(rosterPage * 10, rosterPage * 10 + 10);
     page.forEach(({ c, index }, row) => button(`roster:target:${index}`, 646, 154 + row * 40, 582, 34, `${index + 1}군단  ${corpsName(c)}  ${c.units.filter(Boolean).length}/18 · ⚔${corpsPow(c)}`, false, 15));
     button('roster:new', 646, 564, 280, 42, roster.length < ROSTER_MAX ? '새 군단 생성' : '군단 보유 한도 100', false, 16);
     button('roster:page:prev', 944, 564, 132, 42, '◀', false, 18); button('roster:page:next', 1096, 564, 132, 42, '▶', false, 18);
+  } else if (rosterMode === 'equip') {
+    const corps = roster[rosterSource]; panel(28, 92, 1224, 548, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
+    label(`${rosterSource + 1}군단 · ${corpsName(corps)} · 장수 ITEM 탈부착`, 46, 120, 22, COLORS.gold);
+    label('보유: ' + Object.entries(Sim.ITEMS).map(([k, it]) => `${it.name} ${campaign.items[k] || 0}`).join(' · '), 1236, 120, 15, COLORS.silver, 'right');
+    const named = corps.units.map((key, slot) => ({ key, slot })).filter(x => x.key && !Sim.U[x.key].generic);
+    if (!named.length) label('이 군단에는 장비할 수 있는 장수가 없습니다.', 640, 360, 20, COLORS.dim, 'center');
+    named.forEach(({ key, slot }, row) => {
+      const g = corps.growth[slot] || {}, it = Sim.ITEMS[g.item], ry = 142 + row * 26, bonus = it ? Object.entries(it).filter(([k]) => k !== 'name').map(([k, v]) => `${k.replace('seal_', '').toUpperCase()}+${v}`).join(' ') : '';
+      panel(38, ry, 1204, 24, 'rgba(206,231,224,.25)', 1, 'rgba(15,44,52,.75)');
+      label(String(slot + 1).padStart(2, '0'), 50, ry + 12, 13, COLORS.silver2); label(Sim.U[key].name, 100, ry + 12, 15, COLORS.goldSel);
+      button(`roster:item:${slot}:-1`, 420, ry, 40, 24, '◀', false, 14); label(it ? it.name : '— 없음 —', 560, ry + 12, 15, it ? COLORS.gold : COLORS.dim, 'center'); button(`roster:item:${slot}:1`, 660, ry, 40, 24, '▶', false, 14);
+      label(bonus, 730, ry + 12, 14, COLORS.silver);
+    });
   } else {
     const drawCorps = (corpsId, x, side) => {
       const corps = roster[corpsId]; panel(x, 92, 600, 548, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
@@ -833,6 +848,12 @@ function pickRosterUnit(side, slot) {
   [from.growth[rosterPick.slot], to.growth[slot]] = [to.growth[slot], from.growth[rosterPick.slot]]; rosterPick = null;
   campaign.notice = '군단 간 편성을 교환했습니다. 첫 칸의 군단장을 확인하세요.';
 }
+function cycleItem(slot, d) {   // 장수의 ITEM 을 보유 목록에서 앞뒤로 바꾼다. 떼면 보유로 돌아간다
+  const corps = roster[rosterSource], key = corps.units[slot]; if (!key || Sim.U[key].generic) return;
+  const g = corps.growth[slot] || (corps.growth[slot] = {}), cur = g.item || null, opts = [null, ...Object.keys(Sim.ITEMS)].filter(k => k === null || k === cur || (campaign.items[k] || 0) > 0), next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
+  if (cur) campaign.items[cur] = (campaign.items[cur] || 0) + 1; if (next) campaign.items[next]--; g.item = next;
+  campaign.notice = next ? `${Sim.U[key].name}에게 ${Sim.ITEMS[next].name}을 장착했습니다.` : `${Sim.U[key].name}의 ITEM을 해제했습니다.`;
+}
 function uiClick(id) {
   if (id === 'campaign:save') { saveSlotMode = 'save'; return; }
   if (id === 'campaign:load') { saveSlotMode = 'load'; return; }
@@ -861,7 +882,10 @@ function uiClick(id) {
   if (id === 'campaign:explore:close') { exploreSelectOpen = false; return; }
   if (id === 'campaign:explore:prev' || id === 'campaign:explore:next') { const available = roster.filter(c => c.units.some(Boolean) && stageById(c.at).owner === 'player'), pages = Math.max(1, Math.ceil(available.length / 8)), d = id.endsWith('next') ? 1 : -1; explorePage = (explorePage + d + pages) % pages; return; }
   if (/^campaign:explore:\d+$/.test(id)) { const index = +id.slice(17); exploreSelectOpen = false; exploreCampaign(index); return; }
+  if (id === 'roster:equip') { rosterMode = 'equip'; campaign.notice = '◀ ▶ 로 장수의 ITEM 을 바꿉니다.'; return; }
+  if (id.startsWith('roster:item:')) { const [, , slot, d] = id.split(':'); cycleItem(+slot, +d); return; }
   if (id === 'roster:back') {
+    if (rosterMode === 'equip') { rosterMode = 'select'; campaign.notice = '교환할 군단을 선택하세요.'; saveCampaign(); return; }
     if (rosterMode === 'exchange') {
       if (rosterNew !== null && roster[rosterNew] && !roster[rosterNew].units.some(Boolean)) { roster.splice(rosterNew, 1); campaign.notice = '배치가 없어 새 군단 생성을 취소했습니다.'; }
       else campaign.notice = '교환할 군단을 선택하세요.';
