@@ -18,12 +18,12 @@ let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false
 const STAGES = [
   { id: 'beiping', name: '북평', stage: 1, difficulty: '초급', note: '출발·정비', theme: 'plains', x: 850, y: 92, owner: 'player', links: ['ji'], reinforce: 0, mapSeed: 5 },
   { id: 'ji', name: '계', stage: 2, difficulty: '초급', note: '평야 전초', theme: 'plains', x: 750, y: 150, owner: 'enemy', links: ['beiping', 'tak'], reinforce: 1, mapSeed: 7 },
-  { id: 'tak', name: '탁현', stage: 3, difficulty: '초급', note: '강가 여울', theme: 'riverside', x: 625, y: 108, owner: 'enemy', links: ['ji', 'zhongshan'], reinforce: 1, mapSeed: 11 },
+  { id: 'tak', name: '탁현', stage: 3, difficulty: '초급', note: '강가 넓은 여울', theme: 'riverside', wideRiver: true, x: 625, y: 108, owner: 'enemy', links: ['ji', 'zhongshan'], reinforce: 1, mapSeed: 11 },
   { id: 'zhongshan', name: '중산', stage: 4, difficulty: '중급', note: '평야 교전', theme: 'plains', x: 535, y: 190, owner: 'enemy', links: ['tak', 'changshan'], reinforce: 2, mapSeed: 13 },
   { id: 'changshan', name: '상산', stage: 5, difficulty: '중급', note: '산악 협로', theme: 'mountain', x: 685, y: 270, owner: 'enemy', links: ['zhongshan', 'ye'], reinforce: 2, mapSeed: 17 },
   { id: 'ye', name: '업', stage: 6, difficulty: '중급', note: '넓은 평야', theme: 'plains', x: 555, y: 350, owner: 'enemy', links: ['changshan', 'henei'], reinforce: 3, mapSeed: 19 },
-  { id: 'henei', name: '하내', stage: 7, difficulty: '상급', note: '하천 방어선', theme: 'riverside', x: 440, y: 425, owner: 'enemy', links: ['ye', 'mengjin'], reinforce: 3, mapSeed: 23 },
-  { id: 'mengjin', name: '맹진', stage: 8, difficulty: '상급', note: '황하 도하', theme: 'riverside', x: 585, y: 505, owner: 'enemy', links: ['henei', 'hulao'], reinforce: 4, mapSeed: 29 },
+  { id: 'henei', name: '하내', stage: 7, difficulty: '상급', note: '하천 방어선', theme: 'riverside', wideRiver: true, x: 440, y: 425, owner: 'enemy', links: ['ye', 'mengjin'], reinforce: 3, mapSeed: 23 },
+  { id: 'mengjin', name: '맹진', stage: 8, difficulty: '상급', note: '황하 도하', theme: 'riverside', wideRiver: true, x: 585, y: 505, owner: 'enemy', links: ['henei', 'hulao'], reinforce: 4, mapSeed: 29 },
   { id: 'hulao', name: '호뢰관', stage: 9, difficulty: '최상', note: '성채 관문', theme: 'fortress', x: 455, y: 585, owner: 'enemy', links: ['mengjin', 'luoyang'], reinforce: 4, mapSeed: 31 },
   { id: 'luoyang', name: '낙양', stage: 10, difficulty: '최상', note: '성채 결전', theme: 'fortress', x: 305, y: 650, owner: 'enemy', links: ['hulao'], reinforce: 5, mapSeed: 37 },
 ];
@@ -32,15 +32,17 @@ const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy');
 const RESERVE_LEADERS = ['gong', 'yuan', 'cao', 'dong', 'zhanghe', 'xuhuang', 'xuchu', 'sima', 'lijue'];
 const THEME_NAME = { plains: '평야', mountain: '산악', riverside: '강가', fortress: '성채' };
 const THEME_UNITS = { plains: ['ecav', 'esword', 'earcher'], mountain: ['esword', 'eshield', 'earcher'], riverside: ['earcher', 'esword', 'eshield'], fortress: ['eshield', 'earcher', 'esword'] };
+const ROUT_CHANCE = { 초급: 0.9, 중급: 0.75, 상급: 0.55, 최상: 0.35 };
+const EARLY_SUPPORT = { changshan: 12, ye: 10, luoyang: 6 };
 const tripleEnemyUnits = (units, pool, offset = 0) => units.concat(Array.from({ length: Math.min(Sim.ARMY_MAX, units.length * 3) - units.length }, (_, n) => pool[(offset + n) % pool.length]));
 const enemyForces = [];
 for (let i = 0; i < BASE_ENEMIES.length; i++) {
-  const stage = STAGES[i + 1], army = BASE_ENEMIES[i], pool = THEME_UNITS[stage.theme], add = stage.reinforce;
+  const stage = STAGES[i + 1], army = BASE_ENEMIES[i], pool = THEME_UNITS[stage.theme], add = stage.reinforce, protect = stage.stage >= 7;
   const units = army.units.concat(Array.from({ length: add }, (_, n) => pool[(i + n) % pool.length]));
-  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { ...army, units: tripleEnemyUnits(units, pool, i) } });
+  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { ...army, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(units, pool, i) } });
   const leader = RESERVE_LEADERS[i], size = Math.min(8, 3 + Math.ceil(stage.stage / 2));
   const reserveUnits = [leader, ...Array.from({ length: size - 1 }, (_, n) => pool[(i + n + 1) % pool.length])];
-  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: `${stage.name} 제2군단`, at: army.at, leader, reserve: true, units: tripleEnemyUnits(reserveUnits, pool, i + 1), trig: { near: 12, t: 60 } } });
+  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: `${stage.name} 제2군단`, at: army.at, leader, reserve: true, reserveAt: EARLY_SUPPORT[stage.id] ?? 20, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(reserveUnits, pool, i + 1), trig: { near: 12, t: 60 } } });
 }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
 const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, turn: 1, notice: '북평에서 낙양 원정을 시작한다.' };
@@ -118,7 +120,7 @@ function startBattle(stage, explore = false) {
   campaign.battle = stage || campaign.battle;
   campaign.explore = explore;
   const armies = stageArmies(campaign.battle).filter(a => !explore || a.team === 'player');
-  S = Sim.createBattle((Date.now() % 100000) + 1, { armies, mapSeed: campaign.battle ? campaign.battle.mapSeed : 7, theme: campaign.battle ? campaign.battle.theme : 'plains', explore, attackingTeam: campaign.invasion ? 'enemy' : 'player', surrenderSlots: roster.reduce((n, c) => n + c.units.filter(x => !x).length, 0) }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
+  S = Sim.createBattle((Date.now() % 100000) + 1, { armies, mapSeed: campaign.battle ? campaign.battle.mapSeed : 7, theme: campaign.battle ? campaign.battle.theme : 'plains', wideRiver: !!(campaign.battle && campaign.battle.wideRiver), routChance: campaign.battle ? ROUT_CHANCE[campaign.battle.difficulty] : 0.65, explore, attackingTeam: campaign.invasion ? 'enemy' : 'player', surrenderSlots: roster.reduce((n, c) => n + c.units.filter(x => !x).length, 0) }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
   if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: campaign.invasion ? `적 군단이 ${campaign.battle.name}을 침공했습니다!` : `${campaign.battle.stage}지역 ${campaign.battle.name} · ${campaign.battle.difficulty} · ${campaign.battle.note}` });
   state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam();
@@ -503,7 +505,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.82', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.83', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }

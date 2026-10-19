@@ -77,7 +77,7 @@ const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield:
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 1.5, spear: 1.5, cavalry: 2, military: 1.5 }, military: { military: 1, sword: 1.5, spear: 1.5, cavalry: 2, archer: 1.5 } };
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
-const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기' };
+const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기', guard: '호위' };
 const ENEMY_FIELD_MAX = 36, ARMY_MAX = 18, SQUAD_MAX = 3;
 // 마법표 (퍼스트퀸4). dmg = [기본, 대상 MD 1당 감소, 최소] — 시전자 능력치와 무관, 대상의 마법방어(MD)만 본다.
 //  확인된 것(나무위키): 장풍·불새·얼음칼날·회오리바람 140/4/20, 불꽃탄·불공 35/1/5, 장풍=추적, 불새·얼음칼날·회오리=관통, 번개=아주 넓고 아군도 맞음,
@@ -119,7 +119,7 @@ const ARMIES = [
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // ---------- 지형 / 격자 ----------
-function genMap(seed = 7, armies = ARMIES, theme = 'riverside') {
+function genMap(seed = 7, armies = ARMIES, theme = 'riverside', wideRiver = false) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const m = new Uint8Array(MW * MH), set = (x, y, t) => { if (x >= 0 && y >= 0 && x < MW && y < MH) m[y * MW + x] = t; };
   const forests = theme === 'plains' ? 8 : theme === 'mountain' ? 16 : theme === 'fortress' ? 6 : 22;
@@ -129,10 +129,11 @@ function genMap(seed = 7, armies = ARMIES, theme = 'riverside') {
   }
   if (theme === 'riverside') for (let y = 0; y < MH; y++) {   // 강: 세 곳의 여울로만 건널 수 있다
     const rx = Math.round(28 + 2 * Math.sin(y * 0.35));
-    for (let x = rx - 1; x <= rx + 1; x++) set(x, y, (y >= 6 && y <= 11) || (y >= 18 && y <= 23) || (y >= 30 && y <= 34) ? ROAD : WATER);
+    const ford = wideRiver || (y >= 6 && y <= 11) || (y >= 18 && y <= 23) || (y >= 30 && y <= 34);
+    for (let x = rx - 1; x <= rx + 1; x++) set(x, y, ford ? ROAD : WATER);
   }
   if (theme === 'plains') for (let x = 4; x < MW - 4; x++) set(x, 20, ROAD);
-  if (theme === 'fortress') for (const x of [38, 39]) for (let y = 2; y < MH - 2; y++) set(x, y, (y >= 8 && y <= 12) || (y >= 27 && y <= 31) ? ROAD : ROCK);
+  if (theme === 'fortress') for (const x of [38, 39]) for (let y = 2; y < MH - 2; y++) set(x, y, (y >= 5 && y <= 14) || (y >= 24 && y <= 34) ? ROAD : ROCK);
   const rocks = theme === 'mountain' ? 130 : theme === 'plains' ? 12 : theme === 'fortress' ? 24 : 40;
   for (let i = 0; i < rocks; i++) { const x = 8 + Math.floor(rnd() * 54), y = Math.floor(rnd() * MH); if (m[y * MW + x] === GRASS || m[y * MW + x] === FOREST) set(x, y, ROCK); }
   for (const a of armies) for (let y = -4; y <= 4; y++) for (let x = -5; x <= 5; x++) { const tx = a.at[0] + x, ty = a.at[1] + y; if (tx >= 0 && ty >= 0 && tx < MW && ty < MH && m[ty * MW + tx] !== WATER && m[ty * MW + tx] !== ROAD) m[ty * MW + tx] = GRASS; }
@@ -195,7 +196,7 @@ function createBattle(seed = 1, opts = {}) {
     if (unique.has(u.name)) throw new Error(u.name + ': 고유 장수는 한 명만 편성할 수 있습니다.');
     unique.add(u.name);
   }
-  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.65, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
@@ -208,16 +209,19 @@ function createBattle(seed = 1, opts = {}) {
     squadDefs.forEach((q, squad) => {
       q.units.forEach((key, index) => members.push({ key, squad, growth: (q.growth || d.growth || [])[index], rosterSlot: (q.rosterSlots || d.rosterSlots || [])[index] }));
     });
+    if (d.leaderRear) { const leaderIndex = members.findIndex(m => m.key === d.leader), leader = members.splice(leaderIndex, 1)[0]; members.splice(Math.min(4, members.length), 0, leader); }
     const keys = members.slice(0, ARMY_MAX), forcedReserve = d.team === 'enemy' && !!d.reserve;
     const reserve = d.team === 'enemy' ? forcedReserve || reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
     if (d.team === 'enemy' && !forcedReserve) { if (reserve) reserves = true; else enemyField += keys.length; }
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, units: [], squads: squadDefs.map((q, id) => ({ id, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, reserveAt: d.reserveAt ?? 20, units: [], squads: squadDefs.map((q, id) => ({ id, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: d.formation || 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad, growth, rosterSlot }, i) => {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
-      const baseHp = T.hp * HP_MUL * (['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key) ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1);
+      const frontline = ['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key), ownHp = T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1);
+      const peerKey = (d.team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey], peerHp = peer && peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP);
+      const baseHp = T.generic || !peer ? ownHp : Math.max(ownHp * 1.5, peerHp * 1.5);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
@@ -225,6 +229,7 @@ function createBattle(seed = 1, opts = {}) {
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
     });
+    if (d.formation) setFormation(A, d.formation);
     if (d.team === 'player') setCtrl(S, A, A.leader || A.units[0]);   // 분견 분대는 첫 병사를 조작 대상으로 사용한다
   });
   return S;
@@ -261,6 +266,11 @@ function gainXp(S, u, n) {
   }
 }
 const gainCombatXp = (S, u, base) => gainXp(S, u, Math.max(1, Math.round(base * (u.named ? 1.5 : 1))));
+function tryRout(S, A) {
+  if (S.rnd() >= S.routChance) { A.nextRoutCheck = S.t + 15; return false; }
+  let fleeing = false; for (const m of A.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
+  A.nextRoutCheck = 0; return fleeing;
+}
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
@@ -272,8 +282,8 @@ function die(S, u, killer) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
     if (u.team === 'enemy') dialogue(S, u, '내가 여기서 쓰러지다니…');
     if (u.team === 'enemy') {
-      let fleeing = false; for (const m of u.army.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
-      if (fleeing) notice(S, 'enemy', '적 ' + u.army.name + '가 후퇴합니다.');
+      const fleeing = tryRout(S, u.army);
+      notice(S, 'enemy', fleeing ? '적 ' + u.army.name + '가 후퇴합니다.' : '적 ' + u.army.name + '가 지휘관 없이 전투를 계속합니다.');
     }
   }
 }
@@ -438,7 +448,8 @@ const SIGHT = 6.5 * TILE;
 function nearestEnemy(S, u, maxD) {
   let best = null, bd = maxD;
   for (const e of S.units) { if (!live(e) || e.team === u.team) continue; const d = Math.hypot(e.x - u.x, e.y - u.y); if (d < bd) { bd = d; best = e; } }
-  return best;
+  let leader = null, ld = Math.min(maxD, bd + 3 * TILE); if (u.named) for (const e of S.units) if (live(e) && e.team !== u.team && e.isLeader) { const d = Math.hypot(e.x - u.x, e.y - u.y); if (d < ld) { ld = d; leader = e; } }
+  return leader || best;
 }
 function inReach(u, t) { return u.range > 0 ? Math.hypot((u.tx - t.tx) * TILE, (u.ty - t.ty) * TILE) <= u.range : cheb(u, t) <= 1; }   // 근접 = 인접한 8칸
 function engage(S, u, t, canMove) {
@@ -465,6 +476,7 @@ function setFormation(A, type) {
   A.units.forEach((u, i) => {
     if (type === 'line') u.slot = { dx: 0, dy: i - mid };
     else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: -sgn * row, dy: i ? (i % 2 ? -row : row) : 0 }; }
+    else if (type === 'guard') { const n = A.units.filter(v => !v.isLeader).indexOf(u); u.slot = u.isLeader ? { dx: -sgn, dy: 0 } : { dx: -sgn * Math.floor(n / 4), dy: (n % 4) - 1 }; }
     else u.slot = { dx: -sgn * Math.floor(i / 4), dy: (i % 4) - 1 };
     u.path = null;
   });
@@ -576,9 +588,10 @@ function updateProj(S, dt) {
 
 // ---------- 적 군단 AI / 종료 판정 ----------
 function enemyAI(S) {
+  for (const A of S.armies) if (A.team === 'enemy' && A.routed && A.nextRoutCheck && S.t >= A.nextRoutCheck && tryRout(S, A)) notice(S, 'enemy', '적 ' + A.name + '가 사기 저하로 후퇴합니다.');
   let field = S.units.filter(u => u.team === 'enemy' && live(u)).length;
   for (const A of S.armies) if (A.team === 'enemy' && A.state === 'reserve') {
-    if (A.stagedReserve && S.t < 20 && !S.armies.some(B => B.team === 'enemy' && B !== A && B.routed)) continue;
+    if (A.stagedReserve && S.t < A.reserveAt && !S.armies.some(B => B.team === 'enemy' && B !== A && B.routed)) continue;
     const ready = A.units.filter(u => !u.dead && !u.fled).length; if (!ready || field + ready > ENEMY_FIELD_MAX) continue;
     field += deployArmy(S, A);
   }
