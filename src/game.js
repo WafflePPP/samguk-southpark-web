@@ -119,9 +119,9 @@ let tutorialStep = -1, tutorialSeen = false;
 try { tutorialSeen = localStorage.getItem('sgsp-tutorial') === '1'; } catch (e) { /* 저장소를 못 쓰면 매번 안내 */ }
 let armyIdx = 0, tblAbility = false, tblCompact = false, speedIdx = 0, padVisible = false;
 let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null, stick = null;   // stick: 모바일 가상 조이스틱 {id, ox, oy, kx, ky}
-// 표시 옵션: 피해량 숫자 / 버프·효과 표기(회복·방어·회피·레벨업). 시스템 메뉴에서 켜고 끄며 브라우저에 기억한다
-const SHOW = { dmg: true, buff: true, pauseSel: true, status: true };   // status: 모바일 조작 장수 정보 표시
-try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ }
+// 표시 옵션: 버프·효과는 상시 숨김, 나머지는 시스템 메뉴에서 바꾸고 브라우저에 기억한다.
+const SHOW = { dmg: true, buff: false, pauseSel: true, status: true };   // status: 모바일 조작 장수 정보 표시
+try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ } SHOW.buff = false;
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
 // 카메라 거리(줌): PC·모바일 기본 ×1.3. 상단 버튼·[ ] 키로 조절하고 모드별로 기억한다
 const ZOOMS = [[1, '멀리'], [1.3, '기본'], [1.67, '가까이'], [2, '더 가까이'], [2.5, '아주 가까이'], [3, '원작']];
@@ -527,7 +527,7 @@ function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 �
   button('sel:ok', LEFT_W + VPW / 2 - 110, TB_H + vh - (mobile ? 92 : 70), 220, mobile ? 64 : 44, foe ? (mobile ? '확정 (집중 공격)' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
 }
 function drawMenu() {   // 시스템: 표시 설정·전투 설정
-  const items = [['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg], ['m:buff', `버프·효과 표기 [${SHOW.buff ? 'ON' : 'OFF'}]`, SHOW.buff]];
+  const items = [['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg]];
   if (mobile) items.push(['m:status', `장수 정보 [${SHOW.status ? 'ON' : 'OFF'}]`, SHOW.status]);
   else items.push(['m:compact', `장수 정보 축소 [${tblCompact ? 'ON' : 'OFF'}]`, tblCompact], ['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
   items.push(['m:tutorial', '튜토리얼 다시 보기'], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일']);
@@ -582,7 +582,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.93', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.94', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -867,7 +867,7 @@ function uiClick(id) {
   else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
   else if (id === 'm:formation') cycleFormation(army());
   else if (id === 'm:pausesel') { SHOW.pauseSel = !SHOW.pauseSel; saveShow(); if (!SHOW.pauseSel) cancelSelect(); }
-  else if (id === 'm:dmg') { SHOW.dmg = !SHOW.dmg; saveShow(); } else if (id === 'm:buff') { SHOW.buff = !SHOW.buff; saveShow(); }
+  else if (id === 'm:dmg') { SHOW.dmg = !SHOW.dmg; saveShow(); }
   else if (id === 'm:tutorial') { menuOpen = false; selectMode = false; tutorialStep = 0; }
   else if (id === 'm:mode') setMobile(!mobile);
   else if (id === 'm:status') { SHOW.status = !SHOW.status; saveShow(); }
