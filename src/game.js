@@ -148,9 +148,10 @@ function startCampaign() {
 }
 function startNewGame() { resetCampaignData(); titleNotice = ''; startCampaign(); saveCampaign(); }
 function loadGame() {
-  const data = readCampaign(); if (!restoreCampaign(data)) { titleNotice = '불러올 저장 데이터가 없습니다.'; return; }
+  const data = readCampaign(); if (!restoreCampaign(data)) { if (state === 'title') titleNotice = '불러올 저장 데이터가 없습니다.'; else campaign.notice = '불러올 저장 데이터가 없습니다.'; return false; }
   const battle = campaign.battle, explore = campaign.explore, notice = campaign.notice; titleNotice = '';
   if (battle) startBattle(battle, explore); else { startCampaign(); campaign.notice = notice || `${campaign.turn}턴 원정을 불러왔습니다.`; }
+  return true;
 }
 // 전투력: 장수·병사 능력치를 환산해(Sim.unitPower) 군단별로 합산한다.
 const corpsPow = corps => Sim.corpsPower(corps.units, 'player', corps.growth);
@@ -560,7 +561,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.88', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.89', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -606,9 +607,10 @@ function drawStageMap() {
   button('campaign:move', 1025, 466, 210, 36, moveMode === 'city' && !moveSelectOpen ? '지역 선택 중' : '이동', moveSelectOpen || moveMode === 'city', 16);
   button('campaign:roster', 1025, 508, 210, 36, '편성 · NEW TEAM · DISMISS', false, 14);
   button('campaign:explore', 1025, 550, 100, 38, '탐색', false, 16); button('campaign:end', 1135, 550, 100, 38, '턴 종료', true, 16);
-  panel(1025, 598, 210, 82, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');
-  label(campaign.notice, 1130, 625, 14, COLORS.silver, 'center');
-  label('이동 지정 → 현황 확인 → 턴 종료', 1130, 660, 13, COLORS.goldSel, 'center');
+  button('campaign:save', 1025, 594, 100, 34, '저장', false, 15); button('campaign:load', 1135, 594, 100, 34, '로드', false, 15);
+  panel(1025, 636, 210, 54, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');
+  label(campaign.notice, 1130, 654, 13, COLORS.silver, 'center');
+  label('이동 지정 → 저장 → 턴 종료', 1130, 678, 12, COLORS.goldSel, 'center');
   if (moveSelectOpen) drawMoveSelect();
   if (campaign.movement.length) drawMovementNotice();
   else if (campaign.pendingEncounter && campaign.pendingEncounter.invasion) drawResponseSelect();
@@ -760,6 +762,8 @@ function pickRosterUnit(side, slot) {
   campaign.notice = '군단 간 편성을 교환했습니다. 첫 칸의 군단장을 확인하세요.';
 }
 function uiClick(id) {
+  if (id === 'campaign:save') { campaign.notice = `${campaign.turn}턴 원정을 저장했습니다.`; saveCampaign(); return; }
+  if (id === 'campaign:load') { if (loadGame() && state === 'map') campaign.notice = `${campaign.turn}턴 원정을 불러왔습니다.`; return; }
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
   if (id === 'campaign:movement:prev' || id === 'campaign:movement:next') { const pages = campaign.movement.length, d = id.endsWith('next') ? 1 : -1; campaign.movementPage = Math.max(0, Math.min(pages - 1, campaign.movementPage + d)); return; }
   if (id === 'campaign:movement:close') { const pages = campaign.movement.length; if (campaign.movementPage < pages - 1) { campaign.movementPage++; return; } campaign.movement = []; campaign.movementPage = 0; continueCampaignTurn(); return; }
