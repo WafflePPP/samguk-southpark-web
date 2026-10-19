@@ -6,8 +6,8 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
-const SOLDIER_HP = 3.5;   // 일반 병사(generic) 최종 체력 ×7 — 장수는 그대로
-const FRONTLINE_HP = 10.5; // 보병·방패병도 기존 비율(일반 병사의 3배)을 유지하며 ×7
+const SOLDIER_HP = 2.5;   // 일반 병사(generic) 최종 체력 ×5 — 장수는 그대로
+const FRONTLINE_HP = 7.5; // 보병·방패병도 기존 비율(일반 병사의 3배)을 유지하며 ×5
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
@@ -618,13 +618,18 @@ function step(S, dt) {
 
 // ---------- 명령 (UI → 시뮬레이션) ----------
 const mine = units => units.filter(u => live(u) && u.team === 'player');
+function releaseManualControl(S, except) {
+  if (!S.auto) return;
+  for (const u of S.units) if (u !== except && u.team === 'player' && u.manual) { u.manual = false; u.ctrlIn = null; if (u.order.type !== 'retreat') { u.order = { type: 'charge' }; u.autoCharge = true; u.path = null; } }
+}
 // 퍼스트퀸4 조작: 군단마다 "조작 캐릭터" 한 명을 직접 움직이고(방향 입력 = 한 칸 이동, 적이 있는 칸으로 밀면 공격), 나머지는 AI + 군단 명령(돌격·정지·후퇴·자유)
 function setCtrl(S, A, u) {
-  if (!u || !live(u) || A.ctrl === u) return;
+  if (!u || !live(u)) return;
+  releaseManualControl(S, u); if (A.ctrl === u) return;
   const old = A.ctrl; A.ctrl = u; u.manual = false; if (u.order.type !== 'retreat') u.order = { type: S.auto ? 'charge' : 'stop' }; u.ctrlIn = null; u.autoCharge = S.auto; u.path = null;
   if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: S.auto ? 'charge' : A.order }; old.ctrlIn = null; old.manual = false; old.autoCharge = S.auto; }   // 풀려난 캐릭터는 군단 명령을 따른다
 }
-function takeControl(S, u) { if (S.auto && u.team === 'player' && u === u.army.ctrl && !u.manual) { u.manual = true; u.order = { type: 'stop' }; u.autoCharge = false; u.path = null; } }
+function takeControl(S, u) { if (S.auto && u.team === 'player' && u === u.army.ctrl && !u.manual) { releaseManualControl(S, u); u.manual = true; u.order = { type: 'stop' }; u.autoCharge = false; u.path = null; } }
 function control(S, u, dx, dy) { takeControl(S, u); u.ctrlIn = { dx, dy, t: S.t }; }   // 자동 중에는 현재 장수만 수동으로 전환
 function directMove(S, u, dx, dy) {
   if (u.root > 0) return;   // 속박(거미줄) 중에는 걷지 못한다
