@@ -251,6 +251,7 @@ function createBattle(seed = 1, opts = {}) {
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
     });
+    A.initialHp = A.units.reduce((n, u) => n + u.maxHp, 0); A.nextHpRetreatCheck = 0; A.retreatByHp = false;
     if (d.formation) setFormation(A, d.formation);
     if (d.team === 'player') setCtrl(S, A, A.leader || A.units[0]);   // 분견 분대는 첫 병사를 조작 대상으로 사용한다
   });
@@ -293,6 +294,14 @@ function tryRout(S, A) {
   let fleeing = false; for (const m of A.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
   A.nextRoutCheck = 0; return fleeing;
 }
+function tryHpRetreat(S, A) {
+  if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !A.initialHp || S.t < A.nextHpRetreatCheck) return false;
+  const hp = A.units.reduce((n, u) => n + (live(u) ? Math.max(0, u.hp) : 0), 0); if (hp > A.initialHp * 0.5) return false;
+  A.nextHpRetreatCheck = S.t + 12;
+  const power = A.leader ? statPower(A.leader) : 0, chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78); if (S.rnd() >= chance) return false;
+  A.routed = true; A.retreatByHp = true; for (const u of A.units) if (live(u)) { u.order = { type: 'flee' }; u.path = null; }
+  notice(S, 'enemy', `적 ${A.name}가 총 생명력 50% 이하로 후퇴합니다. · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`); return true;
+}
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
@@ -310,13 +319,18 @@ function die(S, u, killer) {
   }
 }
 function surrender(S, u) {
-  const A = S.armies.find(a => a.team === 'player' && a.units.filter(x => !x.dead).length < 6); if (!A) return false;
+  let A = S.armies.find(a => a.team === 'player' && a.units.filter(x => !x.dead).length < 6);
+  if (!A) {
+    const squad = { id: 0, units: [] };
+    A = { id: S.armies.length, team: 'player', name: '투항 군단', corps: 'surrender', squadIndex: 0, units: [], squads: [squad], leader: null, commander: false, trig: null, support: false, state: 'player', formation: 'block', routed: false, order: 'idle', ctrl: null };
+    S.armies.push(A);
+  }
   const old = u.army, oi = old.units.indexOf(u); if (oi >= 0) old.units.splice(oi, 1);
   if (old.leader === u) { old.leader = null; old.routed = true; }
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   const squad = A.squads[0] || (A.squads[0] = { id: 0, units: [] });
   u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = 0;
-  A.units.push(u); squad.units.push(u); if (A.support) A.state = 'player'; S.surrenderSlots--;
+  A.units.push(u); squad.units.push(u); if (!A.ctrl) A.ctrl = u; if (A.support) A.state = 'player'; setFormation(A, A.formation); S.surrenderSlots--;
   dialogue(S, u, '목숨을 살려주십시오. 아군으로 싸우겠습니다!'); return true;
 }
 function hurt(S, from, t, dmg) {
@@ -611,6 +625,7 @@ function updateProj(S, dt) {
 
 // ---------- 적 군단 AI / 종료 판정 ----------
 function enemyAI(S) {
+  for (const A of S.armies) tryHpRetreat(S, A);
   for (const A of S.armies) if (A.team === 'enemy' && A.routed && A.nextRoutCheck && S.t >= A.nextRoutCheck && tryRout(S, A)) notice(S, 'enemy', '적 ' + A.name + '가 사기 저하로 후퇴합니다.');
   let field = S.units.filter(u => u.team === 'enemy' && live(u)).length;
   for (const A of S.armies) if (A.team === 'enemy' && A.state === 'reserve') {
