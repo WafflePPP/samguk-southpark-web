@@ -32,12 +32,15 @@ const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy');
 const RESERVE_LEADERS = ['gong', 'yuan', 'cao', 'dong', 'zhanghe', 'xuhuang', 'xuchu', 'sima', 'lijue'];
 const THEME_NAME = { plains: '평야', mountain: '산악', riverside: '강가', fortress: '성채' };
 const THEME_UNITS = { plains: ['ecav', 'esword', 'earcher'], mountain: ['esword', 'eshield', 'earcher'], riverside: ['earcher', 'esword', 'eshield'], fortress: ['eshield', 'earcher', 'esword'] };
+const tripleEnemyUnits = (units, pool, offset = 0) => units.concat(Array.from({ length: Math.min(Sim.ARMY_MAX, units.length * 3) - units.length }, (_, n) => pool[(offset + n) % pool.length]));
 const enemyForces = [];
 for (let i = 0; i < BASE_ENEMIES.length; i++) {
   const stage = STAGES[i + 1], army = BASE_ENEMIES[i], pool = THEME_UNITS[stage.theme], add = stage.reinforce;
-  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { ...army, units: army.units.concat(Array.from({ length: add }, (_, n) => pool[(i + n) % pool.length])) } });
+  const units = army.units.concat(Array.from({ length: add }, (_, n) => pool[(i + n) % pool.length]));
+  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { ...army, units: tripleEnemyUnits(units, pool, i) } });
   const leader = RESERVE_LEADERS[i], size = Math.min(8, 3 + Math.ceil(stage.stage / 2));
-  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: `${stage.name} 제2군단`, at: army.at, leader, reserve: true, units: [leader, ...Array.from({ length: size - 1 }, (_, n) => pool[(i + n + 1) % pool.length])], trig: { near: 12, t: 60 } } });
+  const reserveUnits = [leader, ...Array.from({ length: size - 1 }, (_, n) => pool[(i + n + 1) % pool.length])];
+  enemyForces.push({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: `${stage.name} 제2군단`, at: army.at, leader, reserve: true, units: tripleEnemyUnits(reserveUnits, pool, i + 1), trig: { near: 12, t: 60 } } });
 }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
 const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, turn: 1, notice: '북평에서 낙양 원정을 시작한다.' };
@@ -500,7 +503,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.79', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.80', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 출진 G · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   label(mobile ? '화면을 탭하면 원정 시작' : '클릭 / Enter 로 원정 시작', VW / 2, 440, 30, COLORS.gold, 'center');
 }
