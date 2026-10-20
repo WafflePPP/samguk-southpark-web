@@ -452,7 +452,7 @@ function beginStep(S, u, nx, ny, dur) {   // 다음 칸을 즉시 점유하고, 
   S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; tire(u, 'step');
 }
 function knockBack(S, u, dx, dy, tiles) {
-  if (!live(u) || u.knockQ) return 0;
+  if (!live(u) || u.knockQ || u.category === 'spear') return 0;
   const q = []; let x = u.tx, y = u.ty;
   while (q.length < tiles) { const nx = x + dx, ny = y + dy; if (!okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, x, y, dx, dy)) break; q.push({ tx: nx, ty: ny }); x = nx; y = ny; }
   if (q.length) { u.path = null; u.knockQ = q; }
