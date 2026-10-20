@@ -109,7 +109,7 @@ const SPELL = {
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
 const MAGIC = 0.5;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
 const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * t.dr / 100 * ftDef(t)) * MAGIC * (from ? from.ar / 100 : 1);   // AR·DR 은 마법에도 적용
-const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
+const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
 // at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
@@ -259,8 +259,8 @@ function createBattle(seed = 1, opts = {}) {
       const baseHp = baseMaxHp(key, d.team);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || null, spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
-        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
+        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
+        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
@@ -418,7 +418,7 @@ function castSpell(S, u, key, x, y) {
   return true;
 }
 function useSpecial(S, u, x, y) {
-  if (!live(u) || !u.special || u.spT > 0 || u.stun > 0 || u.dashQ) return false;
+  if (!live(u) || !u.special || u.spT > 0 || u.stun > 0 || u.dashQ || u.knockQ) return false;
   cur = S; const ang = Math.atan2(y - u.y, x - u.x), sp = SPECIAL[u.special];
   if (u.special === 'spin') aoe(S, u, u.x, u.y, 80, e => hurt(S, u, e, phys(u, e, 2.2)), '#ffd34d');
   else if (u.special === 'dash') {   // 돌진: 바라보는 8방향 직선으로 최대 6칸, 빈 칸까지만 질주한 뒤 충격
@@ -426,7 +426,7 @@ function useSpecial(S, u, x, y) {
     if ((!dx && !dy) || u.mv) return false;
     while (q.length < 6) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, cx, cy, dx, dy)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
     if (!q.length) return false;
-    u.dashQ = q; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
+    u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
   else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
@@ -450,6 +450,12 @@ function beginSwap(S, a, b) {   // 두 유닛이 서로의 칸으로 동시에 �
 function beginStep(S, u, nx, ny, dur) {   // 다음 칸을 즉시 점유하고, 출발 칸은 도착할 때까지 유지 → 두 칸을 오가는 동안에도 겹치지 않는다
   u.mv = { fx: u.x, fy: u.y, nx, ny, t: 0, dur: dur || stepDur(S, u, nx, ny) };
   S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; tire(u, 'step');
+}
+function knockBack(S, u, dx, dy, tiles) {
+  if (!live(u) || u.knockQ) return;
+  const q = []; let x = u.tx, y = u.ty;
+  while (q.length < tiles) { const nx = x + dx, ny = y + dy; if (!okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, x, y, dx, dy)) break; q.push({ tx: nx, ty: ny }); x = nx; y = ny; }
+  if (q.length) { u.path = null; u.knockQ = q; }
 }
 function advanceMove(S, u, dt) {
   const m = u.mv; m.t += dt; const p = Math.min(1, m.t / m.dur); u.moving = true;
@@ -565,6 +571,7 @@ function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지
 }
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const t = nearestEnemy(S, u, SPECIAL.dash.range); if (t && dist(u, t) > TILE * 1.5 && useSpecial(S, u, t.x, t.y)) return true; }
   if (u.spells.includes('heal')) {
     let t = null, bd = 0.7; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; }
     if (t && castSpell(S, u, 'heal', t.x, t.y)) return true;
@@ -581,21 +588,23 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   }
   if (u.special && u.spT <= 0 && aggressive) {
     if (u.special === 'bless') { let n = 0; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp * 0.6 && dist(u, e) <= 150) n++; if (n >= 3 && useSpecial(S, u, u.x, u.y)) return true; }
-    else { const t = nearestEnemy(S, u, u.special === 'volley' ? u.range : u.special === 'dash' ? 1e9 : 70); if (t && useSpecial(S, u, t.x, t.y)) return true; }
+    else if (u.special !== 'dash') { const t = nearestEnemy(S, u, u.special === 'volley' ? u.range : 70); if (t && useSpecial(S, u, t.x, t.y)) return true; }
   }
   return false;
 }
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.moving = false;
-  if (!u.mv && !u.dashQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.hr * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
+  if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.hr * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
   if (u.mv) { advanceMove(S, u, dt); if (u.mv) return; }   // 한 칸을 걷는 동안에는 다른 행동을 하지 않는다. 칸에 도착하면 같은 틱에 다음 입력·행동을 이어서 처리 (끊김 없이)
+  if (u.knockQ) { const n = u.knockQ.shift(); if (n && !S.occ[ti(n.tx, n.ty)]) { beginStep(S, u, n.tx, n.ty, 0.08); advanceMove(S, u, 0); return; } u.knockQ = null; return; }
   if (u.dashQ) {
     const n = u.dashQ.shift();
-    if (n && !S.occ[ti(n.tx, n.ty)]) { beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
-    u.dashQ = null; aoe(S, u, u.x, u.y, 60, e => hurt(S, u, e, phys(u, e, 2)), '#7fd0ff'); return;
+    if (n && !S.occ[ti(n.tx, n.ty)]) { u.dashMoved++; beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
+    const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
+    u.dashQ = null; aoe(S, u, u.x, u.y, 60, e => { hurt(S, u, e, phys(u, e, 2)); if (live(e)) knockBack(S, e, dx, dy, push); }, '#7fd0ff'); return;
   }
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
