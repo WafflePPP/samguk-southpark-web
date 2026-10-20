@@ -452,10 +452,11 @@ function beginStep(S, u, nx, ny, dur) {   // 다음 칸을 즉시 점유하고, 
   S.occ[ti(nx, ny)] = u.id; u.face = Math.atan2(ny - u.ty, nx - u.tx); u.stuck = 0; tire(u, 'step');
 }
 function knockBack(S, u, dx, dy, tiles) {
-  if (!live(u) || u.knockQ) return;
+  if (!live(u) || u.knockQ) return 0;
   const q = []; let x = u.tx, y = u.ty;
   while (q.length < tiles) { const nx = x + dx, ny = y + dy; if (!okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, x, y, dx, dy)) break; q.push({ tx: nx, ty: ny }); x = nx; y = ny; }
   if (q.length) { u.path = null; u.knockQ = q; }
+  return q.length;
 }
 function advanceMove(S, u, dt) {
   const m = u.mv; m.t += dt; const p = Math.min(1, m.t / m.dur); u.moving = true;
@@ -605,7 +606,7 @@ function updateUnit(S, u, dt) {
     const n = u.dashQ.shift();
     if (n && !S.occ[ti(n.tx, n.ty)]) { u.dashMoved++; beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
     const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
-    u.dashQ = null; u.passT = SPECIAL.dash.pass; aoe(S, u, u.x, u.y, 60, e => { hurt(S, u, e, phys(u, e, 2)); if (live(e)) knockBack(S, e, dx, dy, push); }, '#7fd0ff'); return;
+    u.dashQ = null; u.passT = SPECIAL.dash.pass; aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, 2 + moved * 0.5)); }, '#7fd0ff'); return;
   }
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
