@@ -8,7 +8,6 @@ const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 2.5;   // 일반 병사(generic) 최종 체력 ×5 — 장수는 그대로
 const FRONTLINE_HP = 3.75; // 일반 보병·방패병 HP: v0.1.96 기준 50%
-const CAPTAIN_FRONTLINE_HP = 7.5; // 장수의 동종 병사 대비 HP 보정은 기존 기준 유지
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
@@ -129,19 +128,20 @@ const ARMIES = [
   { team: 'player', name: '궁병대', at: [5, 11], leader: 'huang', units: ['huang', 'archer', 'archer', 'archer', 'archer', 'archer'] },   // 아군 3부대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
-// 병종별 기본 최대 체력. 일반 병사는 병종 기준 그대로, 이름 있는 장수·일반 대장은 같은 병종 병사의 1.5배 이상으로 보정한다.
+// 병종별 기본 최대 체력. warrior 장수는 등급 HP를 그대로 써서 검병·창병 등급 차이를 보존한다.
 function baseMaxHp(key, team) {
   const T = U[key], frontline = ['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key), ownHp = Math.round(T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1));
+  if (T.generic || (T.cls === 'warrior' && GRADE[key])) return ownHp;
   const peerKey = (team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey];
-  const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? CAPTAIN_FRONTLINE_HP : SOLDIER_HP));
-  return T.generic || !peer ? ownHp : Math.max(ownHp * 1.5, peerHp * 1.5);
+  const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP));
+  return !peer ? ownHp : Math.max(ownHp * 1.5, peerHp * 1.5);
 }
 
 // ---------- 전투력 ----------
 // 한 유닛의 능력치를 가중합해 하나의 수로 환산한다 (체력 100당 1, 공격·방어·명중 계열은 반영, 이동 속도는 약하게). 군단 전투력은 소속 유닛 전투력의 합.
 // 장수는 일반 병사의 약 3~10배가 되도록 능력치가 설계돼 있으므로 환산값도 그 비율을 따른다.
 const POWER_W = { maxHp: 0.01, atk: 1, df: 1, ad: 0.5, md: 1.5, aa: 0.5, hr: 1, sp: 0.1 };
-const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0) + ((s.ar ?? 100) - 100 + (s.dr ?? 100) - 100) * 2);
+const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0) + ((s.ar ?? 100) - 100 + (s.dr ?? 100) - 100) * 0.25);
 // 전투 전(원정 지도)에도 쓰도록 병종 키와 저장된 성장치(growth)만으로 능력치를 만든다.
 function unitStats(key, team = 'player', growth = null) {
   const T = U[key], G = growth || {};
