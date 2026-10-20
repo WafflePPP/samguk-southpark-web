@@ -106,7 +106,7 @@ const SPELL = {
 };
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
 const MAGIC = 0.5;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
-const magicDmg = (sp, t) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * ftDef(t)) * MAGIC;
+const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * t.dr / 100 * ftDef(t)) * MAGIC * (from ? from.ar / 100 : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
@@ -294,7 +294,7 @@ function gainXp(S, u, n) {
   if (!live(u)) return; u.xp += n;
   while (u.xp >= u.lv * 60) {   // 레벨업: 능력치 상승 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
     u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.maxMp = Math.round(u.maxMp * 1.05);
-    for (const stat of ['atk', 'df', 'ad', 'md']) u[stat] = Math.round(u[stat] * 1.05 * 10) / 10;
+    for (const stat of ['atk', 'df', 'ad', 'md']) { const bonus = itemOf(u.item)[stat] || 0; u[stat] = Math.round((u[stat] - bonus) * 1.05 * 10) / 10 + bonus; }   // 아이템 보정에는 성장률을 곱하지 않는다
     u.aa = Math.min(80, u.aa + 1); u.hr = Math.min(100, u.hr + 1); u.ar += 1; u.dr += 1; u.sp = Math.round(u.sp * 1.01 * 10) / 10;
     text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
@@ -366,11 +366,11 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < t.aa / 100) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
-  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), t.ad * ftDef(t))) * DMG);
+  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), t.ad * t.dr / 100 * ftDef(t))) * DMG);
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
-  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, atk: u.atk * mul * ftMul(u), from: u, team: u.team, a });
+  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, atk: u.atk * u.ar / 100 * mul * ftMul(u), from: u, team: u.team, a });
 }
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
@@ -396,10 +396,10 @@ function castSpell(S, u, key, x, y) {
   else if (sp.kind === 'ball') shot({ kind: 'ball', tx: px, ty: py, vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380 });   // 불꽃탄: 날아가 범위 폭발
   else if (sp.kind === 'wide') {   // 번개: 넓은 범위, 시전자 외 같은 편도 맞는다
     ring(S, px, py, sp.r, 'rgba(255,240,120,.7)', 0.6);
-    S.later.push({ t: 0.5, fn: () => aoe(S, u, px, py, sp.r, e => hurt(S, u, e, magicDmg(sp, e)), sp.col, true) });
+    S.later.push({ t: 0.5, fn: () => aoe(S, u, px, py, sp.r, e => hurt(S, u, e, magicDmg(sp, e, u)), sp.col, true) });
   } else if (sp.kind === 'quake') {   // 지진: 시전자 주위, 약한 피해, 아군은 안 맞는다
     ring(S, u.x, u.y, sp.r, 'rgba(201,165,106,.8)', 0.7);
-    S.later.push({ t: 0.3, fn: () => aoe(S, u, u.x, u.y, sp.r, e => hurt(S, u, e, magicDmg(sp, e)), sp.col) });
+    S.later.push({ t: 0.3, fn: () => aoe(S, u, u.x, u.y, sp.r, e => hurt(S, u, e, magicDmg(sp, e, u)), sp.col) });
   } else if (sp.kind === 'web') {   // 거미줄: 범위 안 적이 한동안 움직이지 못한다
     ring(S, px, py, sp.r, 'rgba(232,232,232,.8)', 0.5);
     aoe(S, u, px, py, sp.r, e => { e.root = sp.root; e.path = null; text(S, e.x, e.y - e.r * 4, '속박', '#e8e8e8', 'buff'); }, sp.col);
@@ -616,7 +616,7 @@ function updateProj(S, dt) {
   for (const p of S.proj) {
     if (p.kind === 'homing' && p.tgt && live(p.tgt)) { const a = Math.atan2(p.tgt.y - p.tgt.r * 1.4 - p.y, p.tgt.x - p.x), v = Math.hypot(p.vx, p.vy); p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; p.a = a; }
     const sx = p.vx * dt, sy = p.vy * dt, st = Math.hypot(sx, sy), sp = p.sp && SPELL[p.sp];
-    if (p.kind === 'ball') { if (Math.hypot(p.tx - p.x, p.ty - p.y) <= st + 2) { p.done = true; aoe(S, p.from, p.tx, p.ty, sp.r, e => hurt(S, p.from, e, magicDmg(sp, e)), sp.col); continue; } }
+    if (p.kind === 'ball') { if (Math.hypot(p.tx - p.x, p.ty - p.y) <= st + 2) { p.done = true; aoe(S, p.from, p.tx, p.ty, sp.r, e => hurt(S, p.from, e, magicDmg(sp, e, p.from)), sp.col); continue; } }
     else { p.left -= st; if (p.left <= 0) { p.done = true; continue; } }
     p.x += sx; p.y += sy;
     if (p.kind === 'ball') continue;
@@ -625,9 +625,9 @@ function updateProj(S, dt) {
       if (!live(e) || e.team === p.team || (p.hit && p.hit.has(e))) continue;
       if (Math.hypot(e.x - p.x, e.y - e.r * 1.4 - p.y) < e.r + 4) {
         if (p.kind === 'arrow') { arrowHit(S, p, e); p.done = true; break; }
-        if (p.kind === 'pierce') { p.hit.add(e); hurt(S, p.from, e, magicDmg(sp, e)); continue; }   // 관통
+        if (p.kind === 'pierce') { p.hit.add(e); hurt(S, p.from, e, magicDmg(sp, e, p.from)); continue; }   // 관통
         p.done = true;   // 장풍·불공: 맞은 적에서 끝 (불공은 작은 폭발)
-        if (p.kind === 'roll') aoe(S, p.from, e.x, e.y, sp.r, t => hurt(S, p.from, t, magicDmg(sp, t)), sp.col); else hurt(S, p.from, e, magicDmg(sp, e));
+        if (p.kind === 'roll') aoe(S, p.from, e.x, e.y, sp.r, t => hurt(S, p.from, t, magicDmg(sp, t, p.from)), sp.col); else hurt(S, p.from, e, magicDmg(sp, e, p.from));
         break;
       }
     }
