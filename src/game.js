@@ -633,7 +633,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.105', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.106', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -648,11 +648,6 @@ function drawSaveSlots() {
   }
   button('save-slot:close', 540, 440, 200, 44, '닫기', false, 17);
 }
-function drawArmyFlag(x, y, name, col, highlight = false) {
-  const k = highlight ? 1.35 : 1;
-  if (highlight) { ctx.strokeStyle = `rgba(255,215,80,${0.55 + 0.35 * Math.sin(T * 8)})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, y - 8, 30 + 6 * Math.sin(T * 8), 0, TAU); ctx.stroke(); }
-  ctx.strokeStyle = highlight ? '#fff1a6' : '#e8e1c8'; ctx.lineWidth = highlight ? 5 : 3; ctx.beginPath(); ctx.moveTo(x, y + 18 * k); ctx.lineTo(x, y - 24 * k); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - 24 * k); ctx.lineTo(x + 30 * k, y - 15 * k); ctx.lineTo(x, y - 6 * k); ctx.closePath(); ctx.fill(); label(name, x + 15 * k, y - 35 * k, highlight ? 17 : 13, highlight ? '#ffe36a' : col, 'center');
-}
 function drawStageMap() {
   const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#345d55'); g.addColorStop(0.55, '#66834c'); g.addColorStop(1, '#9a8150'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
   ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(120, 0); ctx.bezierCurveTo(80, 160, 165, 255, 105, 405); ctx.bezierCurveTo(60, 520, 125, 630, 40, VH); ctx.lineTo(0, VH); ctx.closePath(); ctx.fill();
@@ -660,13 +655,13 @@ function drawStageMap() {
   ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 170; x < 980; x += 90) for (let y = 75; y < 690; y += 75) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
   const corps = roster[campaign.corps], here = stageById(corps.at);
   for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
-  const targetRows = {}, movingFlags = []; let planIndex = 0;
+  const targetRows = {};
   for (const c of roster) if (c.target) {
     const path = route(c.at, c.target).map(stageById), goal = path[path.length - 1], row = targetRows[c.target] || 0; targetRows[c.target] = row + 1; if (path.length < 2) continue;
     ctx.save(); ctx.strokeStyle = '#75dcff'; ctx.lineWidth = 4; ctx.setLineDash([10, 7]); ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y); for (const s of path.slice(1)) ctx.lineTo(s.x, s.y); ctx.stroke(); ctx.restore();
-    const run = (T * 0.45 + planIndex++ * 0.23) % (path.length - 1), seg = Math.floor(run), p = run - seg, a = path[seg], b = path[seg + 1], commander = c.units[0] && Sim.U[c.units[0]] ? Sim.U[c.units[0]].name : corpsName(c); movingFlags.push({ x: a.x + (b.x - a.x) * p, y: a.y + (b.y - a.y) * p, name: commander, col: '#75dcff' }); label('이동 예정', goal.x, goal.y - 42 - row * 16, 13, '#bcecff', 'center');
+    label('이동 예정', goal.x, goal.y - 42 - row * 16, 13, '#bcecff', 'center');
   }
-  campaign.movement.forEach((m, i) => { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) return; const col = m.team === 'player' ? '#79bfff' : '#ff765f', p = 0.15 + 0.7 * ((T * 0.5 + i * 0.19) % 1), highlight = i === campaign.movementPage && m.team === 'enemy'; ctx.strokeStyle = col; ctx.lineWidth = highlight ? 11 : 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); movingFlags.push({ x: a.x + (b.x - a.x) * p, y: a.y + (b.y - a.y) * p, name: m.commander || m.name, col, highlight }); });
+  campaign.movement.forEach((m, i) => { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) return; const col = m.team === 'player' ? '#79bfff' : '#ff765f', highlight = i === campaign.movementPage && m.team === 'enemy'; ctx.strokeStyle = col; ctx.lineWidth = highlight ? 11 : 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); });
   for (const s of STAGES) {
     const on = s === here, friendly = s.owner === 'player', targeted = s.id === (campaign.destination || corps.target); const col = friendly ? COLORS.ally : COLORS.danger;
     ctx.fillStyle = on ? COLORS.gold : col; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 22 : 16, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? '#fff3c0' : '#161722'; ctx.lineWidth = 3; ctx.stroke();
@@ -676,7 +671,6 @@ function drawStageMap() {
     if (targeted) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 28, 0, TAU); ctx.stroke(); }
     btns.push({ id: 'stage:' + s.id, x: s.x - 32, y: s.y - 36, w: 72, h: 84 });
   }
-  for (const f of movingFlags) drawArmyFlag(f.x, f.y, f.name, f.col, f.highlight);
   panel(1005, 20, 250, 680, COLORS.gold, 3, 'rgba(8,20,25,.88)');
   label('지역', 1130, 52, 27, COLORS.gold, 'center');
   label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1025, 96, 15, COLORS.silver);
