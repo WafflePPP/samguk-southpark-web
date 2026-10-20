@@ -9,7 +9,7 @@ const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 2.5;   // 일반 병사(generic) 최종 체력 ×5 — 장수는 그대로
 const FRONTLINE_HP = 3.75; // 일반 보병·방패병 HP: v0.1.96 기준 50%
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
-const HP_MUL = 0.75;   // v0.1.114: 모든 장수·병사 체력을 직전 기준의 30%로 축소 (고정 회복량도 동일 비율)
+const HP_MUL = 1.25;   // v0.1.115: 모든 장수·병사 체력을 v0.1.113 기준의 50%로 축소 (고정 회복량도 동일 비율)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
