@@ -302,17 +302,23 @@ function gainXp(S, u, n) {
 const gainCombatXp = (S, u, base) => gainXp(S, u, Math.max(1, Math.round(base * (u.named ? 1.5 : 1))));
 function tryRout(S, A) {
   if (S.rnd() >= S.routChance) { A.nextRoutCheck = S.t + 15; return false; }
-  let fleeing = false; for (const m of A.units) if (live(m) && !m.fanatic) { m.order = { type: 'flee' }; m.path = null; fleeing = true; }
+  let fleeing = false; for (const m of A.units) if (live(m) && !m.fanatic) { m.surrenderChecked = false; m.order = { type: 'flee' }; m.path = null; fleeing = true; }
+  if (fleeing) A.fleeing = true;
   A.nextRoutCheck = 0; return fleeing;
 }
-// 군단장 생명력이 30% 이하가 되면 군단장 전투력에 따라 차등 확률(강할수록 낮음)로 군단이 후퇴한다. 판정은 12초마다.
-const RETREAT_HP = 0.3;
+// 군단 퇴각 조건 (적 군단): ① 군단장 사망(die → tryRout) ② 군단장 생명력 RETREAT_HP 이하 → 후퇴 또는 군단장 투항 ③ 군단 전체 생명력 RETREAT_CORPS_HP 이하 → 후퇴.
+// ②③ 판정은 12초마다, 확률은 군단장 전투력이 높을수록 낮다(차등). 퇴각이 시작되면 그 군단 소속은 투항 확률이 오른다(hurt).
+const RETREAT_HP = 0.3, RETREAT_CORPS_HP = 0.5, LEADER_SURRENDER = 0.3, SURRENDER_HP = [0.2, 0.5], SURRENDER_CHANCE = [0.25, 0.6];   // [평상시, 퇴각 중]
+function startRetreat(S, A) { A.routed = true; A.fleeing = true; A.retreatByHp = true; for (const u of A.units) if (live(u)) { u.surrenderChecked = false; u.order = { type: 'flee' }; u.path = null; } }
 function tryHpRetreat(S, A) {
-  const L = A.leader; if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !L || !live(L) || S.t < A.nextHpRetreatCheck || L.hp > L.maxHp * RETREAT_HP) return false;
+  const L = A.leader; if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !A.initialHp || !L || !live(L) || S.t < A.nextHpRetreatCheck) return false;
+  const total = A.units.reduce((n, u) => n + (live(u) ? Math.max(0, u.hp) : 0), 0), leaderLow = L.hp <= L.maxHp * RETREAT_HP, corpsLow = total <= A.initialHp * RETREAT_CORPS_HP;
+  if (!leaderLow && !corpsLow) return false;
   A.nextHpRetreatCheck = S.t + 12;
   const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78); if (S.rnd() >= chance) return false;
-  A.routed = true; A.retreatByHp = true; for (const u of A.units) if (live(u)) { u.order = { type: 'flee' }; u.path = null; }
-  notice(S, 'enemy', `적 ${A.name}가 군단장 생명력 30% 이하로 후퇴합니다. · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`); return true;
+  const why = leaderLow ? '군단장 생명력 ' + Math.round(RETREAT_HP * 100) + '% 이하' : '군단 생명력 ' + Math.round(RETREAT_CORPS_HP * 100) + '% 이하', info = ` · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`;
+  if (leaderLow && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
+  startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
 }
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
@@ -356,7 +362,7 @@ function hurt(S, from, t, dmg) {
   S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
   if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), tier < 0 ? '#ff9a32' : tier > 0 ? '#999999' : '#ffffff', 'dmg');
-  if (t.team === 'enemy' && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= 0.2) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < 0.25) surrender(S, t); }
+  if (t.team === 'enemy' && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= SURRENDER_HP[+!!t.army.fleeing]) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < SURRENDER_CHANCE[+!!t.army.fleeing]) surrender(S, t); }
   if (t.hp <= 0) die(S, t, from); else if (opposed) gainCombatXp(S, t, 1);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
@@ -767,6 +773,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { ITEMS, ITEM_STATS, itemBase, MATCHUP_BONUS, RETREAT_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { ITEMS, ITEM_STATS, itemBase, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
