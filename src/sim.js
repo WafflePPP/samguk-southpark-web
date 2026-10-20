@@ -610,7 +610,8 @@ function updateUnit(S, u, dt) {
   if (o.type === 'attack') { if (!o.target || !live(o.target) || o.target.team === u.team) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
-    if (!o.tgt || !live(o.tgt) || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (!o.tgt || !live(o.tgt) || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
+    const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
+    if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }
   if (o.type === 'stop') { const t = nearestEnemy(S, u, u.range > 0 ? u.range : TILE * 1.5); if (t) engage(S, u, t, false); return; }   // 제자리에서 사거리 안의 적만 친다
