@@ -11,6 +11,7 @@ const FRONTLINE_HP = 3.75; // 일반 보병·방패병 HP: v0.1.96 기준 50%
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 1.25;   // v0.1.115: 모든 장수·병사 체력을 v0.1.113 기준의 50%로 축소 (고정 회복량도 동일 비율)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
+const DEF_EFF = 1.3;   // 모든 장수·병사의 DF·AD·MD 방어 효율
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -108,7 +109,7 @@ const SPELL = {
 };
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
 const MAGIC = 0.5;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
-const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * t.dr / 100 * ftDef(t)) * MAGIC * (from ? from.ar / 100 : 1);   // AR·DR 은 마법에도 적용
+const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * t.md * DEF_EFF * t.dr / 100 * ftDef(t)) * MAGIC * (from ? from.ar / 100 : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6, pass: 2 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
@@ -281,7 +282,7 @@ const ftDef = u => 1 - u.ft * FT.penalty;   // 방어 배율 (설계값, ftMul �
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
-const phys = (u, t, mul = 1) => Math.max(1, mitigate(u.atk * u.ar / 100 * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), t.df * t.dr / 100 * ftDef(t))) * DMG;
+const phys = (u, t, mul = 1) => Math.max(1, mitigate(u.atk * u.ar / 100 * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), t.df * DEF_EFF * t.dr / 100 * ftDef(t))) * DMG;
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
 function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
@@ -375,7 +376,7 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < t.aa / 100) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
-  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), t.ad * t.dr / 100 * ftDef(t))) * DMG);
+  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), t.ad * DEF_EFF * t.dr / 100 * ftDef(t))) * DMG);
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
