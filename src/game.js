@@ -34,7 +34,7 @@ const THEME_NAME = { plains: '평야', mountain: '산악', riverside: '강가', 
 const THEME_UNITS = { plains: ['ecav', 'esword', 'earcher'], mountain: ['esword', 'eshield', 'earcher'], riverside: ['earcher', 'esword', 'eshield'], fortress: ['eshield', 'earcher', 'esword'] };
 const ROUT_CHANCE = { 초급: 0.9, 중급: 0.75, 상급: 0.55, 최상: 0.35 };
 const EARLY_SUPPORT = { changshan: 12, ye: 10, luoyang: 6 };
-const EXPEDITION_INTERVAL = 5;
+const EXPEDITION_INTERVAL = 5, EXPEDITION_PER_CITY = 2;   // 도시당 원정 군단 수 (v0.1.110: 3 → 2, 절반)
 const tripleEnemyUnits = (units, pool, offset = 0) => units.concat(Array.from({ length: Math.min(Sim.ARMY_MAX, units.length * 3) - units.length }, (_, n) => pool[(offset + n) % pool.length]));
 function enemyGrowth(key, level) {
   const base = Sim.unitStats(key, 'enemy'), type = Sim.U[key]; let maxHp = Math.round(base.maxHp), maxMp = type.mp || 0, atk = base.atk;
@@ -58,10 +58,10 @@ for (let i = 0; i < BASE_ENEMIES.length; i++) {
   const reserveUnits = [leader, ...Array.from({ length: size - 1 }, (_, n) => pool[(i + n + 1) % pool.length])];
   enemyForces.push(setEnemyRole({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: `${stage.name} 제2군단`, at: army.at, leader, reserve: true, reserveAt: EARLY_SUPPORT[stage.id] ?? 20, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(reserveUnits, pool, i + 1), trig: { near: 12, t: 60 } } }, stage, 'expedition'));
   for (let n = 2; n <= 7; n++) addEnemyRoleForce(stage, 'garrison', n, army.at, i + n);
-  for (let n = 2; n <= 3; n++) addEnemyRoleForce(stage, 'expedition', n, army.at, i + n + 7);
+  for (let n = 2; n <= EXPEDITION_PER_CITY; n++) addEnemyRoleForce(stage, 'expedition', n, army.at, i + n + 7);
 }
 function fillEnemyRoleRatio() {
-  for (const stage of STAGES.slice(1).filter(s => s.owner === 'enemy')) for (const [role, target] of [['garrison', 7], ['expedition', 3]]) {
+  for (const stage of STAGES.slice(1).filter(s => s.owner === 'enemy')) for (const [role, target] of [['garrison', 7], ['expedition', EXPEDITION_PER_CITY]]) {
     let count = enemyForces.filter(f => f.active && f.home === stage.id && f.role === role).length;
     let n = 1;
     while (count < target) { while (enemyForces.some(f => f.army.leader === `role_${stage.id}_${role}_${n}`)) n++; addEnemyRoleForce(stage, role, n, BASE_ENEMIES[stage.stage - 2]?.at || [45, 20], stage.stage + ++count); }   // 전멸한 군단의 장수 키와 겹치지 않는 번호를 쓴다
@@ -633,7 +633,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.109', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.110', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
