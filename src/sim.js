@@ -9,7 +9,7 @@ const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 2.5;   // 일반 병사(generic) 최종 체력 ×5 — 장수는 그대로
 const FRONTLINE_HP = 3.75; // 일반 보병·방패병 HP: v0.1.96 기준 50%
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
-const HP_MUL = 2.5;   // 전원 체력 배율 (고정 회복량에도 곱함)
+const HP_MUL = 0.75;   // v0.1.114: 모든 장수·병사 체력을 직전 기준의 30%로 축소 (고정 회복량도 동일 비율)
 const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -233,7 +233,7 @@ function createBattle(seed = 1, opts = {}) {
     if (unique.has(u.name)) throw new Error(u.name + ': 고유 장수는 한 명만 편성할 수 있습니다.');
     unique.add(u.name);
   }
-  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.65, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.065, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
@@ -311,14 +311,14 @@ function tryRout(S, A) {
 }
 // 군단 퇴각 조건 (적 군단): ① 군단장 사망(die → tryRout) ② 군단장 생명력 RETREAT_HP 이하 → 후퇴 또는 군단장 투항 ③ 군단 전체 생명력 RETREAT_CORPS_HP 이하 → 후퇴.
 // ②③ 판정은 12초마다, 확률은 군단장 전투력이 높을수록 낮다(차등). 퇴각이 시작되면 그 군단 소속은 투항 확률이 오른다(hurt).
-const RETREAT_HP = 0.3, RETREAT_CORPS_HP = 0.5, LEADER_SURRENDER = 0.3, SURRENDER_HP = [0.2, 0.5], SURRENDER_CHANCE = [0.25, 0.6];   // [평상시, 퇴각 중]
+const RETREAT_HP = 0.3, RETREAT_CORPS_HP = 0.5, RETREAT_CHANCE_SCALE = 0.1, LEADER_SURRENDER = 0.3, SURRENDER_HP = [0.2, 0.5], SURRENDER_CHANCE = [0.25, 0.6];   // 후퇴 확률은 직전 기준의 10%, 투항 확률은 유지
 function startRetreat(S, A) { A.routed = true; A.fleeing = true; A.retreatByHp = true; for (const u of A.units) if (live(u)) { u.surrenderChecked = false; u.order = { type: 'flee' }; u.path = null; } }
 function tryHpRetreat(S, A) {
   const L = A.leader; if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !A.initialHp || !L || !live(L) || S.t < A.nextHpRetreatCheck) return false;
   const total = A.units.reduce((n, u) => n + (live(u) ? Math.max(0, u.hp) : 0), 0), leaderLow = L.hp <= L.maxHp * RETREAT_HP, corpsLow = total <= A.initialHp * RETREAT_CORPS_HP;
   if (!leaderLow && !corpsLow) return false;
   A.nextHpRetreatCheck = S.t + 12;
-  const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78); if (S.rnd() >= chance) return false;
+  const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78) * RETREAT_CHANCE_SCALE; if (S.rnd() >= chance) return false;
   const why = leaderLow ? '군단장 생명력 ' + Math.round(RETREAT_HP * 100) + '% 이하' : '군단 생명력 ' + Math.round(RETREAT_CORPS_HP * 100) + '% 이하', info = ` · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`;
   if (leaderLow && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
   startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
