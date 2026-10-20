@@ -75,7 +75,7 @@ for (const u of Object.values(U)) if (u.generic) for (const f of [...STAT5, 'aa'
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 const CATEGORY_NAME = { cavalry: '기병', sword: '검병', spear: '창병', archer: '궁병', military: '군사' };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
-const UNIT_CATEGORY = { guan: 'sword', dian: 'spear', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
+const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
 const SUBCLASS = { guan: '무신', dian: '철벽', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '백마의종', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, military: 1.5 }, military: { military: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, archer: 0.67 } };
