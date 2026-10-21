@@ -47,13 +47,15 @@ const U = {
 const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };   // 군단장급 병사(= 가상 대장·적 장수·적 군사)
 // 이름 있는 장수(삼국지 정사·연의 인물)의 등급 = 연의에서의 비중. 군단장급 병사(CAPTAIN) 능력치 × 등급 배율. 기획 명세 17.
 const GRADE_MUL = { S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
-const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', kong: 'B', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', yan: 'C', wen: 'C', cao: 'C', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D' };
+const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', zhangfei: 'A', machao: 'A', kong: 'B', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', liubei: 'B', pangtong: 'B', jiangwei: 'B', weiyan: 'B', chengong: 'B', lulingqi: 'B', yan: 'C', wen: 'C', cao: 'C', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D' };
 const ELITE = Object.fromEntries(Object.entries(GRADE).map(([k, g]) => [k, GRADE_MUL[g]]));
 const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
 const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
   gong: ['jang', '공손찬'], yuan: ['hua', '원소'], cao: ['hua', '조조'], dong: ['hua', '동탁'], zhanghe: ['hua', '장합'],
   xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
+  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['guan', '유비'], zhangfei: ['hua', '장비'],
+  machao: ['jang', '마초'], pangtong: ['xun', '방통'], jiangwei: ['jang', '강유'], weiyan: ['hua', '위연'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
@@ -121,18 +123,18 @@ const TRAIT_TIME = 5, AURA_RANGE = 150, DASH_ANY_RANGE = new Set(['비장', '전
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
 // at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
 const ARMIES = [
-  { team: 'player', name: '본대', at: [5, 18], leader: 'guan', units: ['guan', 'dian', 'sword', 'shield', 'sword', 'shield'] },
-  { team: 'player', name: '기마대', at: [5, 25], leader: 'zhao', units: ['zhao', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', name: '장료대', at: [37, 19], leader: 'jang', units: ['jang', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '여포대', at: [53, 20], leader: 'lubu', commander: true, units: ['lubu', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '순욱대', at: [45, 7], leader: 'xun', units: ['xun', 'esage', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '하후돈대', at: [37, 11], leader: 'xia', units: ['xia', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '화웅대', at: [37, 27], leader: 'hua', units: ['hua', 'ecav', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '곽가대', at: [45, 14], leader: 'guo', units: ['guo', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '문추대', at: [45, 27], leader: 'wen', units: ['wen'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '고순대', at: [53, 13], leader: 'gao', units: ['gao'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '안량대', at: [53, 27], leader: 'yan', units: ['yan'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'player', name: '궁병대', at: [5, 11], leader: 'huang', units: ['huang', 'archer', 'archer', 'archer', 'archer', 'archer'] },   // 아군 3부대 (적 군단 인덱스가 밀리지 않게 맨 끝)
+  { team: 'player', name: '1분대', at: [5, 18], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
+  { team: 'player', name: '2분대', at: [5, 25], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
+  { team: 'enemy', name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '조운군', at: [45, 27], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'player', name: '3분대', at: [5, 11], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // 병종별 기본 최대 체력. warrior 장수는 등급 HP를 그대로 써서 검병·창병 등급 차이를 보존한다.
