@@ -476,7 +476,7 @@ function useSpecial(S, u, x, y) {
     const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), q = []; let cx = u.tx, cy = u.ty;
     if ((!dx && !dy) || u.mv) return false;
     while (q.length < 6) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, cx, cy, dx, dy)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
-    if (!q.length) return false;
+    if (!q.length && !(DASH_ANY_RANGE.has(u.subclass) && S.units.some(e => live(e) && e.team !== u.team && dist(u, e) <= 60))) return false;
     u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
@@ -624,7 +624,7 @@ function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지
 }
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
-  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const t = nearestEnemy(S, u, DASH_ANY_RANGE.has(u.subclass) ? 1e9 : SPECIAL.dash.range); if (t && dist(u, t) > TILE * 1.5 && useSpecial(S, u, t.x, t.y)) return true; }
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const any = DASH_ANY_RANGE.has(u.subclass), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
   if (u.spells.includes('heal')) {
     let t = null, bd = 0.7; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; }
     if (t && castSpell(S, u, 'heal', t.x, t.y)) return true;
