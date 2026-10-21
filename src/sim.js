@@ -304,6 +304,19 @@ function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0,
 function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
 function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
 function buffFx(S, u, glyph, col) { S.fx.push({ kind: 'buff', glyph, x: u.x, y: u.y, r: u.r, col, t: 0.9, max: 0.9 }); }   // 버프·디버프·회복이 걸릴 때 유닛 위에 뜨는 이펙트 (glyph: atk ▲ / guard 방패 / down ▼ / heal +)
+// 범위 버프(오라): 무신(관우 등) 반경 안 아군 AT·AD·MD +20%, 간웅(조조) 반경 안 아군 전 능력 +10% (combatStat 과 같은 조건). 범위에 들어오면 이펙트, 있는 동안은 u.auraWu·auraGan 표시.
+const AURAS = [['무신', 'auraWu', 'atk', '#ffb347'], ['간웅', 'auraGan', 'all', '#c78bff']];
+function updateAuras(S) {
+  const bearers = S.units.filter(b => live(b) && AURAS.some(a => a[0] === b.subclass)); if (!bearers.length && !S.units.some(u => u.auraWu || u.auraGan)) return;
+  for (const u of S.units) {
+    if (!live(u)) { u.auraWu = u.auraGan = false; continue; }
+    for (const [sub, flag, glyph, col] of AURAS) {
+      const on = bearers.some(b => b !== u && b.team === u.team && b.subclass === sub && dist(b, u) <= AURA_RANGE);
+      if (on && !u[flag] && S.t - (u.auraFxT || -99) > 3) { buffFx(S, u, glyph, col); u.auraFxT = S.t; }
+      u[flag] = on;
+    }
+  }
+}
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   const p = u.mv && u.mv.swap;   // 맞바꾸던 상대가 쓰러지거나 떠나면, 남은 쪽은 그 칸으로 가는 보통 이동으로 바꾸고 도착 칸을 바로 점유한다 (아니면 빈 칸으로 보여 다른 유닛이 겹쳐 들어온다)
@@ -731,7 +744,8 @@ function step(S, dt) {
   for (const k of ['player', 'enemy']) { if (S.lock[k] > 0) S.lock[k] -= dt; if (S.lockAI[k] > 0) S.lockAI[k] -= dt; }
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
   const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-  for (const u of order) if (live(u)) updateUnit(S, u, dt);   // 처리 순서를 매 틱 섞는다 (먼저 만든 군단이 빈 칸을 독점하지 않게)
+  for (const u of order) if (live(u)) updateUnit(S, u, dt);
+  updateAuras(S);   // 처리 순서를 매 틱 섞는다 (먼저 만든 군단이 빈 칸을 독점하지 않게)
   updateProj(S, dt);
   for (const l of S.later) { l.t -= dt; if (l.t <= 0) l.fn(); } S.later = S.later.filter(l => l.t > 0);
   for (const f of S.fx) f.t -= dt; S.fx = S.fx.filter(f => f.t > 0);
