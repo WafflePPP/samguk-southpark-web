@@ -82,11 +82,16 @@ const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, 
 // 상성 우세(배율 > 1)의 피해 효율을 50% 더 높인다 (v0.1.101). 불리(배율 < 1)는 표 그대로.
 const MATCHUP_BONUS = 1.5;
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
-// ITEM: 이름 있는 장수만 장착. 능력치에 더해지며 떼면 사라진다. ar·dr 은 공격율·방어율(%, 기본 100).
-const ITEMS = { ironsword: { name: '철검', atk: 12 }, armor: { name: '철갑', df: 12 }, bowguard: { name: '궁갑', ad: 12 }, charm: { name: '마법 부적', md: 12 }, seal_ar: { name: '공격율 인장', ar: 10 }, seal_dr: { name: '방어율 인장', dr: 10 } };
+// ITEM: 이름 있는 장수만 장착. owner가 있는 고유 장비는 해당 장수 전용이다.
+const ITEMS = {
+  ironsword: { name: '철검', atk: 12 }, armor: { name: '철갑', df: 12 }, bowguard: { name: '궁갑', ad: 12 }, charm: { name: '마법 부적', md: 12 }, seal_ar: { name: '공격율 인장', ar: 10 }, seal_dr: { name: '방어율 인장', dr: 10 },
+  green_dragon: { name: '청룡언월도', atk: 18, ar: 5, owner: 'guan', unique: true }, twin_halberd: { name: '쌍철극', atk: 12, df: 8, owner: 'dian', unique: true }, sky_halberd: { name: '방천화극', atk: 18, ar: 5, owner: 'lubu', unique: true },
+};
 const ITEM_STATS = ['atk', 'df', 'ad', 'md', 'ar', 'dr'];
 const itemOf = key => ITEMS[key] || {};
 const itemBase = (u, k) => u[k] - (itemOf(u.item)[k] || 0);   // 아이템 보정을 뺀 값 (성장치 저장용)
+const unitCategory = key => UNIT_CATEGORY[key] || CATEGORY[U[key].cls];
+const unitSubclass = key => SUBCLASS[key] || CLS_NAME[U[key].cls];
 const matchup = (attacker, defender) => classMultiplier(attacker, defender) < 1 ? 1 : classMultiplier(attacker, defender) > 1 ? -1 : 0;
 const FORMATION_NAME = { block: '기본', line: '횡대', wedge: '쐐기', guard: '호위' };
 const ENEMY_FIELD_MAX = 36, ARMY_MAX = 18, SQUAD_MAX = 3;
@@ -147,7 +152,7 @@ const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => 
 function unitStats(key, team = 'player', growth = null) {
   const T = U[key], G = growth || {};
   const s = { maxHp: G.maxHp ?? baseMaxHp(key, team), atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, sp: G.sp ?? T.sp, ar: G.ar ?? 100, dr: G.dr ?? 100 };
-  if (!T.generic) for (const k of ITEM_STATS) s[k] += itemOf(G.item)[k] || 0;
+  const item = itemOf(G.item); if (!T.generic && (!item.owner || item.owner === key)) for (const k of ITEM_STATS) s[k] += item[k] || 0;
   return s;
 }
 const unitPower = (key, team = 'player', growth = null) => statPower(unitStats(key, team, growth));
@@ -258,9 +263,9 @@ function createBattle(seed = 1, opts = {}) {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const baseHp = baseMaxHp(key, d.team);
-      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: UNIT_CATEGORY[key] || CATEGORY[T.cls], subclass: SUBCLASS[key] || CLS_NAME[T.cls], team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
+      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: unitCategory(key), subclass: unitSubclass(key), team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
+        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
@@ -791,6 +796,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
