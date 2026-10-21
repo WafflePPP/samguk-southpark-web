@@ -65,7 +65,7 @@ function fillEnemyRoleRatio() {
   }
 }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
-const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, uniqueItemsV1: true, expeditionWaves: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 0, twin_halberd: 0, sky_halberd: 1 }, notice: '북평에서 낙양 원정을 시작한다.' };
+const campaign = { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 0, twin_halberd: 0, sky_halberd: 1 }, notice: '북평에서 낙양 원정을 시작한다.' };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [
@@ -78,7 +78,7 @@ let activeSaveSlot = 1, saveSlotMode = null;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function resetCampaignData() {
   const data = JSON.parse(INITIAL_CAMPAIGN); STAGES.forEach((s, i) => s.owner = data.owners[i]); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
-  Object.assign(campaign, { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, uniqueItemsV1: true, expeditionWaves: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 0, twin_halberd: 0, sky_halberd: 1 }, notice: '북평에서 낙양 원정을 시작한다.' });
+  Object.assign(campaign, { at: 'beiping', corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 0, twin_halberd: 0, sky_halberd: 1 }, notice: '북평에서 낙양 원정을 시작한다.' });
 }
 function saveCampaign(slot = activeSaveSlot) {
   activeSaveSlot = slot;
@@ -324,6 +324,15 @@ function applyBattleResults() {
     if (corps && slot >= 0) { corps.units[slot] = u.key; corps.growth[slot] = growthOf(u); }
   }
 }
+// 아이템 획득 (명세 12 보강): 전투 승리 시 쓰러뜨린 적에게서 드롭 + 지역 첫 점령 보상. 확률·보상표는 설계 추정.
+const DROP_POOL = Object.keys(Sim.ITEMS).filter(k => !Sim.ITEMS[k].unique), DROP_RATE = { soldier: 0.02, captain: 0.15, hero: 0.35 };
+const CAPTURE_REWARD = ['ironsword', 'armor', 'bowguard', 'charm', 'seal_ar', 'seal_dr', 'ironsword', 'armor', 'bowguard'];   // 지역 번호 2~10 순서
+const addItem = k => { campaign.items[k] = (campaign.items[k] || 0) + 1; return Sim.ITEMS[k].name; };
+function battleDrops() {   // S: 방금 승리한 전투
+  const got = []; for (const u of S.units) if (u.originTeam === 'enemy' && u.dead) { const T = Sim.U[u.key], rate = T.generic ? DROP_RATE.soldier : T.name.startsWith('적 ') || T.synthetic ? DROP_RATE.captain : DROP_RATE.hero; if (S.rnd() < rate) got.push(addItem(DROP_POOL[Math.floor(S.rnd() * DROP_POOL.length)])); }
+  return got;
+}
+function captureReward(stage) { if (stage.stage < 2 || campaign.rewarded[stage.id]) return ''; campaign.rewarded[stage.id] = true; return addItem(CAPTURE_REWARD[(stage.stage - 2) % CAPTURE_REWARD.length]); }
 function finishBattle() {
   const turnEncounter = campaign.pendingEncounter; applyBattleResults(); const active = roster[campaign.corps], lostBeiping = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === 'beiping';
   const routed = new Set(S ? S.armies.filter(A => A.team === 'enemy' && A.routed).map(A => A.forceId) : []);
@@ -332,7 +341,7 @@ function finishBattle() {
   }
   if (S && S.over === 'win' && campaign.battle) {
     for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id)) { const path = route(force.at, 'luoyang'); if (path.length > 1) force.at = path[1]; else force.active = false; }
-    campaign.battle.owner = 'player'; campaign.notice = `${campaign.battle.name}을 점령했다.`;
+    campaign.battle.owner = 'player'; const prize = captureReward(campaign.battle), drops = battleDrops(); campaign.notice = `${campaign.battle.name}을 점령했다.${prize ? ' 점령 보상: ' + prize + '.' : ''}${drops.length ? ' 전리품: ' + drops.join(', ') + '.' : ''}`;
   }
   else if (campaign.explore) campaign.notice = `${campaign.battle.name} 탐색을 마쳤다.`;
   else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.invasion && campaign.battle) campaign.battle.owner = 'enemy'; if (campaign.from) active.at = campaign.from; }
@@ -651,7 +660,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.133', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.134', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -905,7 +914,7 @@ function uiClick(id) {
   }
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
   if (id === 'campaign:intel:continue') { const encounter = campaign.pendingEncounter; if (!encounter) return; if (encounter.unopposed) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === 'beiping') { defeatCampaign('북평이 함락되어 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name}이 무방비로 함락되었습니다.`; finishMovementStep(); return; } encounter.intelSeen = true; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
-  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.`; finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
+  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${prize ? ' 점령 보상: ' + prize + '.' : ''}`; finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
   if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / 8), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
   if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; if (encounter.invasion) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === 'beiping') { defeatCampaign('북평 방어를 포기하여 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name} 방어를 포기했다.`; } else { const mover = roster[encounter.moverIndex]; if (mover) mover.at = encounter.from; campaign.notice = `${encounter.stage.name} 공격을 포기하고 철수했다.`; } finishMovementStep(); return; }
   if (/^campaign:response:\d+$/.test(id)) {
