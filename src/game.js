@@ -37,11 +37,7 @@ const ROUT_CHANCE = { 초급: 0.09, 중급: 0.075, 상급: 0.055, 최상: 0.035 
 const EARLY_SUPPORT = { changshan: 12, ye: 10, luoyang: 6 };
 const EXPEDITION_INTERVAL = 5, EXPEDITION_PER_CITY = 1;   // 도시당 기본 원정 군단 수 (v0.1.126: 2 → 1, 절반)
 const tripleEnemyUnits = (units, pool, offset = 0) => units.concat(Array.from({ length: Math.min(Sim.ARMY_MAX, units.length * 3) - units.length }, (_, n) => pool[(offset + n) % pool.length]));
-function enemyGrowth(key, level) {
-  const base = Sim.unitStats(key, 'enemy'), type = Sim.U[key]; let maxHp = Math.round(base.maxHp), maxMp = type.mp || 0, atk = base.atk;
-  for (let lv = 1; lv < level; lv++) { maxHp = Math.round(maxHp * 1.08); maxMp = Math.round(maxMp * 1.05); atk = Math.round(atk * 1.05); }
-  const up = level - 1; return { lv: level, xp: 0, maxHp, maxMp, atk, df: base.df + up, ad: base.ad + up, md: base.md + up, aa: base.aa + up * 0.3, hr: base.hr + up * 0.2, sp: base.sp + up * 2 };
-}
+function enemyGrowth(key, level) { const st = Sim.levelStats(key, 'enemy', level); return { ...st, xp: 0 }; }   // 레벨업 규칙(명세 21)과 같은 가산 성장
 function ensureEnemyLeader(key, name) { if (!Sim.U[key]) Sim.U[key] = { ...Sim.U.ecap, name, synthetic: true }; return key; }   // synthetic: 역사 인물이 아닌 가상 지휘관 (전투 중 군단장일 때만 이름 표기)
 function expeditionLeader(stage, wave) { return ensureEnemyLeader(`exp_${stage.id}_${wave}`, `${stage.name} 원정군 지휘관 ${wave}차`); }
 function setEnemyRole(force, stage, role, level = stage.level) { force.role = role; force.home = force.home || stage.id; force.level = level; force.army.role = role; force.army.growth = force.army.units.map(key => enemyGrowth(key, level)); return force; }
@@ -76,7 +72,8 @@ const roster = [
   { id: 1, name: '신규 군단 1', at: 'beiping', target: null, units: Sim.ARMIES.filter(a => a.team === 'player').flatMap(a => a.units), growth: [{ item: 'green_dragon' }, { item: 'twin_halberd' }, ...Array(16).fill(null)] },
   { id: 2, name: '신규 군단 2', at: 'beiping', target: null, units: ['kong', 'diao', 'mage', 'mage', 'sword', 'shield', ...Array(12).fill(null)], growth: Array(18).fill(null) },
 ];
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_SLOTS = 3, INITIAL_CAMPAIGN = JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster });
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 2, SAVE_SLOTS = 3,   // v2: 원작식 레벨업(명세 21) — 이전 저장은 호환되지 않아 불러오지 않는다
+  INITIAL_CAMPAIGN = JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster });
 let activeSaveSlot = 1, saveSlotMode = null;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function resetCampaignData() {
@@ -85,10 +82,12 @@ function resetCampaignData() {
 }
 function saveCampaign(slot = activeSaveSlot) {
   activeSaveSlot = slot;
-  try { localStorage.setItem(saveKey(slot), JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster, campaign: { ...campaign, battle: campaign.battle && campaign.battle.id, pendingEncounter: campaign.pendingEncounter && { ...campaign.pendingEncounter, stage: campaign.pendingEncounter.stage.id } } })); } catch (e) { /* 저장소를 못 쓰면 현재 플레이는 계속한다 */ }
+  try { localStorage.setItem(saveKey(slot), JSON.stringify({ ver: SAVE_VERSION, owners: STAGES.map(s => s.owner), enemyForces, roster, campaign: { ...campaign, battle: campaign.battle && campaign.battle.id, pendingEncounter: campaign.pendingEncounter && { ...campaign.pendingEncounter, stage: campaign.pendingEncounter.stage.id } } })); } catch (e) { /* 저장소를 못 쓰면 현재 플레이는 계속한다 */ }
 }
-function readCampaign(slot = activeSaveSlot) { try { return JSON.parse(localStorage.getItem(saveKey(slot)) || (slot === 1 ? localStorage.getItem(SAVE_KEY) : '') || 'null'); } catch (e) { return null; } }
-function hasCampaign(slot = null) { try { return slot ? !!(localStorage.getItem(saveKey(slot)) || slot === 1 && localStorage.getItem(SAVE_KEY)) : Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).some(hasCampaign); } catch (e) { return false; } }
+const rawSave = slot => localStorage.getItem(saveKey(slot)) || (slot === 1 ? localStorage.getItem(SAVE_KEY) : '') || '';
+function readCampaign(slot = activeSaveSlot) { try { const d = JSON.parse(rawSave(slot) || 'null'); return d && d.ver === SAVE_VERSION ? d : null; } catch (e) { return null; } }
+function staleSave(slot) { try { const raw = rawSave(slot); return !!raw && !readCampaign(slot); } catch (e) { return false; } }   // 이전 규칙으로 저장된 데이터
+function hasCampaign(slot = null) { try { return slot ? !!readCampaign(slot) : Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).some(hasCampaign); } catch (e) { return false; } }
 function restoreCampaign(data) {
   if (!data || !Array.isArray(data.owners) || data.owners.length !== STAGES.length || !Array.isArray(data.enemyForces) || !Array.isArray(data.roster) || !data.roster.length || !data.campaign || data.roster.some(c => !stageById(c.at) || !Array.isArray(c.units)) || data.enemyForces.some(f => !stageById(f.at) || !f.army)) return false;
   const battle = data.campaign.battle && stageById(data.campaign.battle), pendingStage = data.campaign.pendingEncounter && stageById(data.campaign.pendingEncounter.stage); if (data.campaign.battle && !battle || data.campaign.pendingEncounter && !pendingStage) return false;
@@ -197,7 +196,7 @@ function startCampaign() {
 function startNewGame() { resetCampaignData(); titleNotice = ''; startCampaign(); saveCampaign(); }
 function startNewFromTitle() { activeSaveSlot = Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).find(slot => !hasCampaign(slot)) || activeSaveSlot; startNewGame(); }
 function loadGame(slot = activeSaveSlot) {
-  const data = readCampaign(slot); if (!restoreCampaign(data)) { if (state === 'title') titleNotice = `${slot}번 슬롯에 불러올 데이터가 없습니다.`; else campaign.notice = `${slot}번 슬롯에 불러올 데이터가 없습니다.`; return false; }
+  const data = readCampaign(slot); if (!restoreCampaign(data)) { const msg = staleSave(slot) ? `${slot}번 슬롯은 이전 레벨업 규칙의 저장이라 불러올 수 없습니다. 새 게임으로 시작하세요.` : `${slot}번 슬롯에 불러올 데이터가 없습니다.`; if (state === 'title') titleNotice = msg; else campaign.notice = msg; return false; }
   activeSaveSlot = slot;
   const battle = campaign.battle, explore = campaign.explore, notice = campaign.notice; titleNotice = '';
   if (battle) startBattle(battle, explore); else { startCampaign(); campaign.notice = notice || `${campaign.turn}턴 원정을 불러왔습니다.`; }
@@ -459,7 +458,7 @@ const combatStat = (u, key) => Sim.combatStat(S, u, key);
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
-  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))], ['XP', `${u.xp}/${u.lv * 60}`], ['AT', fatigueStat(u, combatStat(u, 'atk'))], ['DF', fatigueStat(u, combatStat(u, 'df'))], ['AR', Math.round(combatStat(u, 'ar'))], ['DR', Math.round(combatStat(u, 'dr'))], ['AD', fatigueStat(u, combatStat(u, 'ad'))], ['MD', fatigueStat(u, combatStat(u, 'md'))], ['AA', Math.round(combatStat(u, 'aa')) + '%'], ['HR', Math.round(combatStat(u, 'hr'))], ['SP', fatigueStat(u, combatStat(u, 'sp'))], ['상태', stText(u)]];
+  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))], ['XP', `${u.xp}/${Sim.XP_NEED(u.lv)}`], ['AT', fatigueStat(u, combatStat(u, 'atk'))], ['DF', fatigueStat(u, combatStat(u, 'df'))], ['AR', Math.round(combatStat(u, 'ar'))], ['DR', Math.round(combatStat(u, 'dr'))], ['AD', fatigueStat(u, combatStat(u, 'ad'))], ['MD', fatigueStat(u, combatStat(u, 'md'))], ['AA', Math.round(combatStat(u, 'aa')) + '%'], ['HR', Math.round(combatStat(u, 'hr'))], ['SP', fatigueStat(u, combatStat(u, 'sp'))], ['상태', stText(u)]];
   label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
@@ -559,7 +558,7 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   yy += 24; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver);
   yy += 18; bar(x + 10, yy, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 22; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
   yy += 22; if (u.maxMp) bar(x + 10, yy - 12, w - 20, 7, u.mp / u.maxMp, '#8a6aff'); label('MP', x + 10, yy + 4, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy + 4, fs, COLORS.silver, 'right');
-  yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))), x + 40, yy, fs, u.ft + (u.ftDebuffT > 0 ? 10 : 0) > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${u.lv * 60}`, x + 142, yy, fs, COLORS.silver);
+  yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))), x + 40, yy, fs, u.ft + (u.ftDebuffT > 0 ? 10 : 0) > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 142, yy, fs, COLORS.silver);
   const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, COLORS.silver); };
   yy += rh; cell('AT', fatigueStat(u, combatStat(u, 'atk')), 0, 0); cell('DF', fatigueStat(u, combatStat(u, 'df')), 1, 0); cell('AA', Math.round(combatStat(u, 'aa')) + '%', 2, 0);
   cell('AR', Math.round(combatStat(u, 'ar')), 0, 1); cell('DR', Math.round(combatStat(u, 'dr')), 1, 1); cell('AD', fatigueStat(u, combatStat(u, 'ad')), 2, 1);
@@ -652,7 +651,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.132', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.133', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');

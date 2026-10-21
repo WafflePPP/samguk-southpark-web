@@ -311,12 +311,30 @@ function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   if (u.mv && S.occ[ti(u.mv.nx, u.mv.ny)] === u.id) S.occ[ti(u.mv.nx, u.mv.ny)] = 0;
   u.mv = null;
 }
+// 레벨업 (원작식, 명세 21): 곱셈 성장 → 가산. 경험치는 "공격을 적중시킨 횟수" 위주(처치·피격·회피 보너스 없음).
+// HP +4~6%(1레벨 기준 최대 체력의 가산), 레벨업 차례마다 AT→DF→AR→DR 순서로 한 항목씩(AT·DF 는 1레벨 기준값의 8%, AR·DR 은 +2), 16의 배수 레벨에 HR→AA→AD→MD 순서로 한 항목(HR·AA +1, AD·MD 는 기준값의 8%).
+const XP_NEED = lv => lv * 30;
+const lvGain = (T, k) => Math.max(1, Math.round((T[k] || 0) * 0.08));
+function applyLevelUp(st, key, team, lv, hpRate) {   // st: 능력치 객체(maxHp·atk·df·ad·md·aa·hr·ar·dr), lv: 오르기 전 레벨. hpRate: 0.04~0.06
+  const T = U[key]; st.maxHp += Math.round(baseMaxHp(key, team) * hpRate);
+  const o = ['atk', 'df', 'ar', 'dr'][(lv - 1) % 4]; st[o] = o === 'ar' || o === 'dr' ? st[o] + 2 : Math.round((st[o] + lvGain(T, o)) * 10) / 10;
+  if ((lv + 1) % 16 === 0) { const q = ['hr', 'aa', 'ad', 'md'][((lv + 1) / 16 - 1) % 4]; st[q] = q === 'ad' || q === 'md' ? st[q] + lvGain(T, q) : Math.min(q === 'aa' ? 80 : 100, st[q] + 1); }
+  return st;
+}
+// 레벨 L 시점의 평균 능력치(HP 5%): 적 지역 레벨표(명세 15)가 같은 규칙을 쓰도록 공유
+function levelStats(key, team, level) {
+  const st = unitStats(key, team); st.maxMp = U[key].mp || 0;
+  for (let lv = 1; lv < level; lv++) applyLevelUp(st, key, team, lv, 0.05);
+  st.maxHp = Math.round(st.maxHp); st.lv = level; return st;
+}
 function gainXp(S, u, n) {
   if (!live(u)) return; u.xp += n;
-  while (u.xp >= u.lv * 60) {   // 레벨업: 능력치 상승 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
-    u.xp -= u.lv * 60; u.lv++; u.maxHp = Math.round(u.maxHp * 1.08); u.hp = Math.min(u.maxHp, u.hp + 20 * HP_MUL); u.maxMp = Math.round(u.maxMp * 1.05);
-    for (const stat of ['atk', 'df', 'ad', 'md']) { const bonus = itemOf(u.item)[stat] || 0; u[stat] = Math.round((u[stat] - bonus) * 1.05 * 10) / 10 + bonus; }   // 아이템 보정에는 성장률을 곱하지 않는다
-    u.aa = Math.min(80, u.aa + 1); u.hr = Math.min(100, u.hr + 1); u.ar += 1; u.dr += 1; u.sp = Math.round(u.sp * 1.01 * 10) / 10;
+  while (u.xp >= XP_NEED(u.lv)) {   // 레벨업: 능력치 가산 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
+    u.xp -= XP_NEED(u.lv); const was = u.maxHp, bonus = k => itemOf(u.item)[k] || 0;
+    for (const k of ITEM_STATS) u[k] -= bonus(k);   // 아이템 보정은 빼고 성장시킨 뒤 다시 더한다
+    applyLevelUp(u, u.key, u.originTeam, u.lv, 0.04 + S.rnd() * 0.02); u.lv++;
+    for (const k of ITEM_STATS) u[k] += bonus(k);
+    u.hp = Math.min(u.maxHp, u.hp + (u.maxHp - was) + 20 * HP_MUL);
     text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
 }
@@ -346,7 +364,6 @@ function die(S, u, killer) {
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
-  if (killer && killer.team !== u.team) gainCombatXp(S, killer, 12 + u.lv * 4);
   if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
@@ -384,15 +401,15 @@ function hurt(S, from, t, dmg) {
   if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), tier < 0 ? '#ff9a32' : tier > 0 ? '#999999' : '#ffffff', 'dmg');
   if (t.team === 'enemy' && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= SURRENDER_HP[+!!t.army.fleeing]) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < SURRENDER_CHANCE[+!!t.army.fleeing]) surrender(S, t); }
-  if (t.hp <= 0) die(S, t, from); else if (opposed) gainCombatXp(S, t, 1);
+  if (t.hp <= 0) die(S, t, from);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
   ring(S, x, y, r, col, 0.45);
   for (const e of S.units) if (live(e) && e !== from && (friendly || e.team !== from.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
 }
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
-  if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
-  if (S.rnd() < combatStat(S, t, 'aa') / 100) { gainCombatXp(S, t, 1); text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
+  if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
+  if (S.rnd() < combatStat(S, t, 'aa') / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
   hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG);
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0) {
@@ -811,6 +828,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
