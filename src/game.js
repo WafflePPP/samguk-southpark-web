@@ -497,15 +497,21 @@ function drawToolbar() {
   button('armyT', 1030, 4, 120, 36, '군단 전환', false);
   button('cmd:menu', 1156, 4, 120, 36, '시스템', false);
 }
-const fatigueStat = (u, n) => { const base = Math.round(n), current = Math.round(n * Sim.fatigueMultiplier(u)); return current < base ? `${base}→${current}` : String(base); };
+// 능력치 실시간 표기: 기본값(아이템 포함) → 현재값(버프·오라·피로 반영). 달라지면 "기본→현재" 로 쓰고 올랐으면 초록, 내렸으면 주황으로 칠한다.
+class StatText extends String { constructor(t, col) { super(t); this.col = col; } }
+const FATIGUE_KEYS = ['atk', 'df', 'ad', 'md', 'sp'];
+function statShow(u, key) {
+  const base = Math.round(u[key]), live = Math.round(combatStat(u, key) * (FATIGUE_KEYS.includes(key) ? Sim.fatigueMultiplier(u) : 1)), sfx = key === 'aa' ? '%' : '';
+  return live === base ? new StatText(base + sfx, null) : new StatText(`${base}→${live}${sfx}`, live > base ? '#7dff9a' : '#ff9a7d');
+}
 const combatStat = (u, key) => Sim.combatStat(S, u, key);
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
-  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))], ['XP', `${u.xp}/${Sim.XP_NEED(u.lv)}`], ['AT', fatigueStat(u, combatStat(u, 'atk'))], ['DF', fatigueStat(u, combatStat(u, 'df'))], ['AR', Math.round(combatStat(u, 'ar'))], ['DR', Math.round(combatStat(u, 'dr'))], ['AD', fatigueStat(u, combatStat(u, 'ad'))], ['MD', fatigueStat(u, combatStat(u, 'md'))], ['AA', Math.round(combatStat(u, 'aa')) + '%'], ['HR', Math.round(combatStat(u, 'hr'))], ['SP', fatigueStat(u, combatStat(u, 'sp'))], ['상태', stText(u)]];
+  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))], ['XP', `${u.xp}/${Sim.XP_NEED(u.lv)}`], ['AT', statShow(u, 'atk')], ['DF', statShow(u, 'df')], ['AR', statShow(u, 'ar')], ['DR', statShow(u, 'dr')], ['AD', statShow(u, 'ad')], ['MD', statShow(u, 'md')], ['AA', statShow(u, 'aa')], ['HR', statShow(u, 'hr')], ['SP', statShow(u, 'sp')], ['상태', stText(u)]];
   label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
-  rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
+  rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[1] && r[1].col ? r[1].col : r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
 }
 function drawSpellPanel() {
   const u = ctrlOf(); if (!u || !u.spells.length) return;
@@ -551,8 +557,8 @@ function drawTable() {
       if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
       if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-      const cells = tblAbility ? [u.name, fatigueStat(u, combatStat(u, 'atk')), fatigueStat(u, combatStat(u, 'df')), fatigueStat(u, combatStat(u, 'ad')), fatigueStat(u, combatStat(u, 'md')), Math.round(combatStat(u, 'aa')) + '%', Math.round(combatStat(u, 'hr')), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0)), u.xp, stText(u)];
-      cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
+      const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0)), u.xp, stText(u)];
+      cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
       btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
     });
   });
@@ -603,10 +609,10 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   yy += 18; bar(x + 10, yy, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 22; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
   yy += 22; if (u.maxMp) bar(x + 10, yy - 12, w - 20, 7, u.mp / u.maxMp, '#8a6aff'); label('MP', x + 10, yy + 4, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy + 4, fs, COLORS.silver, 'right');
   yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))), x + 40, yy, fs, u.ft + (u.ftDebuffT > 0 ? 10 : 0) > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 142, yy, fs, COLORS.silver);
-  const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, COLORS.silver); };
-  yy += rh; cell('AT', fatigueStat(u, combatStat(u, 'atk')), 0, 0); cell('DF', fatigueStat(u, combatStat(u, 'df')), 1, 0); cell('AA', Math.round(combatStat(u, 'aa')) + '%', 2, 0);
-  cell('AR', Math.round(combatStat(u, 'ar')), 0, 1); cell('DR', Math.round(combatStat(u, 'dr')), 1, 1); cell('AD', fatigueStat(u, combatStat(u, 'ad')), 2, 1);
-  cell('MD', fatigueStat(u, combatStat(u, 'md')), 0, 2); cell('HR', Math.round(combatStat(u, 'hr')), 1, 2); cell('SP', fatigueStat(u, combatStat(u, 'sp')), 2, 2);
+  const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, v && v.col ? v.col : COLORS.silver); };
+  yy += rh; cell('AT', statShow(u, 'atk'), 0, 0); cell('DF', statShow(u, 'df'), 1, 0); cell('AA', statShow(u, 'aa'), 2, 0);
+  cell('AR', statShow(u, 'ar'), 0, 1); cell('DR', statShow(u, 'dr'), 1, 1); cell('AD', statShow(u, 'ad'), 2, 1);
+  cell('MD', statShow(u, 'md'), 0, 2); cell('HR', statShow(u, 'hr'), 1, 2); cell('SP', statShow(u, 'sp'), 2, 2);
   yy += 3 * rh; label('ST', x + 10, yy, fs, orange); label(stText(u), x + 42, yy, fs, COLORS.silver); label('지형', x + 130, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 172, yy, fs, COLORS.silver);
   yy += rh; label('ITEM', x + 10, yy, fs, orange); label(itemName(u), x + 62, yy, fs, COLORS.silver);
   if (sp.length) { yy += 22; label('마법 · 터치하여 선택', x + 10, yy, fs, orange); sp.forEach((k, i) => { yy += 24; button('spell:' + i, x + 10, yy - 11, w - 20, 22, `${i + 1} ${SPELL[k].name}  ${SPELL[k].mp}MP`, u.spellSel === i, 14); }); }
@@ -616,13 +622,13 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
 const itemName = u => u.item ? `${Sim.ITEMS[u.item].unique ? '★ ' : ''}${Sim.ITEMS[u.item].name}` : WEAPON_NAME[(styleOf(u) || {}).weapon] || '—';
 const TERRAIN_NAME = ['평지', '숲', '바위', '물', '여울'], WEAPON_NAME = { glaive: '청룡언월도', halberd: '방천화극', lance: '창', twin: '쌍철극', sword: '검', spear: '창', bow: '활', fan: '부채' };
 function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치 창과 같은 줄 구성
-  const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, COLORS.silver); };
+  const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, v && v.col ? v.col : COLORS.silver); };
   label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, hpCol(u.hp / u.maxHp, col)); label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
   const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = itemName(u);
-  label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(Math.round(combatStat(u, 'hr'))), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
-  cell('AT', fatigueStat(u, combatStat(u, 'atk')), 0, 1); cell('DF', fatigueStat(u, combatStat(u, 'df')), 1, 1); cell('AA', Math.round(combatStat(u, 'aa')) + '%', 2, 1);
-  cell('AR', Math.round(combatStat(u, 'ar')), 0, 2); cell('DR', Math.round(combatStat(u, 'dr')), 1, 2); cell('AD', fatigueStat(u, combatStat(u, 'ad')), 2, 2);
-  cell('MD', fatigueStat(u, combatStat(u, 'md')), 0, 3); cell('FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0)), 1, 3); cell('SP', fatigueStat(u, combatStat(u, 'sp')), 2, 3);
+  label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(statShow(u, 'hr')), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
+  cell('AT', statShow(u, 'atk'), 0, 1); cell('DF', statShow(u, 'df'), 1, 1); cell('AA', statShow(u, 'aa'), 2, 1);
+  cell('AR', statShow(u, 'ar'), 0, 2); cell('DR', statShow(u, 'dr'), 1, 2); cell('AD', statShow(u, 'ad'), 2, 2);
+  cell('MD', statShow(u, 'md'), 0, 3); cell('FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0)), 1, 3); cell('SP', statShow(u, 'sp'), 2, 3);
   label('ST', x + 8, y + top + 4 * rh, fs, orange); label(stText(u), x + 8 + fs * 2.2, y + top + 4 * rh, fs, COLORS.silver); label('지형', x + 8 + 1.6 * c, y + top + 4 * rh, fs, orange); label(terrain, x + 8 + 1.6 * c + fs * 2.6, y + top + 4 * rh, fs, COLORS.silver);
   label('ITEM', x + 8, y + top + 5 * rh, fs, orange); label(wp, x + 8 + fs * 3, y + top + 5 * rh, fs, COLORS.silver);
   return top + 5 * rh + 14;
@@ -695,7 +701,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.137', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.138', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
