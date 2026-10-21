@@ -29,14 +29,16 @@ const STYLES = {
   cav: { body: '#3b3f4b', trim: '#c9302c', skin: '#d9a77e', helm: true, helmColor: '#2b2d36', plume: 1.2, pauldrons: true, weapon: 'spear', horse: '#4a3a30' },
   captain: { body: '#5a1c24', trim: '#e0b13a', skin: '#c9946a', helm: true, helmColor: '#24222c', plume: 1.6, pauldrons: true, weapon: 'sword' },
   hua: { body: '#7a1c24', trim: '#ffd34d', skin: '#c9946a', cape: '#3a0e14', helm: true, helmColor: '#1c1c26', plume: 1.8, pauldrons: true, beard: true, weapon: 'axe' },
-  jang: { body: '#3b3f4b', trim: '#ffd34d', skin: '#d9a77e', cape: '#5a1c24', helm: true, helmColor: '#2b2d36', plume: 1.6, pauldrons: true, weapon: 'spear', horse: '#26262e' },
+  jang: { body: '#29263d', trim: '#c99a52', skin: '#c98f6a', cape: '#513285', helm: true, helmColor: '#c8d1dc', plume: 1.9, plumeColor: '#4655b8', pauldrons: true, beard: true, weapon: 'lance', tassel: '#b53632', horse: '#24212b' },
+  lulingqi: { body: '#e3e4e8', trim: '#7650a5', skin: '#f1d0b3', sleeves: '#d8d9e2', hairCap: true, longHair: true, crown: true, pauldrons: true, weapon: 'lance', tassel: '#c9302c', horse: '#343039' },
+  gao: { body: '#302722', trim: '#755a3f', skin: '#c68f6d', cape: '#17171c', helm: true, helmColor: '#29272d', plume: 2, plumeColor: '#c42e2e', pauldrons: true, beard: true, weapon: 'sword' },
   xun: { body: '#4a2a5a', trim: '#ffd34d', skin: '#d9a77e', hairCap: true, crown: true, beard: true, beardColor: '#cfd3e6', sleeves: '#7a4a8a', weapon: 'fan', weaponScale: 0.5 },
   emage: { body: '#4a2a5a', trim: '#c9302c', skin: '#d9a77e', hairCap: true, sleeves: '#7a4a8a', weapon: 'fan', weaponScale: 0.5 },
 };
 
 function circle(g, x, y, r) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
 
-function drawWeapon(g, kind, x, y, ang, len, r, scale = 1) {
+function drawWeapon(g, kind, x, y, ang, len, r, scale = 1, tassel) {
   g.save(); g.translate(x, y); g.scale(scale, scale); g.translate(-x, -y);
   const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
   g.lineCap = 'round';
@@ -87,6 +89,10 @@ function drawWeapon(g, kind, x, y, ang, len, r, scale = 1) {
     g.moveTo(tx - dx * bl * 0.2 + nx * bl * 0.3, ty - dy * bl * 0.2 + ny * bl * 0.3); g.lineTo(tx + dx * bl * 1.2, ty + dy * bl * 1.2); g.lineTo(tx - dx * bl * 0.2 - nx * bl * 0.3, ty - dy * bl * 0.2 - ny * bl * 0.3);
   }
   g.closePath(); g.fill();
+  if (tassel && (kind === 'lance' || kind === 'spear')) {
+    const jx = tx - dx * bl * 0.7, jy = ty - dy * bl * 0.7;
+    g.strokeStyle = tassel; g.lineWidth = 3; g.beginPath(); g.moveTo(jx, jy); g.lineTo(jx - dx * bl * 0.45 + nx * bl * 0.45, jy - dy * bl * 0.45 + ny * bl * 0.45); g.stroke();
+  }
   if (kind === 'glaive') {   // 금색 용 장식과 붉은 수술로 일반 장병기와 구분한다.
     const jx = tx - dx * bl * 0.85, jy = ty - dy * bl * 0.85;
     g.strokeStyle = COLORS.goldTrim; g.lineWidth = 3; g.beginPath(); g.arc(jx, jy, bl * 0.22, 0, TAU); g.stroke();
@@ -120,7 +126,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   const wp = s.weapon ? { ang: o.weaponAng != null ? o.weaponAng : face + 0.9, len: o.weaponLen || 80 } : null;
   g.save(); if (o.alpha != null) g.globalAlpha = o.alpha;
   if (!s.horse) { g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + r * 0.35, r * 1.15, r * 0.55, 0, 0, TAU); g.fill(); }
-  if (wp && sy < 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r, s.weaponScale ?? 1);
+  if (wp && sy < 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r, s.weaponScale ?? 1, s.tassel);
   if (s.longHair) { g.fillStyle = f ? W : '#1e1624'; g.beginPath(); g.ellipse(x - cx * r * 0.1, hy + r * 1.0, r * 0.72, r * 1.45, 0, 0, TAU); g.fill(); }
   g.fillStyle = f ? W : s.body; g.beginPath(); g.ellipse(x, by, r * 0.9, r * 1.15, 0, 0, TAU); g.fill();
   if (s.pauldrons) { g.fillStyle = f ? W : s.trim; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(x + sd * r * 0.82, by - r * 0.45, r * 0.34, r * 0.26, sd * 0.4, 0, TAU); g.fill(); } }
@@ -130,7 +136,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   g.fillStyle = f ? W : s.skin; circle(g, x, hy, r * 0.6);
   if (s.helm) {
     g.fillStyle = f ? W : (s.helmColor || '#1c1c26'); g.beginPath(); g.arc(x, hy, r * 0.66, Math.PI, TAU); g.fill();
-    if (s.plume) { const q = s.plume; g.fillStyle = f ? W : '#c9302c'; g.beginPath(); g.moveTo(x - r * 0.14, hy - r * 0.62); g.quadraticCurveTo(x - r * 0.55 * q, hy - r * 1.05 * q, x + r * 0.02, hy - r * (0.7 + 0.65 * q)); g.quadraticCurveTo(x + r * 0.08, hy - r * 0.95, x + r * 0.16, hy - r * 0.62); g.closePath(); g.fill(); }
+    if (s.plume) { const q = s.plume; g.fillStyle = f ? W : (s.plumeColor || '#c9302c'); g.beginPath(); g.moveTo(x - r * 0.14, hy - r * 0.62); g.quadraticCurveTo(x - r * 0.55 * q, hy - r * 1.05 * q, x + r * 0.02, hy - r * (0.7 + 0.65 * q)); g.quadraticCurveTo(x + r * 0.08, hy - r * 0.95, x + r * 0.16, hy - r * 0.62); g.closePath(); g.fill(); }
     if (s.feathers) { g.strokeStyle = f ? W : '#c9302c'; g.lineWidth = 4; g.beginPath(); g.moveTo(x - r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x - r * 1.2, hy - r * 2.2, x - r * 0.6, hy - r * 2.9); g.moveTo(x + r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x + r * 1.2, hy - r * 2.2, x + r * 0.6, hy - r * 2.9); g.stroke(); }
   }
   if (s.beard) { g.fillStyle = f ? W : (s.beardColor || '#17171b'); g.beginPath(); g.moveTo(x - r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 1.7, x + r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 0.35, x - r * 0.5, hy + r * 0.1); g.fill(); }
@@ -143,7 +149,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   if (s.crown) { g.fillStyle = f ? W : COLORS.gold; g.beginPath(); g.moveTo(x - r * 0.5, hy - r * 0.5); g.lineTo(x - r * 0.42, hy - r * 1.0); g.lineTo(x - r * 0.2, hy - r * 0.72); g.lineTo(x, hy - r * 1.14); g.lineTo(x + r * 0.2, hy - r * 0.72); g.lineTo(x + r * 0.42, hy - r * 1.0); g.lineTo(x + r * 0.5, hy - r * 0.5); g.closePath(); g.fill(); }
   if (s.flower) { g.fillStyle = f ? W : '#ff9ac8'; for (let k = 0; k < 5; k++) { const an = k * TAU / 5 - 1.2; circle(g, x + r * 0.58 + Math.cos(an) * r * 0.2, hy - r * 0.4 + Math.sin(an) * r * 0.2, r * 0.17); } }
   g.fillStyle = '#111'; for (const sd of [-1, 1]) circle(g, x + sd * r * 0.24 + cx * r * 0.14, hy + sy * r * 0.1 + r * 0.02, r * 0.075);
-  if (wp && sy >= 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r, s.weaponScale ?? 1);
+  if (wp && sy >= 0) drawWeapon(g, s.weapon, x + cx * r * 0.3, by + r * 0.2, wp.ang, wp.len, r, s.weaponScale ?? 1, s.tassel);
   g.restore();
 }
 
