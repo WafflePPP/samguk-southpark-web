@@ -116,14 +116,6 @@ function restoreCampaign(data) {
 function defeatCampaign(message) { try { localStorage.removeItem(saveKey(activeSaveSlot)); if (activeSaveSlot === 1) localStorage.removeItem(SAVE_KEY); } catch (e) { /* 무시 */ } S = null; state = 'title'; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; saveSlotMode = null; titleNotice = message; }
 let mapTool = null, scoutView = null, diplomacyRnd = Math.random;   // 지도 도구(정찰·외교) 선택 상태 / 정찰 보고 창
 let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0, exploreSelectOpen = false, explorePage = 0;
-const SUBCLASS_EFFECT = {
-  비장: ['거리 제한 없이 돌진. 0칸에서도 충격 발동.', '돌진 후 AT +30% 5초 · 피격 적 FT +10% 5초.'],
-  전신: ['거리 제한 없이 돌진. 0칸에서도 충격 발동.', '피격 적 FT +10% 5초.'],
-  상승: ['거리 제한 없이 돌진. 0칸에서도 충격 발동.', '돌진 후 AT +30% 5초.'],
-  무신: ['주변 150px 아군의 AT·AD·MD +20%.'],
-  철벽: ['HP 30% 이하 진입 시 AD·MD·AR +30% 5초.'],
-  간웅: ['주변 150px 아군의 전투 능력치 +10%.'],
-};
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '화살 5발 연속 사격', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
 const STAT_GUIDE = ['HP 생명력 · MP 주문 자원 · FT 피로도(높을수록 전투 효율 감소)', 'AT 물리 공격 · DF 물리 방어 · AD 화살 방어 · MD 마법 방어', 'AA 화살 회피율 · HR 정지 중 체력 회복 · SP 이동 속도', 'AR 공격 효율 배율 · DR 방어 효율 배율'];
 const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
@@ -434,9 +426,9 @@ function drawUnit(u) {
   const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && pArmies().some(A => A !== army() && A.ctrl === u);
   ctx.save(); ctx.lineWidth = mine ? 4 : 3; ctx.strokeStyle = mine ? COLORS.gold : ally ? COLORS.ally : COLORS.danger;   // 팀 표시(아트방향 5-5): 아군 청 실선 / 적 주홍 점선 / 조작 중 금
   ctx.setLineDash(ally || mine ? [] : [6, 5]); ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, u.r * 1.3, u.r * 0.7, 0, 0, TAU); ctx.stroke(); ctx.restore();
-  { const marks = [[u.atkBuffT > 0, '#ffd34d'], [u.guardBuffT > 0, '#9fdcff'], [u.ftDebuffT > 0, '#ff9a4a'], [u.auraWu, '#ffb347'], [u.auraGan, '#c78bff']].filter(m => m[0]), pulse = 0.45 + 0.3 * Math.sin(T * 6);   // 효과가 켜져 있는 동안 발밑에 색 고리 (공격 금·방어 청·피로 디버프 주황)
+  { const marks = [...(u.buffs || []).map(b => [true, b.col]), [u.ftDebuffT > 0, '#ff9a4a'], ...Object.entries(u.auraOn || {}).filter(([, on]) => on).map(([k]) => [true, Sim.TITLE_EFFECT[k].col])].filter(m => m[0]), pulse = 0.45 + 0.3 * Math.sin(T * 6);   // 효과가 켜져 있는 동안 발밑에 색 고리 (공격 금·방어 청·피로 디버프 주황)
     if (marks.length) { ctx.save(); ctx.lineWidth = 2; marks.forEach((m, i) => { ctx.globalAlpha = pulse; ctx.strokeStyle = m[1]; ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, u.r * (1.6 + i * 0.28), u.r * (1.6 + i * 0.28) * 0.55, 0, 0, TAU); ctx.stroke(); }); ctx.restore(); }
-    if (u.subclass === '무신' || u.subclass === '간웅') { ctx.save(); ctx.globalAlpha = 0.16 + 0.06 * Math.sin(T * 3); ctx.strokeStyle = u.subclass === '무신' ? '#ffb347' : '#c78bff'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, Sim.AURA_RANGE, Sim.AURA_RANGE * 0.55, 0, 0, TAU); ctx.stroke(); ctx.restore(); } }   // 무신(관우 등) 공격·화살·마법 방어 +20%, 간웅(조조) 전 능력 +10% 오라 범위
+    const TA = (Sim.TITLE_EFFECT[u.subclass] || {}).aura && Sim.TITLE_EFFECT[u.subclass]; if (TA) { ctx.save(); ctx.globalAlpha = 0.16 + 0.06 * Math.sin(T * 3); ctx.strokeStyle = TA.col; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, Sim.AURA_RANGE, Sim.AURA_RANGE * 0.55, 0, 0, TAU); ctx.stroke(); ctx.restore(); } }   // 무신(관우 등) 공격·화살·마법 방어 +20%, 간웅(조조) 전 능력 +10% 오라 범위
   const swing = u.anim > 0 ? -1.3 + 2.6 * (1 - u.anim / 0.28) : 0.9;
   const k = Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))), mag = (u.hitMag || 1) * (u.hitState < 0 ? 1.25 : u.hitState > 0 ? 0.55 : 1), ds = Math.cos(u.hitAng) >= 0 ? 1 : -1, ap = u.anim > 0 && u.range === 0 ? Math.sin((1 - u.anim / 0.28) * Math.PI) : 0;   // 상성 우세는 짧은 방어 반응, 불리는 강한 경직
   const tilt = ds * 0.5 * mag * k * Math.cos((1 - k) * 6) + (u.stun > 0 ? Math.sin(T * 8) * 0.16 : 0), sqy = 1 - 0.13 * mag * k - 0.05 * ap, sqx = 1 + 0.09 * mag * k + 0.04 * ap;
@@ -522,7 +514,7 @@ const combatStat = (u, key) => Sim.combatStat(S, u, key);
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
-  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))], ['XP', `${u.xp}/${Sim.XP_NEED(u.lv)}`], ['AT', statShow(u, 'atk')], ['DF', statShow(u, 'df')], ['AR', statShow(u, 'ar')], ['DR', statShow(u, 'dr')], ['AD', statShow(u, 'ad')], ['MD', statShow(u, 'md')], ['AA', statShow(u, 'aa')], ['HR', statShow(u, 'hr')], ['SP', statShow(u, 'sp')], ['상태', stText(u)]];
+  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(Sim.effectiveFt(u))], ['XP', `${u.xp}/${Sim.XP_NEED(u.lv)}`], ['AT', statShow(u, 'atk')], ['DF', statShow(u, 'df')], ['AR', statShow(u, 'ar')], ['DR', statShow(u, 'dr')], ['AD', statShow(u, 'ad')], ['MD', statShow(u, 'md')], ['AA', statShow(u, 'aa')], ['HR', statShow(u, 'hr')], ['SP', statShow(u, 'sp')], ['상태', stText(u)]];
   label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); label(`${CATEGORY_NAME[u.category]}·${u.subclass} Lv${u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[1] && r[1].col ? r[1].col : r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
@@ -571,7 +563,7 @@ function drawTable() {
       if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
       if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-      const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0)), u.xp, stText(u)];
+      const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.lv, Math.round(Sim.effectiveFt(u)), u.xp, stText(u)];
       cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
       btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
     });
@@ -622,7 +614,7 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   yy += 24; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver);
   yy += 18; bar(x + 10, yy, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 22; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
   yy += 22; if (u.maxMp) bar(x + 10, yy - 12, w - 20, 7, u.mp / u.maxMp, '#8a6aff'); label('MP', x + 10, yy + 4, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy + 4, fs, COLORS.silver, 'right');
-  yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0))), x + 40, yy, fs, u.ft + (u.ftDebuffT > 0 ? 10 : 0) > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 142, yy, fs, COLORS.silver);
+  yy += 24; label('FT', x + 10, yy, fs, orange); label(String(Math.round(Sim.effectiveFt(u))), x + 40, yy, fs, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver); label('XP', x + 110, yy, fs, orange); label(`${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 142, yy, fs, COLORS.silver);
   const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rh, fs, orange); label(String(v), x + 10 + i * c + lo, yy + r * rh, fs, v && v.col ? v.col : COLORS.silver); };
   yy += rh; cell('AT', statShow(u, 'atk'), 0, 0); cell('DF', statShow(u, 'df'), 1, 0); cell('AA', statShow(u, 'aa'), 2, 0);
   cell('AR', statShow(u, 'ar'), 0, 1); cell('DR', statShow(u, 'dr'), 1, 1); cell('AD', statShow(u, 'ad'), 2, 1);
@@ -642,7 +634,7 @@ function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치
   label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(statShow(u, 'hr')), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
   cell('AT', statShow(u, 'atk'), 0, 1); cell('DF', statShow(u, 'df'), 1, 1); cell('AA', statShow(u, 'aa'), 2, 1);
   cell('AR', statShow(u, 'ar'), 0, 2); cell('DR', statShow(u, 'dr'), 1, 2); cell('AD', statShow(u, 'ad'), 2, 2);
-  cell('MD', statShow(u, 'md'), 0, 3); cell('FT', Math.round(u.ft + (u.ftDebuffT > 0 ? 10 : 0)), 1, 3); cell('SP', statShow(u, 'sp'), 2, 3);
+  cell('MD', statShow(u, 'md'), 0, 3); cell('FT', Math.round(Sim.effectiveFt(u)), 1, 3); cell('SP', statShow(u, 'sp'), 2, 3);
   label('ST', x + 8, y + top + 4 * rh, fs, orange); label(stText(u), x + 8 + fs * 2.2, y + top + 4 * rh, fs, COLORS.silver); label('지형', x + 8 + 1.6 * c, y + top + 4 * rh, fs, orange); label(terrain, x + 8 + 1.6 * c + fs * 2.6, y + top + 4 * rh, fs, COLORS.silver);
   label('ITEM', x + 8, y + top + 5 * rh, fs, orange); label(wp, x + 8 + fs * 3, y + top + 5 * rh, fs, COLORS.silver);
   return top + 5 * rh + 14;
@@ -715,7 +707,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.144', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.145', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -880,7 +872,7 @@ function drawRoster() {
       label(`병종 ${main} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold); label(`전투력 ⚔${Sim.unitPower(key, 'player', growth)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2);
       const values = [['HP', stats.maxHp], ['MP', growth.maxMp ?? unit.mp ?? 0], ['FT', 0], ['AT', stats.atk], ['DF', stats.df], ['AD', stats.ad], ['MD', stats.md], ['AA', stats.aa], ['HR', stats.hr], ['SP', stats.sp], ['AR', stats.ar], ['DR', stats.dr]];
       values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * 50, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 452 + col * 194, 301 + row * 50, 15, COLORS.gold); label(String(Math.round(value * 10) / 10), 600 + col * 194, 301 + row * 50, 17, COLORS.silver, 'right'); });
-      label('칭호 효과', 438, 448, 19, COLORS.gold); const effects = SUBCLASS_EFFECT[sub] || ['고유 지속 효과 없음. 기본 병종과 특수기를 사용한다.']; effects.forEach((s, i) => label(s, 438, 478 + i * 27, 16, COLORS.silver));
+      label('칭호 효과', 438, 448, 19, COLORS.gold); const effects = [...(Sim.titleDesc(sub) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.']), ...(Sim.titleDesc(sub) ? ['아군 소속이면 수치 ×' + Sim.TITLE_BONUS + '.'] : [])]; effects.forEach((s, i) => label(s, 438, 478 + i * 27, 16, COLORS.silver));
       label(`특수기: ${unit.special ? `${SPECIAL[unit.special]?.name} — ${SPECIAL_EFFECT[unit.special] || '고유 행동'}` : '없음'}`, 438, 532, 15, COLORS.goldSel);
       label(`주문: ${unit.spells?.length ? unit.spells.map(s => SPELL[s]?.name).filter(Boolean).join(' · ') : '없음'}`, 438, 558, 15, COLORS.goldSel);
       STAT_GUIDE.forEach((s, i) => label(s, 438, 586 + i * 16, 11, COLORS.silver2));

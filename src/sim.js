@@ -47,8 +47,9 @@ const U = {
 const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };   // 군단장급 병사(= 가상 대장·적 장수·적 군사)
 // 이름 있는 장수(삼국지 정사·연의 인물)의 등급 = 연의에서의 비중. 군단장급 병사(CAPTAIN) 능력치 × 등급 배율. 기획 명세 17.
 const GRADE_MUL = { S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
-const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', zhangfei: 'A', machao: 'A', kong: 'B', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', liubei: 'B', pangtong: 'B', jiangwei: 'B', weiyan: 'B', chengong: 'B', lulingqi: 'B', yan: 'C', wen: 'C', cao: 'C', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D' };
+const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', zhangfei: 'A', machao: 'A', kong: 'S', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', liubei: 'B', pangtong: 'B', jiangwei: 'B', weiyan: 'B', chengong: 'B', lulingqi: 'S', yan: 'C', wen: 'C', cao: 'S', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D' };
 const ELITE = Object.fromEntries(Object.entries(GRADE).map(([k, g]) => [k, GRADE_MUL[g]]));
+ELITE.lulingqi = GRADE_MUL.S * 0.7;   // 여령기: 여포(S)의 70% 성능 (명세 26)
 const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
 const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
@@ -79,7 +80,7 @@ const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shiel
 const CATEGORY_NAME = { cavalry: '기병', sword: '검병', spear: '창병', archer: '궁병', military: '군사' };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
-const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', sword: '보병(검)', shield: '방패병(검)', xia: '맹장', yan: '맹장', wen: '용장', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', mage: '법사', emage: '법사', esage: '법사', kong: '법사', xun: '법사', diao: '성직', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };
+const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, military: 1.5 }, military: { military: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, archer: 0.67 } };
 // 상성 우세(배율 > 1)의 피해 효율을 50% 더 높인다 (v0.1.101). 불리(배율 < 1)는 표 그대로.
@@ -116,10 +117,44 @@ const SPELL = {
   heal: { name: '치유', kind: 'heal', mp: 6, range: 130, cd: 1.2 },
 };
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
-const MAGIC = 0.5;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
-const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 : 1);   // AR·DR 은 마법에도 적용
+const MAGIC = 1;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
+const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6, pass: 2 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
-const TRAIT_TIME = 5, AURA_RANGE = 150, DASH_ANY_RANGE = new Set(['비장', '전신', '상승']);
+const TRAIT_TIME = 5, AURA_RANGE = 150, TITLE_BONUS = 1.25;   // 아군 소속 장수의 칭호 효과 수치는 ×1.25 (명세 26: 아군 효과 상향)
+const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: 'AT', df: 'DF', ad: 'AD', md: 'MD', aa: 'AA', hr: 'HR', sp: 'SP', ar: 'AR', dr: 'DR' };
+// 칭호 효과 (명세 26). aura 반경 안 아군(cats 가 있으면 그 병종만) · passive 상시 · hp 기준 이하 진입 시 5초 버프 · dash 돌진 후 · onSpecial 특수기 발동 시 · skill 군사의 스킬 효율(마법 피해·쿨타임·치유량 %). 수치는 % (자기 능력치 곱).
+const TITLE_EFFECT = {
+  무신: { aura: { stats: ['atk', 'ad', 'md'], pct: 20 }, col: '#ffb347', glyph: 'atk' },
+  간웅: { aura: { stats: ALL_STATS, pct: 10 }, col: '#c78bff', glyph: 'all' },
+  함진: { aura: { stats: ['df'], pct: 10, cats: ['sword', 'spear'] }, col: '#9fdcff', glyph: 'guard' },
+  인덕: { aura: { stats: ['dr', 'hr'], pct: 10 }, col: '#7dff9a', glyph: 'heal' },
+  맹주: { aura: { stats: ['hr'], pct: 10 }, col: '#7dff9a', glyph: 'heal' },
+  철벽: { hp: { below: 0.3, mods: { ad: 30, md: 30, ar: 30 }, glyph: 'guard', col: '#9fdcff', text: '철벽 발동' } },
+  맹장: { hp: { below: 0.5, mods: { atk: 30 }, glyph: 'atk', col: '#ffd34d', text: '맹장 발동' } },
+  반골: { hp: { below: 0.5, mods: { atk: 20, sp: 10 }, glyph: 'atk', col: '#ffd34d', text: '반골 발동' } },
+  비장: { dash: { any: true, self: { atk: 30 }, foeFt: 10 } }, 전신: { dash: { any: true, foeFt: 10 } }, 상승: { dash: { any: true, self: { atk: 30 } } },
+  소비장: { dash: { any: true, self: { atk: 30 }, foeFt: 10, scale: 0.7 } },
+  금마초: { dash: { self: { sp: 20, atk: 15 } } }, 지용: { dash: { self: { ar: 15, dr: 15 }, glyph: 'guard', col: '#9fdcff' } }, 백마: { dash: { self: { sp: 15 } } },
+  신궁: { onSpecial: { volley: { self: { atk: 30 } } } }, 효장: { onSpecial: { spin: { self: { atk: 20 } } } },
+  만인적: { onSpecial: { spin: { foeFt: 10 } } }, 폭군: { onSpecial: { spin: { foeFt: 10 } } },
+  경국: { skill: { heal: 30, cd: 20 }, onSpecial: { bless: { foeFt: 10 } } },
+  와룡: { skill: { dmg: 30, cd: 20 } }, 봉추: { skill: { dmg: 20 } }, 왕좌: { skill: { cd: 15 } }, 모주: { skill: { dmg: 10, cd: 10 } }, 귀재: { skill: { dmg: 10 } },
+  호치: { passive: { df: 10, ad: 10 } }, 교변: { passive: { sp: 10, aa: 5 } }, 주아부: { passive: { df: 8, ad: 8 } }, 상장: { passive: { atk: 10 } }, 용장: { passive: { df: 10 } }, 총호: { passive: { md: 15, dr: 10 } }, 횡포: { passive: { atk: 5 } },
+};
+const teamMul = u => u.team === 'player' ? TITLE_BONUS : 1;
+const modsText = (m, k = 1) => Object.entries(m).map(([s, v]) => STAT_NAME[s] + ' +' + +(v * k).toFixed(1) + '%').join(' ');
+function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장 (기준 수치, 아군이면 ×1.25)
+  const T = TITLE_EFFECT[name]; if (!T) return null; const L = [];
+  if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
+  if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
+  if (T.hp) L.push(`HP ${T.hp.below * 100}% 이하 진입 시 ${modsText(T.hp.mods)} ${TRAIT_TIME}초.`);
+  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('거리 제한 없이 돌진. 0칸에서도 충격 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
+  if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) L.push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + modsText(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + o.foeFt + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
+  if (T.skill) L.push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + T.skill.dmg + '%', T.skill.cd && '쿨타임 −' + T.skill.cd + '%', T.skill.heal && '치유량 +' + T.skill.heal + '%'].filter(Boolean).join(' · ') + '.');
+  return L;
+}
+const dashAny = u => !!((TITLE_EFFECT[u.subclass] || {}).dash || {}).any;
+const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, (((TITLE_EFFECT[u.subclass] || {}).skill || {})[k] || 0) * teamMul(u));
 
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
 // at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
@@ -286,19 +321,16 @@ function createBattle(seed = 1, opts = {}) {
 // 피로도(FT 0~100) 설정 — 한 곳에서 조절한다. 효율(eff) = 쌓이는 속도 1/eff · 회복 속도 eff배 (1 이면 교전 1분에 100 가까이, 10 이면 거의 안 쌓임; 3 이면 격렬한 교전 뒤에만 50~70까지 오르고 쉬면 내려감)
 const FT = { eff: 3, gain: { hit: 1.8, spell: 2, special: 3, step: 0.1 }, recover: 0.04, penalty: 0.004, max: 100 };   // gain: 행동 한 번당 상승량 / recover: 초당 회복 / penalty: FT 1 당 능력 감소 (100 이면 -40%)
 const tire = (u, kind) => { u.ft = Math.min(FT.max, u.ft + FT.gain[kind] / FT.eff); };
-const effectiveFt = u => Math.min(FT.max, u.ft + (u.ftDebuffT > 0 ? 10 : 0));
+const effectiveFt = u => Math.min(FT.max, u.ft + (u.ftDebuffT > 0 ? (u.ftDebuffAmt || 10) : 0));
 const ftMul = u => 1 - effectiveFt(u) * FT.penalty;   // 공격·이동 속도 배율
 const ftDef = u => 1 - effectiveFt(u) * FT.penalty;   // 방어 배율 (설계값, ftMul 과 별개로 둘 수 있게 분리)
 const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 function combatStat(S, u, key) {
   let value = u[key]; if (!S || !Number.isFinite(value)) return value;
-  if (key === 'atk' && u.atkBuffT > 0) value *= 1.3;
-  if (u.guardBuffT > 0 && ['ad', 'md', 'ar'].includes(key)) value *= 1.3;
-  for (const a of S.units) if (a !== u && live(a) && a.team === u.team && dist(a, u) <= AURA_RANGE) {
-    if (a.subclass === '무신' && ['atk', 'ad', 'md'].includes(key)) value *= 1.2;
-    if (a.subclass === '간웅' && ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'].includes(key)) value *= 1.1;
-  }
+  const TE = TITLE_EFFECT[u.subclass]; if (TE && TE.passive && TE.passive[key]) value *= 1 + TE.passive[key] / 100 * teamMul(u);
+  if (u.buffs) for (const b of u.buffs) if (b.mods[key]) value *= 1 + b.mods[key] / 100 * b.mul;
+  for (const a of S.units) if (a !== u && live(a) && a.team === u.team && dist(a, u) <= AURA_RANGE) { const A = (TITLE_EFFECT[a.subclass] || {}).aura; if (A && A.stats.includes(key) && (!A.cats || A.cats.includes(u.category))) value *= 1 + A.pct / 100 * teamMul(a); }
   return value;
 }
 const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
@@ -307,19 +339,27 @@ function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0,
 function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
 function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
 function buffFx(S, u, glyph, col) { S.fx.push({ kind: 'buff', glyph, x: u.x, y: u.y, r: u.r, col, t: 0.9, max: 0.9 }); }   // 버프·디버프·회복이 걸릴 때 유닛 위에 뜨는 이펙트 (glyph: atk ▲ / guard 방패 / down ▼ / heal +)
-// 범위 버프(오라): 무신(관우 등) 반경 안 아군 AT·AD·MD +20%, 간웅(조조) 반경 안 아군 전 능력 +10% (combatStat 과 같은 조건). 범위에 들어오면 이펙트, 있는 동안은 u.auraWu·auraGan 표시.
-const AURAS = [['무신', 'auraWu', 'atk', '#ffb347'], ['간웅', 'auraGan', 'all', '#c78bff']];
+// 범위 버프(오라, TITLE_EFFECT.aura): 범위에 들어오면 이펙트, 있는 동안은 u.auraOn[칭호] 표시. 능력치 계산(combatStat)과 같은 조건.
+const AURA_TITLES = Object.entries(TITLE_EFFECT).filter(([, t]) => t.aura);
 function updateAuras(S) {
-  const bearers = S.units.filter(b => live(b) && AURAS.some(a => a[0] === b.subclass)); if (!bearers.length && !S.units.some(u => u.auraWu || u.auraGan)) return;
+  const bearers = S.units.filter(b => live(b) && (TITLE_EFFECT[b.subclass] || {}).aura); if (!bearers.length && !S.units.some(u => u.auraOn && Object.values(u.auraOn).some(Boolean))) return;
   for (const u of S.units) {
-    if (!live(u)) { u.auraWu = u.auraGan = false; continue; }
-    for (const [sub, flag, glyph, col] of AURAS) {
-      const on = bearers.some(b => b !== u && b.team === u.team && b.subclass === sub && dist(b, u) <= AURA_RANGE);
-      if (on && !u[flag] && S.t - (u.auraFxT || -99) > 3) { buffFx(S, u, glyph, col); u.auraFxT = S.t; }
-      u[flag] = on;
+    if (!live(u)) { u.auraOn = {}; continue; }
+    u.auraOn = u.auraOn || {}; u.auraFxT = u.auraFxT || {};
+    for (const [sub, T] of AURA_TITLES) {
+      const on = bearers.some(b => b !== u && b.team === u.team && b.subclass === sub && dist(b, u) <= AURA_RANGE && (!T.aura.cats || T.aura.cats.includes(u.category)));
+      if (on && !u.auraOn[sub] && S.t - (u.auraFxT[sub] ?? -99) > 3) { buffFx(S, u, T.glyph, T.col); u.auraFxT[sub] = S.t; }
+      u.auraOn[sub] = on;
     }
   }
 }
+// 칭호 버프(발동형)와 적 FT 디버프
+function addBuff(S, u, id, mods, glyph, col, scale = 1) {
+  const mul = teamMul(u) * scale; u.buffs = u.buffs || []; const old = u.buffs.find(b => b.id === id);
+  if (old) { old.t = TRAIT_TIME; old.mods = mods; old.mul = mul; old.glyph = glyph; old.col = col; } else u.buffs.push({ id, t: TRAIT_TIME, mods, mul, glyph, col });
+  buffFx(S, u, glyph, col); text(S, u.x, u.y - u.r * 4, modsText(mods, mul), col, 'buff');
+}
+function foeFt(S, e, amt, scale = 1) { e.ftDebuffT = TRAIT_TIME; e.ftDebuffAmt = amt * scale; buffFx(S, e, 'down', '#ff9a4a'); text(S, e.x, e.y - e.r * 4, 'FT +' + +(amt * scale).toFixed(1) + '%', '#ff9a4a', 'buff'); }
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   const p = u.mv && u.mv.swap;   // 맞바꾸던 상대가 쓰러지거나 떠나면, 남은 쪽은 그 칸으로 가는 보통 이동으로 바꾸고 도착 칸을 바로 점유한다 (아니면 빈 칸으로 보여 다른 유닛이 겹쳐 들어온다)
@@ -448,7 +488,7 @@ function castSpell(S, u, key, x, y) {
   if (sp.kind === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    const heal = Math.round((70 + u.lv * 5) * HP_MUL); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
+    const heal = Math.round((70 + u.lv * 5) * HP_MUL * (1 + skillPct(u, 'heal') / 100)); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
   } else if (sp.kind === 'homing') {   // 장풍: 가까운 적을 쫓아간다 (조준한 곳 가까이에 적이 없으면 직진)
     let tgt = null, bd = 80; for (const e of S.units) if (live(e) && e.team !== u.team) { const dd = Math.hypot(e.x - x, e.y - y); if (dd < bd) { bd = dd; tgt = e; } }
     shot({ kind: 'homing', vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420, left: sp.range * 1.5, tgt });
@@ -466,7 +506,7 @@ function castSpell(S, u, key, x, y) {
     aoe(S, u, px, py, sp.r, e => { e.root = sp.root; e.path = null; text(S, e.x, e.y - e.r * 4, '속박', '#e8e8e8', 'buff'); }, sp.col);
   }
   if (sp.lock) S.lock[u.team] = sp.lock;   // 전체 쿨 마법
-  u.mp -= sp.mp; u.cdT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 'spell');
+  u.mp -= sp.mp; u.cdT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.anim = 0.4; u.face = ang; tire(u, 'spell');
   return true;
 }
 function useSpecial(S, u, x, y) {
@@ -477,12 +517,14 @@ function useSpecial(S, u, x, y) {
     const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), q = []; let cx = u.tx, cy = u.ty;
     if ((!dx && !dy) || u.mv) return false;
     while (q.length < 6) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, cx, cy, dx, dy)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
-    if (!q.length && !(DASH_ANY_RANGE.has(u.subclass) && S.units.some(e => live(e) && e.team !== u.team && dist(u, e) <= 60))) return false;
+    if (!q.length && !(dashAny(u) && S.units.some(e => live(e) && e.team !== u.team && dist(u, e) <= 60))) return false;
     u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
-  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
-  u.spT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 'special');
+  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
+  const OS = ((TITLE_EFFECT[u.subclass] || {}).onSpecial || {})[u.special];
+  if (OS) { if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d'); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt); }
+  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.anim = 0.4; u.face = ang; tire(u, 'special');
   return true;
 }
 
@@ -625,7 +667,7 @@ function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지
 }
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
-  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const any = DASH_ANY_RANGE.has(u.subclass), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
   if (u.spells.includes('heal')) {
     let t = null, bd = 0.7; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; }
     if (t && castSpell(S, u, 'heal', t.x, t.y)) return true;
@@ -647,8 +689,8 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   return false;
 }
 function updateUnit(S, u, dt) {
-  u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.atkBuffT -= dt; u.guardBuffT -= dt; u.ftDebuffT -= dt; u.moving = false;
-  if (u.subclass === '철벽') { if (u.hp <= u.maxHp * 0.3 && !u.ironwallUsed) { u.ironwallUsed = true; u.guardBuffT = TRAIT_TIME; buffFx(S, u, 'guard', '#9fdcff'); text(S, u.x, u.y - u.r * 4, '철벽 발동', '#9fdcff', 'buff'); ring(S, u.x, u.y, 36, '#9fdcff', 0.5); } else if (u.hp > u.maxHp * 0.3) u.ironwallUsed = false; }
+  u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.ftDebuffT -= dt; if (u.buffs) { for (const b of u.buffs) b.t -= dt; u.buffs = u.buffs.filter(b => b.t > 0); } u.moving = false;
+  const HT = (TITLE_EFFECT[u.subclass] || {}).hp; if (HT) { if (u.hp <= u.maxHp * HT.below && !u.hpTrig) { u.hpTrig = true; addBuff(S, u, 'hp', HT.mods, HT.glyph, HT.col); text(S, u.x, u.y - u.r * 5, HT.text, HT.col, 'buff'); ring(S, u.x, u.y, 36, HT.col, 0.5); } else if (u.hp > u.maxHp * HT.below) u.hpTrig = false; }
   if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * combatStat(S, u, 'hr') * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
@@ -660,8 +702,9 @@ function updateUnit(S, u, dt) {
     if (n && !S.occ[ti(n.tx, n.ty)]) { u.dashMoved++; beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
     const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
     u.dashQ = null; u.passT = SPECIAL.dash.pass;
-    aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, 2 + moved * 0.5)); if (live(e) && ['비장', '전신'].includes(u.subclass)) { e.ftDebuffT = TRAIT_TIME; buffFx(S, e, 'down', '#ff9a4a'); text(S, e.x, e.y - e.r * 4, 'FT +10%', '#ff9a4a', 'buff'); } }, '#7fd0ff');
-    if (['비장', '상승'].includes(u.subclass)) { u.atkBuffT = TRAIT_TIME; buffFx(S, u, 'atk', '#ffd34d'); text(S, u.x, u.y - u.r * 4, 'AT +30%', '#ffd34d', 'buff'); } return;
+    const D = (TITLE_EFFECT[u.subclass] || {}).dash, sc = (D && D.scale) || 1;
+    aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, 2 + moved * 0.5)); if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
+    if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
   }
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
@@ -846,6 +889,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
