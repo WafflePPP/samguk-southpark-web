@@ -303,6 +303,7 @@ const phys = (u, t, mul = 1) => Math.max(1, mitigate(combatStat(cur, u, 'atk') *
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
 function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
+function buffFx(S, u, glyph, col) { S.fx.push({ kind: 'buff', glyph, x: u.x, y: u.y, r: u.r, col, t: 0.9, max: 0.9 }); }   // 버프·디버프·회복이 걸릴 때 유닛 위에 뜨는 이펙트 (glyph: atk ▲ / guard 방패 / down ▼ / heal +)
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   const p = u.mv && u.mv.swap;   // 맞바꾸던 상대가 쓰러지거나 떠나면, 남은 쪽은 그 칸으로 가는 보통 이동으로 바꾸고 도착 칸을 바로 점유한다 (아니면 빈 칸으로 보여 다른 유닛이 겹쳐 들어온다)
@@ -431,7 +432,7 @@ function castSpell(S, u, key, x, y) {
   if (sp.kind === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    const heal = Math.round((70 + u.lv * 5) * HP_MUL); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4);
+    const heal = Math.round((70 + u.lv * 5) * HP_MUL); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
   } else if (sp.kind === 'homing') {   // 장풍: 가까운 적을 쫓아간다 (조준한 곳 가까이에 적이 없으면 직진)
     let tgt = null, bd = 80; for (const e of S.units) if (live(e) && e.team !== u.team) { const dd = Math.hypot(e.x - x, e.y - y); if (dd < bd) { bd = dd; tgt = e; } }
     shot({ kind: 'homing', vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420, left: sp.range * 1.5, tgt });
@@ -464,7 +465,7 @@ function useSpecial(S, u, x, y) {
     u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
-  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
+  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   u.spT = sp.cd; u.anim = 0.4; u.face = ang; tire(u, 'special');
   return true;
 }
@@ -631,7 +632,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
 }
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.atkBuffT -= dt; u.guardBuffT -= dt; u.ftDebuffT -= dt; u.moving = false;
-  if (u.subclass === '철벽') { if (u.hp <= u.maxHp * 0.3 && !u.ironwallUsed) { u.ironwallUsed = true; u.guardBuffT = TRAIT_TIME; text(S, u.x, u.y - u.r * 4, '철벽 발동', '#9fdcff', 'buff'); ring(S, u.x, u.y, 36, '#9fdcff', 0.5); } else if (u.hp > u.maxHp * 0.3) u.ironwallUsed = false; }
+  if (u.subclass === '철벽') { if (u.hp <= u.maxHp * 0.3 && !u.ironwallUsed) { u.ironwallUsed = true; u.guardBuffT = TRAIT_TIME; buffFx(S, u, 'guard', '#9fdcff'); text(S, u.x, u.y - u.r * 4, '철벽 발동', '#9fdcff', 'buff'); ring(S, u.x, u.y, 36, '#9fdcff', 0.5); } else if (u.hp > u.maxHp * 0.3) u.ironwallUsed = false; }
   if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * combatStat(S, u, 'hr') * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
@@ -643,8 +644,8 @@ function updateUnit(S, u, dt) {
     if (n && !S.occ[ti(n.tx, n.ty)]) { u.dashMoved++; beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
     const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
     u.dashQ = null; u.passT = SPECIAL.dash.pass;
-    aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, 2 + moved * 0.5)); if (live(e) && ['비장', '전신'].includes(u.subclass)) { e.ftDebuffT = TRAIT_TIME; text(S, e.x, e.y - e.r * 4, 'FT +10%', '#ff9a4a', 'buff'); } }, '#7fd0ff');
-    if (['비장', '상승'].includes(u.subclass)) { u.atkBuffT = TRAIT_TIME; text(S, u.x, u.y - u.r * 4, 'AT +30%', '#ffd34d', 'buff'); } return;
+    aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, 2 + moved * 0.5)); if (live(e) && ['비장', '전신'].includes(u.subclass)) { e.ftDebuffT = TRAIT_TIME; buffFx(S, e, 'down', '#ff9a4a'); text(S, e.x, e.y - e.r * 4, 'FT +10%', '#ff9a4a', 'buff'); } }, '#7fd0ff');
+    if (['비장', '상승'].includes(u.subclass)) { u.atkBuffT = TRAIT_TIME; buffFx(S, u, 'atk', '#ffd34d'); text(S, u.x, u.y - u.r * 4, 'AT +30%', '#ffd34d', 'buff'); } return;
   }
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
@@ -828,6 +829,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
