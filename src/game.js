@@ -147,12 +147,14 @@ function completeCampaignIfWon() {
   const active = roster[campaign.corps]; campaign.completed = true; campaign.at = active ? active.at : campaign.at; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; campaign.pendingEncounter = null; campaign.movement = []; campaign.destination = null; campaign.notice = '조조군 허창과 유비군 하비를 모두 함락했다.';
   S = null; state = 'title'; moveSelectOpen = false; exploreSelectOpen = false; diplomacyView = null; saveSlotMode = null; titleNotice = '허창과 하비를 모두 함락하여 원정에서 승리했습니다!'; saveCampaign(); return true;
 }
+let lastHelpIds = [];   // 이번 전투에 데려온 동맹 군단 id — 전투 다시 시작 때 같은 선택을 다시 쓴다 (전투 중에는 선택 팝업이 보이지 않음)
 let allyChoice = null, allyHelpIds = null;   // 동맹군과 같은 도시에서 전투 직전의 선택 {stage, explore, ids} / 도우기로 정한 동맹 군단 id
 let warnMove = null, diplomacyQueue = [];   // warnMove: 중립 도시 진입 경고 팝업 {id, stage} / diplomacyQueue: 한 번에 여러 외교 결과가 생길 때 순서대로 보여 줄 팝업
 let mapTool = null, scoutView = null, diplomacyView = null, diplomacyResult = null;   // diplomacyResult: 외교 결과 팝업 {title, lines, ok}   // 지도 도구(정찰·외교) 선택 상태 / 보고·외교 창
 let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0, exploreSelectOpen = false, explorePage = 0;
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '화살 5발 연속 사격', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
-const STAT_GUIDE = ['HP 생명력 · MP 주문 자원 · FT 피로도(높을수록 전투 효율 감소)', 'AT 물리 공격 · DF 물리 방어 · AD 화살 방어 · MD 마법 방어', 'AA 화살 회피율 · HR 정지 중 체력 회복 · SP 이동 속도', 'AR 공격 효율 배율 · DR 방어 효율 배율'];
+const STAT_DESC = { HP: '생명력', MP: '주문 자원', FT: '피로도', AT: '물리 공격', DF: '물리 방어', AD: '화살 방어', MD: '마법 방어', AA: '화살 회피', HR: '체력 회복', SP: '이동 속도', AR: '공격 효율', DR: '방어 효율' };   // 능력치 설명 — 장수 상세에서 실수치 칸 안에 한 줄로 보여 준다
+const STAT_NOTE = 'FT 높을수록 전투 효율 감소 · HR 정지 중 회복 · AR·DR 은 효율 배율(%)';
 const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
 const combatReadyCorps = corps => !!corps && namedRosterUnit(corps.units[0]);
 const corpsName = corps => corps.units[0] ? Sim.U[corps.units[0]].name + ' 군단' : corps.name;
@@ -252,7 +254,7 @@ function startBattle(stage, explore = false) {
   if (!explore && !allyHelpIds) { const st0 = stage || campaign.battle, gi = st0 && guestInfo(st0); if (gi && gi.allies.length) { allyChoice = { stage: st0, explore, ids: gi.allies.map(f => f.id) }; return false; } }   // 동맹군이 같은 도시에 있으면 먼저 돕기·퇴각을 고른다
   campaign.battle = stage || campaign.battle;
   campaign.explore = explore;
-  const helpIds = allyHelpIds || []; allyHelpIds = null;
+  const helpIds = allyHelpIds || []; allyHelpIds = null; lastHelpIds = helpIds;
   const aiGuest = explore ? { join: [], notes: [] } : resolveAiGuests(campaign.battle);
   const armies = stageArmies(campaign.battle, helpIds, aiGuest.join).filter(a => !explore || a.team === 'player');
   const emptySlots = roster.reduce((n, c) => n + c.units.filter((x, i) => !x && i > 0).length, 0);
@@ -863,7 +865,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.167', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.168', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1120,11 +1122,11 @@ function drawRoster() {
       label(unit.name, 590, 130, 30, COLORS.goldSel); label(`LV ${lv} · XP ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver);
       label(`병종 ${main} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold); label(`전투력 ⚔${Sim.unitPower(key, 'player', growth)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2);
       const values = [['HP', stats.maxHp], ['MP', growth.maxMp ?? unit.mp ?? 0], ['FT', 0], ['AT', stats.atk], ['DF', stats.df], ['AD', stats.ad], ['MD', stats.md], ['AA', stats.aa], ['HR', stats.hr], ['SP', stats.sp], ['AR', stats.ar], ['DR', stats.dr]];
-      values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * 50, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 452 + col * 194, 301 + row * 50, 15, COLORS.gold); label(String(Math.round(value * 10) / 10), 600 + col * 194, 301 + row * 50, 17, COLORS.silver, 'right'); });
-      label('칭호 효과', 438, 448, 19, COLORS.gold); const effects = [...(Sim.titleDesc(sub) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.']), ...(Sim.titleDesc(sub) ? ['아군 소속이면 수치 ×' + Sim.TITLE_BONUS + '.'] : [])]; effects.forEach((s, i) => label(s, 438, 478 + i * 27, 16, COLORS.silver));
-      label(`특수기: ${unit.special ? `${SPECIAL[unit.special]?.name} — ${SPECIAL_EFFECT[unit.special] || '고유 행동'}` : '없음'}`, 438, 532, 15, COLORS.goldSel);
-      label(`주문: ${unit.spells?.length ? unit.spells.map(s => SPELL[s]?.name).filter(Boolean).join(' · ') : '없음'}`, 438, 558, 15, COLORS.goldSel);
-      STAT_GUIDE.forEach((s, i) => label(s, 438, 586 + i * 16, 11, COLORS.silver2));
+      values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * 50, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * 50, 15, COLORS.gold); label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * 50, 17, COLORS.silver, 'right'); });
+      label('칭호 효과', 438, 448, 19, COLORS.gold); const effects = [...(Sim.titleDesc(sub) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.']), ...(Sim.titleDesc(sub) ? ['아군 소속이면 수치 ×' + Sim.TITLE_BONUS + '.'] : [])]; effects.forEach((s, i) => label(s, 438, 476 + i * 24, 15, COLORS.silver)); const ey = 476 + effects.length * 24 + 10;   // 효과 줄 수에 맞춰 아래 항목을 내려 겹치지 않게 한다
+      label(`특수기: ${unit.special ? `${SPECIAL[unit.special]?.name} — ${SPECIAL_EFFECT[unit.special] || '고유 행동'}` : '없음'}`, 438, ey, 15, COLORS.goldSel);
+      label(`주문: ${unit.spells?.length ? unit.spells.map(s => SPELL[s]?.name).filter(Boolean).join(' · ') : '없음'}`, 438, ey + 26, 15, COLORS.goldSel);
+      label(STAT_NOTE, 438, 626, 11, COLORS.silver2);
     }
   } else if (rosterMode === 'equip') {
     const corps = roster[rosterSource]; panel(28, 92, 1224, 548, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
@@ -1341,7 +1343,7 @@ function uiClick(id) {
   else if (id === 'm:status') { SHOW.status = !SHOW.status; saveShow(); }
   else if (id === 'm:compact') { tblCompact = !tblCompact; layout(); snapCam(); }
   else if (id === 'm:abil') tblAbility = !tblAbility;
-  else if (id === 'm:auto') Sim.setAuto(S, !S.auto); else if (id === 'm:return') finishBattle(); else if (id === 'm:restart') startBattle(campaign.battle); else if (id === 'm:close') menuOpen = false;
+  else if (id === 'm:auto') Sim.setAuto(S, !S.auto); else if (id === 'm:return') finishBattle(); else if (id === 'm:restart') { allyHelpIds = lastHelpIds.length ? lastHelpIds : null; startBattle(campaign.battle); } else if (id === 'm:close') menuOpen = false;
 }
 function mapClick(sx, sy, right) {   // 적을 클릭 = 군단이 그 적을 집중 공격, 아군을 클릭 = 그 캐릭터를 조작, 우클릭 = 집중 공격 해제
   const [wx, wy] = toWorld(sx, sy);
