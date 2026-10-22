@@ -264,6 +264,7 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 }
 
 // ---------- 전투 생성 ----------
+const AIDEF = { tactics: 1, retreat: 0.1 };   // 난이도 프로필이 정하는 전투 AI 기본값 (game.js 가 전투 시작 때 갱신) — tactics: 0 기본 / 1 카이팅·지원군 / 2 전부
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const sourceDefs = opts.armies || ARMIES, teamOrder = { player: 0, enemy: 0 };
@@ -279,7 +280,7 @@ function createBattle(seed = 1, opts = {}) {
     if (unique.has(u.name)) throw new Error(u.name + ': 고유 장수는 한 명만 편성할 수 있습니다.');
     unique.add(u.name);
   }
-  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.065, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.065, tactics: opts.tactics ?? AIDEF.tactics, retreatScale: opts.retreatScale ?? AIDEF.retreat, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const squadDefs = d.squads || (d.units.length ? [{ leader: d.leader, units: d.units }] : []);
@@ -412,8 +413,9 @@ function tryHpRetreat(S, A) {
   const L = A.leader; if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !A.initialHp || !L || !live(L) || S.t < A.nextHpRetreatCheck) return false;
   const total = A.units.reduce((n, u) => n + (live(u) ? Math.max(0, u.hp) : 0), 0), leaderLow = L.hp <= L.maxHp * RETREAT_HP, corpsLow = total <= A.initialHp * RETREAT_CORPS_HP;
   if (!leaderLow && !corpsLow) return false;
+  if (S.tactics >= 2) { const hp = t => S.units.filter(u => u.team === t && live(u)).reduce((n, u) => n + Math.max(0, u.hp), 0); if (hp('enemy') >= hp('player') * 0.5) return false; }   // 전체 전세가 팽팽하거나 이기고 있으면 후퇴 판정을 하지 않는다 (AI-B-05)
   A.nextHpRetreatCheck = S.t + 12;
-  const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78) * RETREAT_CHANCE_SCALE; if (S.rnd() >= chance) return false;
+  const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78) * S.retreatScale; if (S.rnd() >= chance) return false;
   const why = leaderLow ? '군단장 생명력 ' + Math.round(RETREAT_HP * 100) + '% 이하' : '군단 생명력 ' + Math.round(RETREAT_CORPS_HP * 100) + '% 이하', info = ` · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`;
   if (leaderLow && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
   startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
@@ -630,6 +632,16 @@ function nearestEnemy(S, u, maxD) {
   return leader || best;
 }
 function inReach(u, t) { return u.range > 0 ? Math.hypot((u.tx - t.tx) * TILE, (u.ty - t.ty) * TILE) <= u.range : cheb(u, t) <= 1; }   // 근접 = 인접한 8칸
+function pickTarget(S, u) {   // 대상 점수 = −거리(칸) + 8(사거리 6칸 안의 후열) + 5(체력 30% 미만) + 3(같은 대상을 노리는 아군 ≤ 2, 3명 초과면 −3) + 3(이름 있는 장수가 지휘관) (명세 36 AI-B-01)
+  const aim = new Map(); for (const m of S.units) if (live(m) && m.team === u.team && m.order && m.order.tgt && live(m.order.tgt)) aim.set(m.order.tgt, (aim.get(m.order.tgt) || 0) + 1);
+  let best = null, bs = -1e9;
+  for (const e of S.units) {
+    if (!live(e) || e.team === u.team) continue; const d = Math.hypot(e.x - u.x, e.y - u.y) / TILE; if (d > 14) continue;
+    let sc = -d; if (isBack(e) && d <= 6) sc += 8; if (e.hp < e.maxHp * 0.3) sc += 5; sc += (aim.get(e) || 0) <= 2 ? 3 : -3; if (u.named && e.isLeader) sc += 3;
+    if (sc > bs) { bs = sc; best = e; }
+  }
+  return best || nearestEnemy(S, u, 1e9);
+}
 function engage(S, u, t, canMove) {
   if (!t || !live(t) || t.team === u.team) return;
   if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
@@ -674,7 +686,8 @@ const LEASH = 7, GATHER = 0.6;   // 슬롯에서 추격 한계(칸) / 대장 전
 function formation(S, u, t) {   // 시야 안 적은 슬롯 7칸 이내일 때만 추격, 아니면 슬롯 복귀
   const h = homeOf(S, u), a = anchorOf(u.army), following = u.team === 'player' && a && a.mv;
   if (following && h && cheb(u, h) > 1) { stepToward(S, u, h.tx, h.ty); return; }   // 자유: 조작 장수가 이동 중일 때만 추종을 전투보다 우선한다
-  if (t && (!h || cheb(u, h) < LEASH)) { engage(S, u, t, true); return; }
+  const leash = S.tactics >= 2 && u.team === 'enemy' && (u.cls === 'shield' || u.category === 'spear') && u.army.units.some(m => live(m) && isBack(m)) ? 4 : LEASH;   // 후열을 지키는 전열은 멀리 쫓지 않는다 (AI-B-03)
+  if (t && (!h || cheb(u, h) < leash)) { engage(S, u, t, true); return; }
   if (h && cheb(u, h) > 1) stepToward(S, u, h.tx, h.ty);
 }
 function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지는 슬롯 (대장은 구성원 60% 가 4칸 안일 때만)
@@ -707,7 +720,16 @@ function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상
 const handCtl = (S, u) => u.team === 'player' && u === u.army.ctrl && (!S.auto || u.manual);   // 플레이어가 직접 조작 중인 유닛 — 돌진 등 특수기를 자동으로 쓰지 않는다
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
-  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range);
+    if (t && (any || dist(u, t) > TILE * 1.5)) {
+      let ok = true;
+      if (S.tactics >= 2) {   // 후열 대상이거나 우리 편이 대상 주변에 2명 이상 있을 때, 앞 칸이 아군에게 막혀 있지 않을 때만 돌진 (3초 넘게 조건이 안 맞으면 그냥 돌진) (AI-B-03)
+        const near = S.units.filter(m => m !== u && live(m) && m.team === u.team && dist(m, t) <= 2 * TILE).length, ang = Math.atan2(t.y - u.y, t.x - u.x), fx = u.tx + Math.round(Math.cos(ang)), fy = u.ty + Math.round(Math.sin(ang)), blocked = inMap(fx, fy) && S.occ[ti(fx, fy)] && S.units[S.occ[ti(fx, fy)] - 1] && S.units[S.occ[ti(fx, fy)] - 1].team === u.team;
+        ok = (isBack(t) || near >= 2) && !blocked; if (!ok) { u.dashSince ??= S.t; if (S.t - u.dashSince >= 3) ok = true; } else u.dashSince = null;
+      }
+      if (ok && useSpecial(S, u, t.x, t.y)) { u.dashSince = null; return true; }
+    }
+  }
   if (u.spells.includes('heal')) {
     let t = null, bd = 0.7; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; }
     if (t && castSpell(S, u, 'heal', t.x, t.y)) return true;
@@ -729,7 +751,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   return false;
 }
 function updateUnit(S, u, dt) {
-  u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.ftDebuffT -= dt; if (u.buffs) { for (const b of u.buffs) b.t -= dt; u.buffs = u.buffs.filter(b => b.t > 0); } u.moving = false;
+  u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.kiteT = (u.kiteT || 0) - dt; u.ftDebuffT -= dt; if (u.buffs) { for (const b of u.buffs) b.t -= dt; u.buffs = u.buffs.filter(b => b.t > 0); } u.moving = false;
   const HT = (TITLE_EFFECT[u.subclass] || {}).hp; if (HT) { if (u.hp <= u.maxHp * HT.below && !u.hpTrig) { u.hpTrig = true; addBuff(S, u, 'hp', HT.mods, HT.glyph, HT.col); text(S, u.x, u.y - u.r * 5, HT.text, HT.col, 'buff'); ring(S, u.x, u.y, 36, HT.col, 0.5); } else if (u.hp > u.maxHp * HT.below) u.hpTrig = false; }
   if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * combatStat(S, u, 'hr') * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
@@ -761,11 +783,13 @@ function updateUnit(S, u, dt) {
     return;
   }
   if (u.cls === 'mage' && !(u === u.army.ctrl && u.team === 'player' && (u.manual || !S.auto))) { const foe = nearestEnemy(S, u, TILE * 4); if (foe && cheb(u, foe) <= 2 && S.units.some(m => m !== u && live(m) && m.team === u.team && !isBack(m)) && kiteFrom(S, u, foe, squadMates(u).filter(m => !isBack(m)))) return; }   // 군사(법사): 전열 뒤에서 싸운다 — 적이 2칸 안으로 붙으면 물러난다
+  if (S.tactics >= 1 && u.cls === 'archer' && !handCtl(S, u) && u.kiteT <= 0) { const foe = nearestEnemy(S, u, TILE * 2.5); const near = foe ? S.units.filter(e => live(e) && e.team !== u.team && cheb(u, e) <= 1).length : 0; if (foe && cheb(u, foe) <= 1 && (near >= 2 || u.hp < u.maxHp * 0.6) && kiteFrom(S, u, foe, squadMates(u).filter(m => !isBack(m)))) { u.kiteT = 1.5; return; } }   // 궁병: 근접 적이 붙으면 전열 쪽으로 한 칸 이탈 (1.5초에 한 번, 막히면 그대로 쏜다) (AI-B-02)
   if (o.type === 'attack') { if (!o.target || !live(o.target) || o.target.team === u.team) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
-    if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
+    if (S.tactics >= 2 && !handCtl(S, u)) { if (stale || (u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 1.5)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 점수로 고른 대상을 1.5초 이상 유지 (AI-B-01)
+    else if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }
   if (o.type === 'stop') { const t = nearestEnemy(S, u, u.range > 0 ? u.range : TILE * 1.5); if (t) engage(S, u, t, false); return; }   // 제자리에서 사거리 안의 적만 친다
@@ -800,17 +824,27 @@ function updateProj(S, dt) {
 function enemyAI(S) {
   for (const A of S.armies) tryHpRetreat(S, A);
   for (const A of S.armies) if (A.team === 'enemy' && A.routed && A.nextRoutCheck && S.t >= A.nextRoutCheck && tryRout(S, A)) notice(S, 'enemy', '적 ' + A.name + '가 사기 저하로 후퇴합니다.');
-  let field = S.units.filter(u => u.team === 'enemy' && live(u)).length;
+  let field = S.units.filter(u => u.team === 'enemy' && live(u)).length; if (S.enemyInit == null) S.enemyInit = field;
+  const playerRetreating = S.tactics >= 1 && !S.units.some(u => u.team === 'player' && live(u) && !retreating(u)) && S.units.some(u => u.team === 'player' && live(u));   // 플레이어 전원이 후퇴 중이면 지원군을 보류 (AI-B-04)
   for (const A of S.armies) if (A.team === 'enemy' && A.state === 'reserve') {
-    if (A.stagedReserve && S.t < A.reserveAt && !S.armies.some(B => B.team === 'enemy' && B !== A && B.routed)) continue;
+    if (playerRetreating) continue;
+    if (A.stagedReserve && S.t < A.reserveAt && !S.armies.some(B => B.team === 'enemy' && B !== A && B.routed)) {
+      const early = S.tactics >= 1 && (field < S.enemyInit * 0.6 || S.armies.some(B => B.team === 'enemy' && B.leader && live(B.leader) && S.units.some(p => p.team === 'player' && live(p) && dist(B.leader, p) <= 8 * TILE)));   // 필드 병력이 60% 미만이거나 플레이어가 군단장 8칸 안이면 시간표보다 일찍 투입
+      if (!early) continue;
+    }
     const ready = A.units.filter(u => !u.dead && !u.fled).length; if (!ready || field + ready > ENEMY_FIELD_MAX) continue;
     field += deployArmy(S, A);
+  }
+  if (S.tactics >= 2) for (const A of S.armies) if (A.team === 'enemy' && A.state === 'advance' && A.units.length > 1 && S.t >= (A.formT || 0)) {   // 진형 전환 (AI-B-06): 체력 60% 미만 → 호위, 플레이어와 10칸 이상 → 쐐기(한 번), 간격 20초
+    const hp = A.units.reduce((n, u) => n + (live(u) ? u.hp : 0), 0), pl = S.units.filter(p => p.team === 'player' && live(p)), ref = A.leader || A.units.find(live), far = ref && pl.length && pl.every(p => dist(ref, p) >= 10 * TILE);
+    if (A.initialHp && hp < A.initialHp * 0.6 && A.formation !== 'guard') { setFormation(A, 'guard'); A.formT = S.t + 20; } else if (far && A.formation === 'block' && !A.wedged) { setFormation(A, 'wedge'); A.wedged = true; A.formT = S.t + 20; }
   }
   for (const A of S.armies) {
     if (A.team !== 'enemy' || A.state !== 'wait') continue;
     const tr = A.trig, ref = A.leader || A.units.find(live);
     let go = S.t >= tr.t || (tr.after != null && S.armies[tr.after].routed) || A.units.some(u => live(u) && u.hp < u.maxHp);
     if (!go && ref) for (const e of S.units) if (live(e) && e.team === 'player' && dist(ref, e) < tr.near * TILE) { go = true; break; }
+    if (!go && ref && S.tactics >= 2) for (const B of S.armies) if (B.team === 'enemy' && B.state === 'advance' && B.leader && live(B.leader) && S.units.some(p => p.team === 'player' && live(p) && dist(B.leader, p) <= 8 * TILE && dist(ref, p) <= 12 * TILE)) { go = true; break; }   // 협공: 다른 군단이 교전 중이고 그 지점이 12칸 안이면 시간표보다 먼저 합류 (AI-B-07)
     if (go) { A.state = 'advance'; notice(S, 'enemy', '적 ' + A.name + '가 참전했습니다.'); if (ref) text(S, ref.x, ref.y - 70, A.name + ' 진격!', '#ff5a4a'); }
   }
 }
@@ -933,6 +967,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
