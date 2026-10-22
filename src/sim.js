@@ -709,7 +709,7 @@ function updateUnit(S, u, dt) {
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
   const ctrl = u === u.army.ctrl && u.team === 'player';
-  if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 자동 중에도 입력한 조작 장수만 직접 움직인다
+  if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { if (u.cls === 'cavalry' && autoAbilities(S, u, true)) return; directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 수동 기병도 이동보다 준비된 돌격을 우선한다
   if (ctrl && S.auto && !u.manual && o.type === 'stop') o = u.order = { type: 'idle' };   // 자동 전투 중에는 조작 캐릭터도 AI 가 움직인다
   if (o.type === 'charge' && u.autoCharge && !S.auto) o = u.order = { type: ctrl ? 'stop' : 'idle' };   // 자동전투를 끄면 자동으로 돌격 중이던 유닛은 평상시로
   if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
