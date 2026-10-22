@@ -406,7 +406,7 @@ function tryRout(S, A) {
 }
 // 군단 퇴각 조건 (적 군단): ① 군단장 사망(die → tryRout) ② 군단장 생명력 RETREAT_HP 이하 → 후퇴 또는 군단장 투항 ③ 군단 전체 생명력 RETREAT_CORPS_HP 이하 → 후퇴.
 // ②③ 판정은 12초마다, 확률은 군단장 전투력이 높을수록 낮다(차등). 퇴각이 시작되면 그 군단 소속은 투항 확률이 오른다(hurt).
-const RETREAT_HP = 0.3, RETREAT_CORPS_HP = 0.5, RETREAT_CHANCE_SCALE = 0.1, LEADER_SURRENDER = 0.3, SURRENDER_HP = [0.2, 0.5], SURRENDER_CHANCE = [0.25, 0.6];   // 후퇴 확률은 직전 기준의 10%, 투항 확률은 유지
+const RETREAT_HP = 0.1, RETREAT_CORPS_HP = 0.5, RETREAT_CHANCE_SCALE = 0.1, LEADER_SURRENDER = 0.3, SURRENDER_HP = [0.2, 0.5], SURRENDER_CHANCE = [0.25, 0.6];   // 후퇴 확률은 직전 기준의 10%, 투항 확률은 유지
 function startRetreat(S, A) { A.routed = true; A.fleeing = true; A.retreatByHp = true; for (const u of A.units) if (live(u)) { u.surrenderChecked = false; u.order = { type: 'flee' }; u.path = null; } }
 function tryHpRetreat(S, A) {
   const L = A.leader; if (A.team !== 'enemy' || A.state === 'reserve' || A.routed || !A.initialHp || !L || !live(L) || S.t < A.nextHpRetreatCheck) return false;
