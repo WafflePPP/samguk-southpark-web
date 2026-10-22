@@ -82,9 +82,10 @@ const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer
 const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
 const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
 // 표에 적힌 공격 병과별 최종 피해 배율.
-const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 2, archer: 2, military: 2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, military: 1.5 }, military: { military: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, archer: 0.67 } };
+const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1.5, archer: 1.5, military: 1.5, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, military: 1.5 }, military: { military: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, archer: 0.67 } };
 // 상성 우세(배율 > 1)의 피해 효율을 50% 더 높인다 (v0.1.101). 불리(배율 < 1)는 표 그대로.
 const MATCHUP_BONUS = 1.5;
+const DASH_BASE = 1, DASH_EXTRA = 0.5;   // 돌진 충격 피해 = 기본 1배 + 추가분(1 + 밀친 칸×0.5) × 0.5 — 추가 피해 효율 50% 감소 (이전: 2 + 밀친 칸×0.5)
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 // ITEM: 이름 있는 장수만 장착. owner가 있는 고유 장비는 해당 장수 전용이다.
 const ITEMS = {
@@ -161,15 +162,15 @@ const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, (((TITLE_EFFECT[u.sub
 const ARMIES = [
   { team: 'player', name: '1분대', at: [5, 18], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'player', name: '2분대', at: [5, 25], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', weak: 0.85, name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.85, name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', weak: 0.85, name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', weak: 0.85, name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.85, name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.85, name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', weak: 0.8, name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.8, name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.8, name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', weak: 0.8, name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.8, name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.8, name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
   { team: 'enemy', name: '조운군', at: [45, 27], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', weak: 0.85, name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', weak: 0.85, name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.8, name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.8, name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'player', name: '3분대', at: [5, 11], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
@@ -724,7 +725,7 @@ function updateUnit(S, u, dt) {
     const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
     u.dashQ = null; u.passT = SPECIAL.dash.pass;
     const D = (TITLE_EFFECT[u.subclass] || {}).dash, sc = (D && D.scale) || 1;
-    aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, 2 + moved * 0.5)); if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
+    aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
     if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
   }
   let o = u.order;
