@@ -306,7 +306,7 @@ function createBattle(seed = 1, opts = {}) {
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: unitCategory(key), subclass: unitSubclass(key), team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
-        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
+        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, attackT: -1e9, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
       if (d.weak && d.weak !== 1) { u.maxHp = u.hp = Math.round(u.maxHp * d.weak); u.atk = Math.round(u.atk * d.weak); u.df = Math.round(u.df * d.weak); }   // 시나리오 군단 약화 배율 (HP·ATK·DF)
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
@@ -489,7 +489,7 @@ function shoot(S, u, tx, ty, mul = 1, spread = 0) {
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
   if (u.cls === 'mage') { if (!castSpell(S, u, u.spells[0], t.x, t.y)) u.cdT = 0.5; return; }   // 법사의 평타 = 장풍 (MP 소모)
-  u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit');
+  u.cdT = u.cd; u.attackT = S.t; u.anim = 0.28; tire(u, 'hit');
   if (u.range > 0) shoot(S, u, t.x, t.y); else hurt(S, u, t, phys(u, t));
 }
 
@@ -519,7 +519,7 @@ function castSpell(S, u, key, x, y) {
     aoe(S, u, px, py, sp.r, e => { e.root = sp.root; e.path = null; text(S, e.x, e.y - e.r * 4, '속박', '#e8e8e8', 'buff'); }, sp.col);
   }
   if (sp.lock) S.lock[u.team] = sp.lock;   // 전체 쿨 마법
-  u.mp -= sp.mp; u.cdT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.anim = 0.4; u.face = ang; tire(u, 'spell');
+  u.mp -= sp.mp; u.cdT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.face = ang; tire(u, 'spell');
   return true;
 }
 function useSpecial(S, u, x, y) {
@@ -537,7 +537,7 @@ function useSpecial(S, u, x, y) {
   else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   const OS = ((TITLE_EFFECT[u.subclass] || {}).onSpecial || {})[u.special];
   if (OS) { if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d'); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt); }
-  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.anim = 0.4; u.face = ang; tire(u, 'special');
+  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.face = ang; tire(u, 'special');
   return true;
 }
 
@@ -722,9 +722,18 @@ function kiteFrom(S, u, foe, mates) {   // 가까운 적에게서 한 칸 물러
   }
   if (!best) return false; return stepToward(S, u, best.tx, best.ty) === 'moving';
 }
-function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상관없이 항상 자기 분대를 따라다니며, 다친 분대원 쪽으로 붙고, 적이 다가오면 분대 쪽으로 물러난다
+function combatKite(S, u) {   // 공격을 마친 쿨타임에만, 심하게 포위됐을 때 전열 쪽으로 한 칸 이탈한다
+  if (u.cdT <= 0 || u.kiteT > 0 || S.t - u.attackT > 3) return false;
+  const foe = nearestEnemy(S, u, TILE * 2), cover = squadMates(u).filter(m => !isBack(m));
+  if (!foe || cheb(u, foe) > 1 || !cover.length) return false;
+  const near = S.units.filter(e => live(e) && e.team !== u.team && cheb(u, e) <= 1).length;
+  if (near < 2 && u.hp >= u.maxHp * 0.4) return false;
+  if (!kiteFrom(S, u, foe, cover)) return false;
+  u.kiteT = 3; return true;
+}
+function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상관없이 자기 분대를 따라다니며, 공격 사이 위기 때만 한 칸 물러난다
   const mates = squadMates(u); if (!mates.length) return;
-  const foe = nearestEnemy(S, u, TILE * 4); if (foe && cheb(u, foe) <= 2 && kiteFrom(S, u, foe, mates)) return;
+  if (combatKite(S, u)) return;
   let w = null, wr = 0.7; for (const m of mates) { const r = m.hp / m.maxHp; if (r < wr) { wr = r; w = m; } }
   if (w) { if (cheb(u, w) > 2) stepToward(S, u, w.tx, w.ty); return; }
   const c = centroidTile(mates); if (cheb(u, c) > 2) stepToward(S, u, c.tx, c.ty);
@@ -796,13 +805,13 @@ function updateUnit(S, u, dt) {
     if (o.type !== 'stop') { const c = u.army.ctrl, a = c && c !== u && live(c) ? c : u.army.leader; if (a && a !== u && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); }
     return;
   }
-  if (u.cls === 'mage' && !(u === u.army.ctrl && u.team === 'player' && (u.manual || !S.auto))) { const foe = nearestEnemy(S, u, TILE * 4); if (foe && cheb(u, foe) <= 2 && S.units.some(m => m !== u && live(m) && m.team === u.team && !isBack(m)) && kiteFrom(S, u, foe, squadMates(u).filter(m => !isBack(m)))) return; }   // 군사(법사): 전열 뒤에서 싸운다 — 적이 2칸 안으로 붙으면 물러난다
-  if (S.tactics >= 1 && u.cls === 'archer' && !handCtl(S, u) && u.kiteT <= 0) { const foe = nearestEnemy(S, u, TILE * 2.5); const near = foe ? S.units.filter(e => live(e) && e.team !== u.team && cheb(u, e) <= 1).length : 0; if (foe && cheb(u, foe) <= 1 && (near >= 2 || u.hp < u.maxHp * 0.6) && kiteFrom(S, u, foe, squadMates(u).filter(m => !isBack(m)))) { u.kiteT = 1.5; return; } }   // 궁병: 근접 적이 붙으면 전열 쪽으로 한 칸 이탈 (1.5초에 한 번, 막히면 그대로 쏜다) (AI-B-02)
+  if (u.cls === 'mage' && !handCtl(S, u) && combatKite(S, u)) return;
+  if (S.tactics >= 1 && u.cls === 'archer' && !handCtl(S, u) && combatKite(S, u)) return;   // 원거리: 사격 후 쿨타임 중 위기일 때만 전열 쪽으로 한 칸 이탈 (3초에 한 번) (AI-B-02)
   if (o.type === 'attack') { if (!o.target || !live(o.target) || o.target.team === u.team) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
-    if (S.tactics >= 2 && !handCtl(S, u)) { if (stale || (u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 1.5)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 점수로 고른 대상을 1.5초 이상 유지 (AI-B-01)
+    if (S.tactics >= 2 && !handCtl(S, u)) { const engaged = !stale && inReach(u, o.tgt); if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 1.5)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 공격 가능한 대상은 끝까지 상대하고, 이동 중일 때만 점수 대상 재선정
     else if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }
