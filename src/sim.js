@@ -665,6 +665,26 @@ function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지
   const m = u.army.units.filter(live); if (m.filter(v => cheb(v, u) <= 4).length < m.length * GATHER) return;
   const n = nearestEnemy(S, u, 1e9); if (n) engage(S, u, n, true);
 }
+// ---------- 군사 AI (치유 장수의 분대 추종 · 군사의 후열 유지) ----------
+const isHealer = u => u.spells.includes('heal') || u.special === 'bless';   // 치유 스킬을 쓰는 장수
+const squadMates = u => { const all = (u.squad ? u.squad.units : u.army.units).filter(m => m !== u && live(m)); return all.length ? all : u.army.units.filter(m => m !== u && live(m)); };
+function centroidTile(list) { let x = 0, y = 0; for (const m of list) { x += m.tx; y += m.ty; } return { tx: Math.round(x / list.length), ty: Math.round(y / list.length) }; }
+function kiteFrom(S, u, foe, mates) {   // 가까운 적에게서 한 칸 물러난다 (분대 중심 쪽을 선호). 물러날 칸이 없으면 false
+  const c = mates.length ? centroidTile(mates) : null; let best = null, bs = -1e9;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue; const nx = u.tx + dx, ny = u.ty + dy; if (!inMap(nx, ny) || !okTile(S, nx, ny) || S.occ[ti(nx, ny)] || !diagOk(S, u.tx, u.ty, dx, dy)) continue;
+    const df = Math.hypot(nx - foe.tx, ny - foe.ty); if (df <= Math.hypot(u.tx - foe.tx, u.ty - foe.ty)) continue;
+    const sc = df - (c ? 0.35 * Math.hypot(nx - c.tx, ny - c.ty) : 0); if (sc > bs) { bs = sc; best = { tx: nx, ty: ny }; }
+  }
+  if (!best) return false; return stepToward(S, u, best.tx, best.ty) === 'moving';
+}
+function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상관없이 항상 자기 분대를 따라다니며, 다친 분대원 쪽으로 붙고, 적이 다가오면 분대 쪽으로 물러난다
+  const mates = squadMates(u); if (!mates.length) return;
+  const foe = nearestEnemy(S, u, TILE * 4); if (foe && cheb(u, foe) <= 2 && kiteFrom(S, u, foe, mates)) return;
+  let w = null, wr = 0.7; for (const m of mates) { const r = m.hp / m.maxHp; if (r < wr) { wr = r; w = m; } }
+  if (w) { if (cheb(u, w) > 2) stepToward(S, u, w.tx, w.ty); return; }
+  const c = centroidTile(mates); if (cheb(u, c) > 2) stepToward(S, u, c.tx, c.ty);
+}
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
   if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
@@ -715,10 +735,12 @@ function updateUnit(S, u, dt) {
   if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
   const aggressive = u.team === 'enemy' || (S.auto && !u.manual) || o.type === 'charge';
   if (autoAbilities(S, u, aggressive)) return;
-  if (u.cls === 'cleric') {   // 성직자는 직접 싸우지 않고, 정지·고정이 아니면(자유·돌격·자동) 조작 캐릭터(없으면 대장) 곁을 따라다닌다
+  if (isHealer(u) && !(u === u.army.ctrl && u.team === 'player' && (u.manual || !S.auto))) { healerFollow(S, u); return; }   // 치유 장수: 항상 분대 추종 (직접 조작 중일 때만 예외)
+  if (u.cls === 'cleric') {   // 치유 스킬이 없는 성직자는 직접 싸우지 않고, 정지·고정이 아니면 조작 캐릭터(없으면 대장) 곁을 따라다닌다
     if (o.type !== 'stop') { const c = u.army.ctrl, a = c && c !== u && live(c) ? c : u.army.leader; if (a && a !== u && live(a) && cheb(u, a) > 2) stepToward(S, u, a.tx, a.ty); }
     return;
   }
+  if (u.cls === 'mage' && !(u === u.army.ctrl && u.team === 'player' && (u.manual || !S.auto))) { const foe = nearestEnemy(S, u, TILE * 4); if (foe && cheb(u, foe) <= 2 && S.units.some(m => m !== u && live(m) && m.team === u.team && !isBack(m)) && kiteFrom(S, u, foe, squadMates(u).filter(m => !isBack(m)))) return; }   // 군사(법사): 전열 뒤에서 싸운다 — 적이 2칸 안으로 붙으면 물러난다
   if (o.type === 'attack') { if (!o.target || !live(o.target) || o.target.team === u.team) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
