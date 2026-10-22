@@ -298,6 +298,8 @@ const AI_DEFEND_RATIO = 0.8;   // 방어: 아군이 닿을 수 있는 위협 전
 // 적 군단 한 부대의 행동 결정: 진군(advance) 또는 대기(hold). 판단 근거를 함께 돌려준다.
 const breaksPeace = s => !!s && s.owner === 'enemy' && !!s.faction && ['neutral', 'truce'].includes(relationOf(s.faction).status);   // 군단이 들어서면 전쟁이 되는 도시 (중립·휴전 세력)
 const peaceName = faction => relationOf(faction).status === 'truce' ? '휴전' : '중립';
+// 동맹 세력의 도시: 그 안에서 이겨도(방어든, 침공한 적을 몰아내려고 들어가서 싸웠든) 점령하지 않고 동맹 세력의 도시로 남는다 (v0.1.184: 이전엔 적이 쳐들어온 경우(invasion)에만 적용돼 내가 먼저 들어가 싸운 경우 아군 도시로 바뀜)
+const isAllyCity = s => !!s && s.owner === 'enemy' && !!s.faction && relationOf(s.faction).status === 'ally';
 const hostsPlayer = s => !!s && s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'ally' && roster.some(c => c.units.some(Boolean) && c.at === s.id);   // 아군 군단이 주둔한 동맹 도시
 function aiPassable(faction, s) {   // 이동 중 지나갈 수 있는 도시: 자국·동맹·전쟁 상대의 도시 (중립·휴전 세력의 도시는 지나가지 않는다)
   if (s.owner === 'player') return relationOf(faction).status === 'war';
@@ -708,7 +710,7 @@ function finishBattle() {
   }
   if (S && S.over === 'win' && campaign.battle) {
     for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id)) { const path = route(force.at, capitalFor(force)); if (path.length > 1) force.at = path[1]; else force.active = false; }
-    const keep = campaign.invasion && relationOf(campaign.battle.faction).status === 'ally', drops = battleDrops();   // keep: 동맹 중립 세력의 도시를 요격해 지킨 경우 — 점령하지 않고 그 세력의 도시로 유지
+    const keep = isAllyCity(campaign.battle), drops = battleDrops();   // keep: 동맹 중립 세력의 도시를 요격해 지킨 경우 — 점령하지 않고 그 세력의 도시로 유지
     if (keep) campaign.notice = `${campaign.battle.name} 방어에 성공했다. 동맹 ${campaign.battle.faction}군의 도시로 유지된다.${drops.length ? ' 전리품: ' + drops.join(', ') + '.' : ''}`;
     else { campaign.battle.owner = 'player'; relocateCapitals(); const prize = captureReward(campaign.battle); campaign.notice = `${campaign.battle.name}을 점령했다.${prize ? ' 점령 보상: ' + prize + '.' : ''}${drops.length ? ' 전리품: ' + drops.join(', ') + '.' : ''}`; }
   }
@@ -1656,7 +1658,7 @@ function frame(now) {
       let steps = 0;
       while (r > 0 && steps++ < MAX_SIM_STEPS && !S.over && !S.events.length) { const s = Math.min(r, 1 / 60); if (d && u && alive(u)) Sim.control(S, u, d[0], d[1]); Sim.step(S, s); r -= s; }
     }
-    if (S.over && !overAt) { overAt = T; if (S.over === 'win' && campaign.battle && !(campaign.invasion && relationOf(campaign.battle.faction).status === 'ally')) campaign.battle.owner = 'player'; }
+    if (S.over && !overAt) { overAt = T; if (S.over === 'win' && campaign.battle && !isAllyCity(campaign.battle)) campaign.battle.owner = 'player'; }
     if (!ctrlOf() || !alive(ctrlOf())) { const next = activePlayerArmies().find(A => corpsKey(A) === corpsKey(army())) || activePlayerArmies()[0]; if (next) armyIdx = next.id; }
     snapCam();   // 조작 캐릭터를 전장 표시 영역의 정확한 중앙에 고정
   }
