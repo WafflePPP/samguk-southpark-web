@@ -328,7 +328,7 @@ function advanceEnemyForces() {
   campaign.intel = [];   // 이번 턴 적 판단 기록 (전투력·방어/침공 근거)
   const decisions = enemyForces.filter(force => force.active).map(force => ({ force, d: enemyDecision(force) }));   // 같은 턴의 판단은 이동 전 상태로 동시에 내린다
   for (const { force, d } of decisions) attachPopups(() => {
-    const from = force.at; if (d.act === 'advance' && d.to) { force.prevAt = from; force.at = d.to; aiEnterCity(force); }
+    const from = force.at; if (d.act === 'advance' && d.to) { if (!aiEngaged(force)) { force.prevAt = from; force.at = d.to; aiEnterCity(force); } }
     const note = `적 ${force.army.name} [${force.role === 'garrison' ? '수비' : '원정'}] Lv${force.level} ⚔${d.mine} · ${stageById(from).name}${from !== force.at ? ' → ' + stageById(force.at).name + ' · 1턴 이동' : ''} · ${d.mode}(${d.reason})`;
     campaign.intel.push({ text: note, mode: d.mode, force: force.army.name, power: d.mine, from, to: force.at });
     if (from !== force.at) campaign.movement.push({ text: note, name: `적 ${force.army.name}`, commander: Sim.U[force.army.leader] ? Sim.U[force.army.leader].name : force.army.name, from, to: force.at, team: 'enemy', faction: stageById(force.home || from).faction, forceId: force.id });
@@ -409,18 +409,31 @@ function aiAttrition(ids, rate) { for (const f of aiForcesOf(ids)) { const n = M
 function planAiBattle(att, def) {   // 공격 세력의 군단이 맞닿은 상대 도시를 노린다. 아군 군단이 있는 도시는 제외 (수도는 점령되지 않고 피해만 입는다)
   let best = null; const busy = new Set(campaign.aiBattles.flatMap(b => [...b.aIds, ...b.dIds]));   // 이미 다른 전투 중인 군단은 제외
   for (const s of STAGES.filter(x => x.owner === 'enemy' && x.faction === def && !roster.some(c => c.at === x.id && c.units.some(Boolean)))) {
-    const a = enemyForces.filter(f => f.active && !busy.has(f.id) && forceFaction(f) === att && f.army.units.length && stageById(f.at).links.includes(s.id)), d = enemyForces.filter(f => f.active && !busy.has(f.id) && f.at === s.id && forceFaction(f) === def);
+    const a = enemyForces.filter(f => f.active && !busy.has(f.id) && forceFaction(f) === att && f.army.units.length && (f.at === s.id || stageById(f.at).links.includes(s.id))), d = enemyForces.filter(f => f.active && !busy.has(f.id) && f.at === s.id && forceFaction(f) === def);
     if (a.length && d.length && (!best || a.length > best.a.length)) best = { s, a, d };
   }
   return best ? makeAiBattle(att, def, best.s.id, best.a, best.d) : null;
 }
+function aiEngaged(force) {   // 전투 중이거나, 적대 세력 군단이 지키는 도시에 들어와 있으면 그 도시를 점령하기 전에는 나아가지 않는다
+  if (campaign.aiBattles.some(b => b.aIds.includes(force.id) || b.dIds.includes(force.id))) return true;
+  const s = stageById(force.at), fa = forceFaction(force); if (!s || s.owner !== 'enemy' || !s.faction || s.faction === fa || FACTION_ALLIES[fa] === s.faction || aiRel(fa, s.faction).status !== 'war') return false;
+  if (roster.some(c => c.at === s.id && c.units.some(Boolean))) return false;   // 아군 군단이 있는 도시는 아군과의 전투가 우선
+  return enemyForces.some(f => f.active && f.at === s.id && forceFaction(f) === s.faction);
+}
+const leaderName = f => Sim.U[f.army.leader] ? Sim.U[f.army.leader].name : f.army.name;
+const aiSideText = (b, ids) => {   // 시작 때 인원 → 지금 인원 (3개 군단부터는 합계로 줄여 보여 준다)
+  const list = aiForcesOf(ids); if (!list.length) return '없음';
+  if (list.length <= 2) return list.map(f => `${leaderName(f)} 군단 ${b.u0[f.id]}→${f.army.units.length}명`).join(' · ');
+  return `${leaderName(list[0])} 군단 외 ${list.length - 1}개 · 합계 ${list.reduce((n, f) => n + b.u0[f.id], 0)}→${list.reduce((n, f) => n + f.army.units.length, 0)}명`;
+};
 function makeAiBattle(att, def, stageId, aForces, dForces) {
   const aIds = aForces.map(f => f.id), dIds = dForces.map(f => f.id), aPow = aiPow(aIds), dPow = aiPow(dIds), win = aPow * (0.85 + 0.3 * aiRoll('wa' + att)) > dPow * (0.85 + 0.3 * aiRoll('wd' + def)) ? att : def;
-  return { id: campaign.turn * 10 + campaign.aiBattles.length, att, def, stage: stageId, round: 0, aIds, dIds, startA: aPow, startD: dPow, winner: win };
+  const u0 = {}; for (const f of [...aForces, ...dForces]) u0[f.id] = f.army.units.length;
+  return { id: campaign.turn * 10 + campaign.aiBattles.length, att, def, stage: stageId, round: 0, aIds, dIds, u0, startA: aPow, startD: dPow, winner: win, faction0: stageById(stageId).faction };
 }
 function announceAiBattle(b) {
   campaign.aiBattles.push(b); const s = stageById(b.stage);
-  showDiplomacyResult(`${b.att}군이 ${s.name} 공격 개시`, [`${b.att}군(공격) ⚔${b.startA} → ${b.def}군(수비) ⚔${b.startD}`, `${s.name}을(를) 두고 ${b.att}군과 ${b.def}군의 전투가 시작되었습니다.`], false, '타 세력 전투 · 시작');
+  showDiplomacyResult(`${b.att}군이 ${s.name} 공격 개시`, [`${s.name}(${b.def}군 소유${s.capital ? ' · 수도' : ''})을(를) 두고 ${b.att}군과 ${b.def}군의 전투가 시작되었습니다.`, `공격 ${b.att}군 ⚔${b.startA}: ${aiSideText(b, b.aIds)}`, `수비 ${b.def}군 ⚔${b.startD}: ${aiSideText(b, b.dIds)}`], false, '타 세력 전투 · 시작');
 }
 // 아군에게 적용되는 외교 규칙을 모든 세력에 똑같이 적용한다: 중립·휴전 세력의 도시에 군단이 들어가면 즉시 전쟁이 되고, 동맹 도시는 그냥 지나간다. 전쟁이 되면 그 도시에서 바로 전투가 시작된다.
 function aiEnterCity(force) {
@@ -443,11 +456,20 @@ function aiBattleStep() {   // 타 세력 전투: 시작 → 진행(다음 턴) 
     b.round++;
     if (b.round === 1) {   // 진행: 피해의 절반을 입는다
       aiAttrition(loserIds, 0.175); aiAttrition(winnerIds, 0.075);
-      showDiplomacyResult(`${st.name} 전투 진행 중`, [`${b.att}군(공격) ⚔${aiPow(b.aIds)} / ${b.def}군(수비) ⚔${aiPow(b.dIds)}`, `${b.winner}군이 우세합니다.`], true, '타 세력 전투 · 진행');
+      showDiplomacyResult(`${st.name} 전투 진행 중`, [`공격 ${b.att}군 ⚔${aiPow(b.aIds)}: ${aiSideText(b, b.aIds)}`, `수비 ${b.def}군 ⚔${aiPow(b.dIds)}: ${aiSideText(b, b.dIds)}`, `${b.winner}군이 우세합니다. 다음 턴에 결과가 나옵니다.`], true, '타 세력 전투 · 진행');
     } else {   // 결과
       aiAttrition(loserIds, 0.175); aiAttrition(winnerIds, 0.075); b.done = true;
-      if (b.winner === b.att && !st.capital) { st.faction = b.att; for (const f of aiForcesOf(b.dIds)) { f.prevAt = f.at; f.at = CAPITALS[b.def]; f.home = CAPITALS[b.def]; } for (const f of aiForcesOf(b.aIds)) { f.prevAt = f.at; f.at = st.id; } }
-      showDiplomacyResult(`${st.name} 전투 결과: ${b.winner}군 승리`, [b.winner === b.att ? (st.capital ? `${b.att}군이 ${b.def}군의 수도 ${st.name}을(를) 무너뜨리지는 못했지만 크게 피해를 입혔습니다.` : `${b.att}군이 ${b.def}군의 ${st.name}을(를) 점령했습니다.`) : `${b.def}군이 ${st.name}을(를) 지켜냈습니다.`, `남은 전력 ${b.att}군 ⚔${aiPow(b.aIds)} / ${b.def}군 ⚔${aiPow(b.dIds)}`], true, '타 세력 전투 · 결과');
+      const capture = b.winner === b.att && !st.capital, capital = CAPITALS[b.def], capName = stageById(capital).name, back = f => { const to = f.prevAt && f.prevAt !== f.at ? f.prevAt : f.at; f.prevAt = f.at; f.at = to; return stageById(to).name; };
+      let city, attLine, defLine;
+      if (capture) {   // 공격 성공: 비수도 도시는 공격 세력 소유가 되고 수비 군단은 수도로 물러난다
+        st.faction = b.att; for (const f of aiForcesOf(b.dIds)) { f.prevAt = f.at; f.at = capital; f.home = capital; } for (const f of aiForcesOf(b.aIds)) { f.prevAt = f.at; f.at = st.id; }
+        city = `${st.name}: ${b.def}군 소유 → ${b.att}군 소유로 바뀜 (점령)`; attLine = `${b.att}군: ${st.name} 입성 · ${aiSideText(b, b.aIds)}`; defLine = `${b.def}군: ${capName}(으)로 후퇴 · ${aiSideText(b, b.dIds)}`;
+      } else if (b.winner === b.att) {   // 수도: 점령하지 못하고 물러난다
+        const names = aiForcesOf(b.aIds).map(back)[0] || ''; city = `${st.name}: 수도라 점령되지 않음 (${b.def}군 소유 유지)`; attLine = `${b.att}군: ${names}(으)로 물러남 · ${aiSideText(b, b.aIds)}`; defLine = `${b.def}군: ${st.name} 방어 유지 · ${aiSideText(b, b.dIds)}`;
+      } else {   // 방어 성공: 공격 군단은 직전 도시로 물러난다
+        const names = aiForcesOf(b.aIds).map(back)[0] || ''; city = `${st.name}: ${b.def}군 소유 유지 (점령 실패)`; attLine = `${b.att}군: ${names}(으)로 후퇴 · ${aiSideText(b, b.aIds)}`; defLine = `${b.def}군: ${st.name} 방어 성공 · ${aiSideText(b, b.dIds)}`;
+      }
+      showDiplomacyResult(`${st.name} 전투 결과: ${b.winner}군 승리`, [b.winner === b.att ? `${b.att}군이 ${b.def}군을 공격해 이겼습니다.` : `${b.def}군이 ${b.att}군의 공격을 막아냈습니다.`, city, attLine, defLine], true, '타 세력 전투 · 결과');
     }
   }
   campaign.aiBattles = campaign.aiBattles.filter(b => !b.done);
@@ -899,7 +921,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.172', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.173', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1085,7 +1107,7 @@ function drawWarMoveWarn() {   // 이동 경로에 중립 도시가 있을 때�
   button('campaign:warn:ok', x + w / 2 - 170, y + h - 60, 160, 38, '전쟁을 감수하고 이동', true, 16); button('campaign:warn:cancel', x + w / 2 + 10, y + h - 60, 160, 38, '이동 취소', false, 16);
 }
 function drawDiplomacyResult() {
-  const r = diplomacyResult, w = 600, lines = r.lines || [], h = 190 + lines.length * 34, x = (VW - w) / 2, y = (VH - h) / 2, col = r.ok ? COLORS.gold : COLORS.danger;
+  const r = diplomacyResult, lines = (r.lines || []).flatMap(t => String(t).match(/.{1,42}/g) || ['']), w = lines.some(t => t.length > 28) ? 780 : 600, h = 190 + lines.length * 34, x = (VW - w) / 2, y = (VH - h) / 2, col = r.ok ? COLORS.gold : COLORS.danger;
   ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, col, 4, 'rgba(8,20,25,.99)');
   label(r.kind || (r.ok ? '외교 결과' : '외교 실패'), x + w / 2, y + 40, 18, COLORS.silver2, 'center'); label(r.title, x + w / 2, y + 84, 27, col, 'center');
   lines.forEach((t, i) => label(t, x + w / 2, y + 128 + i * 34, 17, COLORS.silver, 'center'));
