@@ -121,7 +121,7 @@ const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 
 const MAGIC = 1;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
 const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6, pass: 2 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
-const TRAIT_TIME = 5, AURA_RANGE = 150, TITLE_BONUS = 1.25;   // 아군 소속 장수의 칭호 효과 수치는 ×1.25 (명세 26: 아군 효과 상향)
+const TRAIT_TIME = 5, AURA_RANGE = 150;
 const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: 'AT', df: 'DF', ad: 'AD', md: 'MD', aa: 'AA', hr: 'HR', sp: 'SP', ar: 'AR', dr: 'DR' };
 // 칭호 효과 (명세 26). aura 반경 안 아군(cats 가 있으면 그 병종만) · passive 상시 · hp 기준 이하 진입 시 5초 버프 · dash 돌진 후 · onSpecial 특수기 발동 시 · skill 군사의 스킬 효율(마법 피해·쿨타임·치유량 %). 수치는 % (자기 능력치 곱).
 const TITLE_EFFECT = {
@@ -142,9 +142,8 @@ const TITLE_EFFECT = {
   와룡: { skill: { dmg: 30, cd: 20 } }, 봉추: { skill: { dmg: 20 } }, 왕좌: { skill: { cd: 15 } }, 모주: { skill: { dmg: 10, cd: 10 } }, 귀재: { skill: { dmg: 10 } },
   호치: { passive: { df: 10, ad: 10 } }, 교변: { passive: { sp: 10, aa: 5 } }, 주아부: { passive: { df: 8, ad: 8 } }, 상장: { passive: { atk: 10 } }, 용장: { passive: { df: 10 } }, 총호: { passive: { md: 15, dr: 10 } }, 횡포: { passive: { atk: 5 } },
 };
-const teamMul = u => u.team === 'player' ? TITLE_BONUS : 1;
 const modsText = (m, k = 1) => Object.entries(m).map(([s, v]) => STAT_NAME[s] + ' +' + +(v * k).toFixed(1) + '%').join(' ');
-function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장 (기준 수치, 아군이면 ×1.25)
+function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장
   const T = TITLE_EFFECT[name]; if (!T) return null; const L = [];
   if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
   if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
@@ -155,7 +154,7 @@ function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장 (�
   return L;
 }
 const dashAny = u => !!((TITLE_EFFECT[u.subclass] || {}).dash || {}).any;
-const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, (((TITLE_EFFECT[u.subclass] || {}).skill || {})[k] || 0) * teamMul(u));
+const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, ((TITLE_EFFECT[u.subclass] || {}).skill || {})[k] || 0);
 
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
 // at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
@@ -331,9 +330,9 @@ const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 function combatStat(S, u, key) {
   let value = u[key]; if (!S || !Number.isFinite(value)) return value;
-  const TE = TITLE_EFFECT[u.subclass]; if (TE && TE.passive && TE.passive[key]) value *= 1 + TE.passive[key] / 100 * teamMul(u);
+  const TE = TITLE_EFFECT[u.subclass]; if (TE && TE.passive && TE.passive[key]) value *= 1 + TE.passive[key] / 100;
   if (u.buffs) for (const b of u.buffs) if (b.mods[key]) value *= 1 + b.mods[key] / 100 * b.mul;
-  for (const a of S.units) if (a !== u && live(a) && a.team === u.team && dist(a, u) <= AURA_RANGE) { const A = (TITLE_EFFECT[a.subclass] || {}).aura; if (A && A.stats.includes(key) && (!A.cats || A.cats.includes(u.category))) value *= 1 + A.pct / 100 * teamMul(a); }
+  for (const a of S.units) if (a !== u && live(a) && a.team === u.team && dist(a, u) <= AURA_RANGE) { const A = (TITLE_EFFECT[a.subclass] || {}).aura; if (A && A.stats.includes(key) && (!A.cats || A.cats.includes(u.category))) value *= 1 + A.pct / 100; }
   return value;
 }
 const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
@@ -358,7 +357,7 @@ function updateAuras(S) {
 }
 // 칭호 버프(발동형)와 적 FT 디버프
 function addBuff(S, u, id, mods, glyph, col, scale = 1) {
-  const mul = teamMul(u) * scale; u.buffs = u.buffs || []; const old = u.buffs.find(b => b.id === id);
+  const mul = scale; u.buffs = u.buffs || []; const old = u.buffs.find(b => b.id === id);
   if (old) { old.t = TRAIT_TIME; old.mods = mods; old.mul = mul; old.glyph = glyph; old.col = col; } else u.buffs.push({ id, t: TRAIT_TIME, mods, mul, glyph, col });
   buffFx(S, u, glyph, col); text(S, u.x, u.y - u.r * 4, modsText(mods, mul), col, 'buff');
 }
@@ -982,6 +981,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

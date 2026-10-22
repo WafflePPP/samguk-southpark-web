@@ -1054,7 +1054,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.184', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.185', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1310,7 +1310,7 @@ function drawRoster() {
     const corps = roster[rosterSource], named = corps.units.map((key, slot) => ({ key, slot })).filter(x => x.key && !Sim.U[x.key].generic);
     if (!named.some(x => x.slot === rosterDetailSlot)) rosterDetailSlot = named[0]?.slot ?? 0;
     const key = corps.units[rosterDetailSlot], unit = key && Sim.U[key], growth = corps.growth[rosterDetailSlot] || {}, stats = unit && Sim.unitStats(key, 'player', growth), item = Sim.ITEMS[growth.item];
-    const passive = unit && (Sim.TITLE_EFFECT[Sim.unitSubclass(key)] || {}).passive; if (passive) for (const [stat, pct] of Object.entries(passive)) stats[stat] *= 1 + pct * Sim.TITLE_BONUS / 100;
+    const passive = unit && (Sim.TITLE_EFFECT[Sim.unitSubclass(key)] || {}).passive; if (passive) for (const [stat, pct] of Object.entries(passive)) stats[stat] *= 1 + pct / 100;
     panel(28, 92, 360, 548, COLORS.silver2, 2, 'rgba(8,20,25,.92)'); panel(408, 92, 844, 548, COLORS.gold, 2, 'rgba(8,20,25,.92)');
     label(`${rosterSource + 1}군단 · ${corpsName(corps)}`, 46, 122, 21, COLORS.gold);
     named.forEach(({ key: k, slot }, row) => button(`roster:detail:${slot}`, 46, 146 + row * 26, 324, 24, `${Math.floor(slot / 6) + 1}분대 · ${Sim.U[k].name}`, slot === rosterDetailSlot, 14));
@@ -1322,7 +1322,7 @@ function drawRoster() {
       label(`병종 ${main} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold); label(`전투력 ⚔${Sim.statPower(stats)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2);
       const values = [['HP', stats.maxHp], ['MP', growth.maxMp ?? unit.mp ?? 0], ['FT', 0], ['AT', stats.atk], ['DF', stats.df], ['AD', stats.ad], ['MD', stats.md], ['AA', stats.aa], ['HR', stats.hr], ['SP', stats.sp], ['AR', stats.ar], ['DR', stats.dr]];
       values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * 50, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * 50, 15, COLORS.gold); label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * 50, 17, COLORS.silver, 'right'); });
-      label('칭호 효과', 438, 448, 19, COLORS.gold); const effects = [...(Sim.titleDesc(sub) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.']), ...(Sim.titleDesc(sub) ? ['아군 소속이면 수치 ×' + Sim.TITLE_BONUS + '.'] : [])]; effects.forEach((s, i) => label(s, 438, 476 + i * 24, 15, COLORS.silver)); const ey = 476 + effects.length * 24 + 10;   // 효과 줄 수에 맞춰 아래 항목을 내려 겹치지 않게 한다
+      label('칭호 효과', 438, 448, 19, COLORS.gold); const effects = Sim.titleDesc(sub) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.']; effects.forEach((s, i) => label(s, 438, 476 + i * 24, 15, COLORS.silver)); const ey = 476 + effects.length * 24 + 10;   // 효과 줄 수에 맞춰 아래 항목을 내려 겹치지 않게 한다
       label(`특수기: ${unit.special ? `${SPECIAL[unit.special]?.name} — ${SPECIAL_EFFECT[unit.special] || '고유 행동'}` : '없음'}`, 438, ey, 15, COLORS.goldSel);
       label(`주문: ${unit.spells?.length ? unit.spells.map(s => SPELL[s]?.name).filter(Boolean).join(' · ') : '없음'}`, 438, ey + 26, 15, COLORS.goldSel);
       label(STAT_NOTE, 438, 626, 11, COLORS.silver2);
