@@ -284,6 +284,8 @@ const playerPowerNear = stage => roster.filter(c => combatReadyCorps(c) && (c.at
 const AI_ATTACK_RATIO = 1.2;   // 침공: 집결한 적 전투력이 상대 대응 전투력의 1.2배 이상일 때만
 const AI_DEFEND_RATIO = 0.8;   // 방어: 아군이 닿을 수 있는 위협 전투력이 자기 도시 전투력의 0.8배 이상이면 자리를 지킨다
 // 적 군단 한 부대의 행동 결정: 진군(advance) 또는 대기(hold). 판단 근거를 함께 돌려준다.
+const breaksPeace = s => !!s && s.owner === 'enemy' && !!s.faction && ['neutral', 'truce'].includes(relationOf(s.faction).status);   // 군단이 들어서면 전쟁이 되는 도시 (중립·휴전 세력)
+const peaceName = faction => relationOf(faction).status === 'truce' ? '휴전' : '중립';
 const hostsPlayer = s => !!s && s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'ally' && roster.some(c => c.units.some(Boolean) && c.at === s.id);   // 아군 군단이 주둔한 동맹 도시
 function enemyDecision(force) {
   const here = stageById(force.at), path = route(force.at, START_STAGE), next = path.length > 1 ? stageById(path[1]) : null;
@@ -310,11 +312,11 @@ const moveTurns = corps => corps.target ? Math.max(0, route(corps.at, corps.targ
 function moveCampaign(id, confirmed = false) {
   const corps = roster[campaign.corps], next = stageById(id); if (!corps || !next) return;
   if (!confirmed && corps.target !== next.id && corps.at !== next.id) {   // 경로에 중립 세력 도시가 있으면 전쟁 경고를 먼저 띄운다 (이동 도시를 고르는 단계)
-    const hit = route(corps.at, next.id).slice(1).map(stageById).find(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'neutral');
+    const hit = route(corps.at, next.id).slice(1).map(stageById).find(breaksPeace);
     if (hit) { warnMove = { id, stage: hit }; return; }
   }
   corps.target = corps.target === next.id || corps.at === next.id ? null : next.id; campaign.destination = corps.target;
-  campaign.notice = corps.target ? `${corpsName(corps)}: ${stageById(corps.at).name} → ${next.name} · ${moveTurns(corps)}턴.${next.owner === 'enemy' && next.faction && relationOf(next.faction).status === 'neutral' ? ' ※ 중립 도시에 진입하면 전쟁이 시작됩니다.' : ''}` : `${corpsName(corps)}의 이동 계획을 취소했다.`;
+  campaign.notice = corps.target ? `${corpsName(corps)}: ${stageById(corps.at).name} → ${next.name} · ${moveTurns(corps)}턴.${breaksPeace(next) ? ` ※ ${peaceName(next.faction)} 도시에 진입하면 전쟁이 시작됩니다.` : ''}` : `${corpsName(corps)}의 이동 계획을 취소했다.`;
   saveCampaign();
 }
 function advanceEnemyForces() {
@@ -375,9 +377,9 @@ function continueCampaignTurn() {
 }
 // 중립 세력(외교로 동맹·전쟁을 정하지 않은 세력)은 중립을 유지하다가, 아군 군단이 그 도시에 진입하면 즉시 전쟁이 된다 (명세 23).
 function enterNeutralCity(corps, stage) {
-  if (!stage || stage.owner !== 'enemy' || !stage.faction || relationOf(stage.faction).status !== 'neutral') return;
+  if (!breaksPeace(stage)) return; const was = peaceName(stage.faction);
   setDiplomacy(stage.faction, 'war', true);
-  showDiplomacyResult(`${stage.faction}군과 전쟁 돌입`, [`${corpsName(corps)}이(가) 중립 도시 ${stage.name}에 진입했습니다.`, '관계: 중립 → 전쟁', '외교 없이 영토에 들어가 전쟁이 시작되었고, 이 도시의 군단과 교전합니다.'], false);
+  showDiplomacyResult(`${stage.faction}군과 전쟁 돌입`, [`${corpsName(corps)}이(가) ${was} 도시 ${stage.name}에 진입했습니다.`, `관계: ${was} → 전쟁`, '외교 없이 영토에 들어가 전쟁이 시작되었고, 이 도시의 군단과 교전합니다.'], false);
 }
 function endCampaignTurn() {
   campaign.turn++; campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null;
@@ -807,7 +809,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.164', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.165', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -975,8 +977,8 @@ function alliedBack(corps, stage) { const id = corps && corps.prevAt && corps.pr
 function drawWarMoveWarn() {   // 이동 경로에 중립 도시가 있을 때의 전쟁 경고 팝업
   const w = 620, h = 270, x = (VW - w) / 2, y = (VH - h) / 2, s = warnMove.stage, f = s.faction;
   ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, COLORS.danger, 4, 'rgba(8,20,25,.99)');
-  label('전쟁 경고', x + w / 2, y + 40, 18, COLORS.silver2, 'center'); label(f + '군 중립 도시 진입', x + w / 2, y + 84, 27, COLORS.danger, 'center');
-  label('이동 경로에 중립 세력 ' + f + '군의 ' + s.name + '이(가) 있습니다.', x + w / 2, y + 128, 17, COLORS.silver, 'center');
+  label('전쟁 경고', x + w / 2, y + 40, 18, COLORS.silver2, 'center'); label(f + '군 ' + peaceName(f) + ' 도시 진입', x + w / 2, y + 84, 27, COLORS.danger, 'center');
+  label('이동 경로에 ' + (peaceName(f) === '휴전' ? '휴전 중인 ' : '중립 세력 ') + f + '군의 ' + s.name + '이(가) 있습니다.', x + w / 2, y + 128, 17, COLORS.silver, 'center');
   label('군단이 그 도시에 들어서면 즉시 전쟁이 시작됩니다.', x + w / 2, y + 162, 17, COLORS.silver, 'center');
   button('campaign:warn:ok', x + w / 2 - 170, y + h - 60, 160, 38, '전쟁을 감수하고 이동', true, 16); button('campaign:warn:cancel', x + w / 2 + 10, y + h - 60, 160, 38, '이동 취소', false, 16);
 }
