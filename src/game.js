@@ -273,7 +273,7 @@ const moveTurns = corps => corps.target ? Math.max(0, route(corps.at, corps.targ
 function moveCampaign(id) {
   const corps = roster[campaign.corps], next = stageById(id); if (!corps || !next) return;
   corps.target = corps.target === next.id || corps.at === next.id ? null : next.id; campaign.destination = corps.target;
-  campaign.notice = corps.target ? `${corpsName(corps)}: ${stageById(corps.at).name} → ${next.name} · ${moveTurns(corps)}턴.` : `${corpsName(corps)}의 이동 계획을 취소했다.`;
+  campaign.notice = corps.target ? `${corpsName(corps)}: ${stageById(corps.at).name} → ${next.name} · ${moveTurns(corps)}턴.${next.owner === 'enemy' && next.faction && relationOf(next.faction).status === 'neutral' ? ' ※ 중립 도시에 진입하면 전쟁이 시작됩니다.' : ''}` : `${corpsName(corps)}의 이동 계획을 취소했다.`;
   saveCampaign();
 }
 function advanceEnemyForces() {
@@ -322,12 +322,19 @@ function continueCampaignTurn() {
   if (encounter.invasion) { campaign.pendingEncounter = encounter; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
   campaign.corps = encounter.index; campaign.at = encounter.stage.id; campaign.from = encounter.from; campaign.destination = roster[encounter.index].target; campaign.invasion = false; campaign.notice = `${encounter.stage.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(encounter.stage);
 }
+// 중립 세력(외교로 동맹·전쟁을 정하지 않은 세력)은 중립을 유지하다가, 아군 군단이 그 도시에 진입하면 즉시 전쟁이 된다 (명세 23).
+function enterNeutralCity(corps, stage) {
+  if (!stage || stage.owner !== 'enemy' || !stage.faction || relationOf(stage.faction).status !== 'neutral') return;
+  setDiplomacy(stage.faction, 'war');
+  showDiplomacyResult(`${stage.faction}군과 전쟁 돌입`, [`${corpsName(corps)}이(가) 중립 도시 ${stage.name}에 진입했습니다.`, '관계: 중립 → 전쟁', '외교 없이 영토에 들어가 전쟁이 시작되었고, 이 도시의 군단과 교전합니다.'], false);
+}
 function endCampaignTurn() {
   campaign.turn++; campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null;
   for (const [faction, relation] of Object.entries(campaign.relations)) if (relation.status === 'truce' && campaign.turn >= relation.truceUntil) { relation.status = 'war'; relation.truceUntil = 0; campaign.notice = `${faction}군과의 휴전이 끝나 전쟁 상태로 돌아갔다.`; }
   roster.forEach((corps, index) => {
     const from = corps.at;
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
+    if (from !== corps.at) enterNeutralCity(corps, stageById(corps.at));
     if (from !== corps.at) campaign.movement.push({ text: `${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name} · 1턴 이동`, name: corpsName(corps), commander: corps.units[0] && Sim.U[corps.units[0]] ? Sim.U[corps.units[0]].name : corpsName(corps), from, to: corps.at, team: 'player', corpsIndex: index });
   });
   advanceEnemyForces(); spawnExpeditions(); saveCampaign();
@@ -895,7 +902,7 @@ function drawDiplomacyView() {
   const left = relation.status === 'neutral' || relation.status === 'ally' ? '동맹' : '20턴 휴전', leftAction = relation.status === 'neutral' || relation.status === 'ally' ? 'ally' : 'truce';
   button(`campaign:diplomacy:${leftAction}`, x + 70, y + 190, 190, 54, left, relation.status === 'ally' || relation.status === 'truce', 20);
   button('campaign:diplomacy:war', x + 300, y + 190, 190, 54, '전쟁', relation.status === 'war', 20);
-  label(relation.status === 'neutral' ? '중립 세력은 수비만 하며, 동맹 또는 전쟁을 선택할 수 있습니다.' : relation.status === 'war' ? '휴전하면 20턴 동안 서로 침공하지 않습니다.' : '전쟁을 선택하면 즉시 상호 공격이 가능해집니다.', x + w / 2, y + 280, 14, COLORS.silver2, 'center');
+  label(relation.status === 'neutral' ? '고르지 않으면 중립 유지 · 군단이 도시에 진입하면 전쟁' : relation.status === 'war' ? '휴전하면 20턴 동안 서로 침공하지 않습니다.' : '전쟁을 선택하면 즉시 상호 공격이 가능해집니다.', x + w / 2, y + 280, 14, COLORS.silver2, 'center');
   button('campaign:diplomacy:close', x + w / 2 - 80, y + h - 55, 160, 36, '닫기', false, 16);
 }
 function drawExploreSelect() {
