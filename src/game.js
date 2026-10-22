@@ -763,7 +763,8 @@ function drawToolbar() {
   button('cmd:auto', 722, 18, 104, 34, S.auto ? '자동 ON' : '자동 OFF', S.auto);
   button('cmd:support', 830, 18, 114, 34, `지원 ${supportArmies().length}`, supportOpen);
   button('armyT', 954, 18, 120, 34, '군단 전환', false);
-  button('cmd:menu', 1084, 18, 190, 34, '시스템', false);
+  button('cmd:solo', 1084, 18, 96, 34, ctrlOf() && ctrlOf().order.solo ? '후퇴 취소' : '개인 후퇴', !!(ctrlOf() && ctrlOf().order.solo));
+  button('cmd:menu', 1184, 18, 90, 34, '시스템', false);
 }
 // 능력치 실시간 표기: 기본값(아이템 포함) → 현재값(버프·오라·피로 반영). 달라지면 "기본→현재" 로 쓰고 올랐으면 초록, 내렸으면 주황으로 칠한다.
 class StatText extends String { constructor(t, col) { super(t); this.col = col; } }
@@ -853,7 +854,8 @@ function drawMobileSide() {   // 상단: 화면 → 전투 → 군단 → 메뉴
   button('cmd:auto', 274, 20, 128, 42, S.auto ? '자동 ON' : '자동 OFF', S.auto, 17);
   button('cmd:support', 408, 20, 136, 42, `지원 ${supportArmies().length}`, supportOpen, 17);
   button('armyT', 550, 20, 140, 42, '군단 전환', false, 17);
-  button('cmd:menu', 698, 20, 120, 42, '시스템', false, 17);
+  button('cmd:solo', 698, 20, 150, 42, ctrlOf() && ctrlOf().order.solo ? '후퇴 취소' : '개인 후퇴', !!(ctrlOf() && ctrlOf().order.solo), 17);
+  button('cmd:menu', 854, 20, 120, 42, '시스템', false, 17);
 }
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
   ctx.fillStyle = on ? 'rgba(80,60,16,.75)' : 'rgba(10,12,20,.6)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
@@ -971,7 +973,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.177', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.178', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1339,6 +1341,7 @@ function cycleUnit(dir) {
 function act(alt) { const u = ctrlOf(); if (u && !Sim.action(S, u, alt)) floatText(u, u.spells.length && !alt ? (S.lock.player > 0 ? '마법 잠금' : '사용 불가') : '준비중', '#cfd3e6'); }
 function useCommand(id, A = army()) {
   if (['charge', 'stop', 'retreat', 'idle'].includes(id)) { Sim.armyOrder(S, A, id, A === army() ? ctrlOf() : null); return; }
+  if (id === 'solo') { const u = ctrlOf(); if (u) Sim.unitRetreat(S, u); return; }
   if (id === 'act') act(false); else if (id === 'auto') Sim.setAuto(S, !S.auto); else if (id === 'support') supportOpen = !supportOpen; else if (id === 'menu') menuOpen = true;
 }
 function cycleFormation(A) { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(A.formation); Sim.setFormation(A, forms[(i + 1) % forms.length]); }

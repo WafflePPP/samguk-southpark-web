@@ -601,7 +601,13 @@ function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 가장자�
     if (u.team === 'player') { u.retreated = true; u.hp = u.maxHp; u.mp = u.maxMp; u.ft = 0; u.order = { type: 'idle' }; text(S, u.x, u.y, u.name + ' 철수', '#cfd3e6'); } else { u.fled = true; S.stats.fled++; }
     return;
   }
+  if (u.team === 'player') u.passT = Math.max(u.passT, 0.3);   // 후퇴는 앞을 막은 대상이 있어도 넘어 지나가 이동할 수 있다
   stepToward(S, u, gx, u.ty);
+}
+function unitRetreat(S, u) {   // 개인 후퇴: 이 장수 한 명만 가장자리로 철수한다. 다시 누르면 취소
+  if (!u || !live(u) || u.team !== 'player') return false;
+  if (u.order.type === 'retreat' && u.order.solo) { u.order = { type: 'idle' }; u.path = null; text(S, u.x, u.y - u.r * 4, '후퇴 취소', '#cfd3e6', 'buff'); return true; }
+  u.order = { type: 'retreat', solo: true }; u.path = null; u.autoCharge = false; notice(S, u.team, u.name + '이(가) 단독으로 후퇴합니다.'); return true;
 }
 
 // ---------- 유닛 AI ----------
@@ -730,6 +736,7 @@ function updateUnit(S, u, dt) {
     if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
   }
   let o = u.order;
+  if (o.type === 'retreat' && o.solo && u === u.army.ctrl && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) o = u.order = { type: 'idle' };   // 이동 입력 = 개인 후퇴 취소
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
   const ctrl = u === u.army.ctrl && u.team === 'player';
   if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 직접 조작 중에는 돌진이 자동으로 나가지 않는다 (특수기 버튼으로만)
@@ -914,6 +921,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
