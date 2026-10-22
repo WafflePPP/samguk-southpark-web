@@ -418,12 +418,22 @@ function tryHpRetreat(S, A) {
   if (leaderLow && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
   startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
 }
+function orphanRetreat(S, units, team, label) {   // 군단장·분대장이 전사하면 같은 군단·분대의 병사들이 후퇴할 수 있다 (확률 = 퇴각 사기 판정, 광신자 제외)
+  const list = units.filter(m => live(m) && !retreating(m) && !m.fanatic); if (!list.length) return false;
+  if (S.rnd() >= S.routChance) { notice(S, team, `${label} 지휘관 전사 — 병사들은 후퇴할 수 있습니다.`); return false; }
+  for (const m of list) { m.surrenderChecked = false; m.order = { type: 'flee' }; m.path = null; m.autoCharge = false; }
+  notice(S, team, `${label} 지휘관 전사 — 병사들이 후퇴합니다.`); return true;
+}
 function die(S, u, killer) {
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
   if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
+  const squadUnits = u.squad ? u.squad.units : u.army.units, squadGone = u.named && !squadUnits.some(m => m.named && live(m));   // 분대의 마지막 이름 있는 장수가 전사
+  const corpsLead = u.team === 'player' && u.isLeader && u.army === S.armies.find(B => B.team === 'player' && B.corps === u.army.corps);   // 아군 군단장(군단 첫 분대의 지휘관)
+  if (corpsLead) { for (const B of S.armies) if (B.team === 'player' && B.corps === u.army.corps) orphanRetreat(S, B.units, 'player', B.name); }
+  else if (squadGone && !(u.team === 'enemy' && u.isLeader)) orphanRetreat(S, squadUnits, u.team, u.army.name);   // 분대장(분대의 마지막 이름 있는 장수) 전사 → 그 분대 병사
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
     if (u.team === 'enemy') dialogue(S, u, '내가 여기서 쓰러지다니…');
@@ -592,6 +602,7 @@ function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는�
   if (ally) beginSwap(S, u, ally); else beginStep(S, u, nxt.tx, nxt.ty, phasing ? stepDur(S, u, nxt.tx, nxt.ty) * cheb(u, nxt) : undefined);
   return 'moving';
 }
+const retreating = u => !!u.order && (u.order.type === 'retreat' || u.order.type === 'flee');   // 후퇴·도주 중: 다른 행동(공격·특수기·마법·이동 입력·집중 공격)을 할 수 없다
 function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 가장자리로 철수, 쪽은 고정 / 적: 오른쪽 가장자리 도주) — 도착하면 필드에서 사라진다
   if (u.team === 'player' && !u.order.side) u.order.side = u.tx < MW / 2 ? -1 : 1;   // 쪽은 명령 객체에 저장 → 새 명령이면 다시 정한다
   const side = u.order.side;   // 되돌리려면 이 줄을 -1 고정으로
@@ -601,7 +612,7 @@ function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 가장자�
     if (u.team === 'player') { u.retreated = true; u.hp = u.maxHp; u.mp = u.maxMp; u.ft = 0; u.order = { type: 'idle' }; text(S, u.x, u.y, u.name + ' 철수', '#cfd3e6'); } else { u.fled = true; S.stats.fled++; }
     return;
   }
-  if (u.team === 'player') u.passT = Math.max(u.passT, 0.3);   // 후퇴는 앞을 막은 대상이 있어도 넘어 지나가 이동할 수 있다
+  u.passT = Math.max(u.passT, 0.3);   // 후퇴는 (아군·적군 모든 군단) 앞을 막은 대상이 있어도 넘어 지나가 이동할 수 있다
   stepToward(S, u, gx, u.ty);
 }
 function unitRetreat(S, u) {   // 개인 후퇴: 이 장수 한 명만 가장자리로 철수한다. 다시 누르면 취소
@@ -736,7 +747,6 @@ function updateUnit(S, u, dt) {
     if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
   }
   let o = u.order;
-  if (o.type === 'retreat' && o.solo && u === u.army.ctrl && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) o = u.order = { type: 'idle' };   // 이동 입력 = 개인 후퇴 취소
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
   const ctrl = u === u.army.ctrl && u.team === 'player';
   if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 직접 조작 중에는 돌진이 자동으로 나가지 않는다 (특수기 버튼으로만)
@@ -845,7 +855,7 @@ function setCtrl(S, A, u) {
   if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: S.auto ? 'charge' : A.order }; old.ctrlIn = null; old.manual = false; old.autoCharge = S.auto; }   // 풀려난 캐릭터는 군단 명령을 따른다
 }
 function takeControl(S, u) { if (S.auto && u.team === 'player' && u === u.army.ctrl && !u.manual) { releaseManualControl(S, u); u.manual = true; u.order = { type: 'stop' }; u.autoCharge = false; u.path = null; } }
-function control(S, u, dx, dy) { takeControl(S, u); u.ctrlIn = { dx, dy, t: S.t }; }   // 자동 중에는 현재 장수만 수동으로 전환
+function control(S, u, dx, dy) { if (retreating(u)) return; takeControl(S, u); u.ctrlIn = { dx, dy, t: S.t }; }   // 자동 중에는 현재 장수만 수동으로 전환
 function directMove(S, u, dx, dy) {
   if (u.root > 0) return;   // 속박(거미줄) 중에는 걷지 못한다
   let nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
@@ -862,7 +872,7 @@ function aimAt(S, u, range) {   // 바라보는 방향 ±55° 안의 가장 가�
   return best ? [best.x, best.y] : [u.x + Math.cos(u.face) * 150, u.y + Math.sin(u.face) * 150];
 }
 function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(보조): 마법 보유자는 특수기, 그 밖은 화살
-  if (!live(u) || u.stun > 0) return false; takeControl(S, u); cur = S;
+  if (!live(u) || u.stun > 0 || retreating(u)) return false; takeControl(S, u); cur = S;
   const sel = !alt && u.spells.length, sp = sel ? u.spells[u.spellSel] : null;
   if (sp === 'heal') { let t = null, bd = 1; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; } return t ? castSpell(S, u, 'heal', t.x, t.y) : false; }
   if (sp) { const [x, y] = aimAt(S, u, SPELL[sp].range); return castSpell(S, u, sp, x, y); }
@@ -883,7 +893,7 @@ function armyOrder(S, A, type, directCtrl = A.ctrl) {   // 현재 직접 조작 
   A.order = type;
   for (const u of A.units) if (live(u) && (u !== directCtrl || type === 'retreat')) { u.order = { type }; u.path = null; u.autoCharge = false; }
 }
-function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric') { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
+function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric' && !retreating(u)) { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
 function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 아직 참전하지 않은 지원군만 출진할 수 있다.
   if (!u.out || u.retreated || u.fled || u.dead || u.team !== 'player') return false;
   for (let k = 0; k < 80; k++) {
@@ -921,6 +931,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, TITLE_BONUS, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
