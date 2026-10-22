@@ -687,9 +687,10 @@ function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상
   if (w) { if (cheb(u, w) > 2) stepToward(S, u, w.tx, w.ty); return; }
   const c = centroidTile(mates); if (cheb(u, c) > 2) stepToward(S, u, c.tx, c.ty);
 }
+const handCtl = (S, u) => u.team === 'player' && u === u.army.ctrl && (!S.auto || u.manual);   // 플레이어가 직접 조작 중인 유닛 — 돌진 등 특수기를 자동으로 쓰지 않는다
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
-  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range); if (t && (any || dist(u, t) > TILE * 1.5) && useSpecial(S, u, t.x, t.y)) return true; }
   if (u.spells.includes('heal')) {
     let t = null, bd = 0.7; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; }
     if (t && castSpell(S, u, 'heal', t.x, t.y)) return true;
@@ -731,7 +732,7 @@ function updateUnit(S, u, dt) {
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
   const ctrl = u === u.army.ctrl && u.team === 'player';
-  if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { if (u.cls === 'cavalry' && autoAbilities(S, u, true)) return; directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 수동 기병도 이동보다 준비된 돌격을 우선한다
+  if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 직접 조작 중에는 돌진이 자동으로 나가지 않는다 (특수기 버튼으로만)
   if (ctrl && S.auto && !u.manual && o.type === 'stop') o = u.order = { type: 'idle' };   // 자동 전투 중에는 조작 캐릭터도 AI 가 움직인다
   if (o.type === 'charge' && u.autoCharge && !S.auto) o = u.order = { type: ctrl ? 'stop' : 'idle' };   // 자동전투를 끄면 자동으로 돌격 중이던 유닛은 평상시로
   if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
