@@ -22,20 +22,20 @@ const U = {
   guan: { name: '관우', cls: 'warrior', aa: 15, hr: 10, sp: 180, hp: 520, atk: 66, df: 40, ad: 32, md: 20, cd: 1.0, r: 14, style: 'guan', special: 'spin' },
   dian: { name: '전위', cls: 'warrior', aa: 10, hr: 12, sp: 173, hp: 440, atk: 66, df: 55, ad: 40, md: 20, cd: 1.0, r: 14, style: 'dian', special: 'spin' },
   zhao: { name: '조운', cls: 'cavalry', aa: 14, hr: 10, sp: 270, hp: 520, atk: 84, df: 42, ad: 21, md: 20, cd: 0.8, r: 14, style: 'zhao', special: 'dash' },
-  huang: { name: '황충', cls: 'archer', aa: 25, hr: 8, sp: 166, hp: 260, atk: 68, df: 12, ad: 12, md: 16, cd: 1.3, range: 270, r: 13, style: 'huang', special: 'volley' },
+  huang: { name: '황충', cls: 'archer', aa: 25, hr: 8, sp: 166, hp: 260, atk: 68, df: 12, ad: 12, md: 16, cd: 0.9, range: 270, r: 13, style: 'huang', special: 'volley' },
   diao: { name: '초선', cls: 'cleric', mp: 999, aa: 20, hr: 12, sp: 180, hp: 400, atk: 66, df: 30, ad: 24, md: 24, cd: 1.0, r: 12, style: 'diao', spells: ['heal'], special: 'bless' },
   kong: { name: '제갈량', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   spear: { name: '보병(창)', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
-  shield: { name: '방패병', cls: 'shield', hp: 200, atk: 15, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
-  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 22, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'ally_archer', generic: true },
+  shield: { name: '방패병', cls: 'shield', hp: 120, atk: 15, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
+  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 30, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'ally_archer', generic: true },
   cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
   mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fireball', 'ice'], generic: true },
   lubu: { name: '여포', cls: 'cavalry', aa: 14, hr: 12, sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 24, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
   ecap: { name: '적 장수', cls: 'warrior', aa: 12, hr: 10, sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 20, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
   esword: { name: '적 보병', cls: 'warrior', hp: 120, atk: 20, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
-  eshield: { name: '적 방패', cls: 'shield', hp: 200, atk: 14, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
-  earcher: { name: '적 궁병', cls: 'archer', hp: 80, atk: 21, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 1.4, range: 250, r: 11, style: 'archer', generic: true },
+  eshield: { name: '적 방패', cls: 'shield', hp: 120, atk: 14, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
+  earcher: { name: '적 궁병', cls: 'archer', hp: 80, atk: 29, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'archer', generic: true },
   ecav: { name: '적 기마', cls: 'cavalry', hp: 160, atk: 26, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
   hua: { name: '화웅', cls: 'warrior', sp: 173, cd: 1.0, r: 14, aa: 10, hr: 10, style: 'hua', special: 'spin', fanatic: true },
   jang: { name: '장료', cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 14, hr: 10, style: 'jang', special: 'dash' },
@@ -64,7 +64,7 @@ for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 const HERO_DEFAULT = {
   warrior: { aa: 12, hr: 10, sp: 173, cd: 1, r: 14, mp: 0, range: 0 }, cavalry: { aa: 8, hr: 10, sp: 252, cd: 0.8, r: 15, mp: 0, range: 0 },
-  archer: { aa: 20, hr: 8, sp: 166, cd: 1.3, r: 13, mp: 0, range: 270 }, mage: { aa: 18, hr: 8, sp: 166, cd: 1.4, r: 12, mp: 999, range: 200 },
+  archer: { aa: 20, hr: 8, sp: 166, cd: 0.9, r: 13, mp: 0, range: 270 }, mage: { aa: 18, hr: 8, sp: 166, cd: 1.4, r: 12, mp: 999, range: 200 },
   cleric: { aa: 20, hr: 12, sp: 180, cd: 1, r: 12, mp: 999, range: 0 }, shield: { aa: 8, hr: 10, sp: 153, cd: 1.1, r: 14, mp: 0, range: 0 },
 };
 const HERO_STATS = [...STAT5, 'aa', 'hr', 'sp', 'cd', 'r', 'mp', 'range'];
@@ -82,9 +82,9 @@ const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer
 const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
 const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
 // 표에 적힌 공격 병과별 최종 피해 배율.
-const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1.5, archer: 1.5, military: 1.5, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1.2, military: 1.2, cavalry: 0.5 }, spear: { spear: 1, sword: 1.2, archer: 1.2, military: 1.2, cavalry: 1.2 }, archer: { archer: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, military: 1.5 }, military: { military: 1, sword: 0.8, spear: 0.8, cavalry: 0.5, archer: 0.67 } };
-// 상성 우세(배율 > 1)의 피해 효율을 50% 더 높인다 (v0.1.101). 불리(배율 < 1)는 표 그대로.
-const MATCHUP_BONUS = 1.5;
+const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1.2, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 0.8 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
+// CLASS_DAMAGE 가 최종 피해 배율이다. 별도 우세 보너스를 겹치지 않는다.
+const MATCHUP_BONUS = 1;
 const DASH_BASE = 1, DASH_EXTRA = 0.5;   // 돌진 충격 피해 = 기본 1배 + 추가분(1 + 밀친 칸×0.5) × 0.5 — 추가 피해 효율 50% 감소 (이전: 2 + 밀친 칸×0.5)
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 // ITEM: 이름 있는 장수만 장착. owner가 있는 고유 장비는 해당 장수 전용이다.
@@ -118,7 +118,7 @@ const SPELL = {
   heal: { name: '치유', kind: 'heal', mp: 6, range: 130, cd: 1.2 },
 };
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
-const MAGIC = 1;   // 마법 피해 배율 (원작 수치를 이 프로토의 체력 규모에 맞춘다)
+const MAGIC = 1;   // 장풍은 일반 궁병의 실효 사격 DPS 대비 약 4.8배, 광역 주문은 다중 타격으로 효율을 얻는다
 const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6, pass: 2 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 const TRAIT_TIME = 5, AURA_RANGE = 150;
