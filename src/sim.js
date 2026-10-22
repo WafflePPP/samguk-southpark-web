@@ -162,15 +162,15 @@ const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, (((TITLE_EFFECT[u.sub
 const ARMIES = [
   { team: 'player', name: '1분대', at: [5, 18], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'player', name: '2분대', at: [5, 25], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', weak: 0.8, name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.8, name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', weak: 0.8, name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', weak: 0.8, name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.8, name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.8, name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', weak: 0.71, name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.71, name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.71, name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', weak: 0.71, name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.71, name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.71, name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
   { team: 'enemy', name: '조운군', at: [45, 27], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', weak: 0.8, name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', weak: 0.8, name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.71, name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.71, name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'player', name: '3분대', at: [5, 11], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
@@ -582,6 +582,12 @@ function sidestep(S, u, gx, gy) {   // 앞이 막혔을 때: 목표에 더 가�
   }
   return best;
 }
+function hopOver(S, u, gx, gy) {   // 앞이 같은 편으로 막혀 있으면 그 유닛들을 넘어 첫 빈 칸(최대 3칸 앞)으로 건너간다 — 아군끼리는 막고 있어도 이동이 자유롭다
+  const p = astar(S, u, gx, gy, true); if (!p || !p.length) return null;
+  const k0 = ti(p[0].tx, p[0].ty); if (!S.occ[k0] || !sameTeam(S, u, S.occ[k0])) return null;
+  for (let i = 1; i < Math.min(p.length, 3); i++) { const k = ti(p[i].tx, p[i].ty); if (!S.occ[k]) return okTile(S, p[i].tx, p[i].ty) ? p[i] : null; if (!sameTeam(S, u, S.occ[k])) return null; }
+  return null;
+}
 function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는다 → 'arrived' | 'moving' | 'blocked'
   if (u.tx === gx && u.ty === gy) return 'arrived';
   if (u.waitT > 0 || u.root > 0) return 'blocked';
@@ -598,10 +604,11 @@ function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는�
       }
     }
   }
+  let hop = false; if (!nxt) { const h = hopOver(S, u, gx, gy); if (h) { nxt = h; hop = true; u.path = null; } }
   if (!nxt) { u.waitT = 0.05 + cur.rnd() * 0.05; u.stuck += u.waitT; return 'blocked'; }
   if (u.path && u.path[0] === nxt) u.path.shift();
   const ally = S.occ[ti(nxt.tx, nxt.ty)] ? canSwap(S, u, nxt) : null;
-  if (ally) beginSwap(S, u, ally); else beginStep(S, u, nxt.tx, nxt.ty, phasing ? stepDur(S, u, nxt.tx, nxt.ty) * cheb(u, nxt) : undefined);
+  if (ally) beginSwap(S, u, ally); else beginStep(S, u, nxt.tx, nxt.ty, phasing || hop ? stepDur(S, u, nxt.tx, nxt.ty) * cheb(u, nxt) : undefined);
   return 'moving';
 }
 const retreating = u => !!u.order && (u.order.type === 'retreat' || u.order.type === 'flee');   // 후퇴·도주 중: 다른 행동(공격·특수기·마법·이동 입력·집중 공격)을 할 수 없다
@@ -644,6 +651,11 @@ function pickTarget(S, u) {   // 대상 점수 = −거리(칸) + 8(사거리 6�
 }
 function engage(S, u, t, canMove) {
   if (!t || !live(t) || t.team === u.team) return;
+  if (u.cls === 'cavalry' && canMove && !handCtl(S, u)) {   // 기병은 항상 적의 후면(등 뒤)에서 공격한다: 앞쪽에서 닿더라도 후면 칸으로 돌아가며, 3초 넘게 못 돌아가면 그냥 공격
+    if (u.flankTgt !== t) { u.flankTgt = t; u.flankSince = null; }
+    if ((u.x - t.x) * Math.cos(t.face) + (u.y - t.y) * Math.sin(t.face) < 0) u.flankSince = null;
+    else { u.flankSince ??= S.t; if (S.t - u.flankSince < 3) { const k = freeAdj(S, u, t); if (k >= 0 && k !== ti(u.tx, u.ty)) { stepToward(S, u, k % MW, k / MW | 0); return; } } }
+  }
   if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
   if (!canMove) return;
   if (u.range > 0) { stepToward(S, u, t.tx, t.ty); return; }
@@ -656,7 +668,8 @@ function freeAdj(S, u, t) {
   let best = -1, bd = 1e9;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     if (!dx && !dy) continue; const x = t.tx + dx, y = t.ty + dy; if (!inMap(x, y)) continue;
-    const k = ti(x, y), d = Math.hypot(x - u.tx, y - u.ty); if (d < bd && ok(k)) { bd = d; best = k; }
+    let d = Math.hypot(x - u.tx, y - u.ty); if (u.cls === 'cavalry' && !handCtl(S, u)) d += 3 * (1 + (dx * Math.cos(t.face) + dy * Math.sin(t.face)) / Math.hypot(dx, dy));   // 기병: 적이 바라보는 쪽(앞)은 멀리, 등 뒤(후면)는 가깝게 쳐서 후면을 노린다
+    const k = ti(x, y); if (d < bd && ok(k)) { bd = d; best = k; }
   }
   u.claimT = S.t; return u.claim = best;
 }
@@ -722,11 +735,13 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   if (u.cdT > 0 || u.stun > 0) return false;
   if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range);
     if (t && (any || dist(u, t) > TILE * 1.5)) {
-      let ok = true;
-      if (S.tactics >= 2) {   // 후열 대상이거나 우리 편이 대상 주변에 2명 이상 있을 때, 앞 칸이 아군에게 막혀 있지 않을 때만 돌진 (3초 넘게 조건이 안 맞으면 그냥 돌진) (AI-B-03)
+      const behind = (u.x - t.x) * Math.cos(t.face) + (u.y - t.y) * Math.sin(t.face) < 0;   // 기병은 적의 후면(등 뒤)에서만 돌진한다 — 앞에서 마주 보고는 돌진하지 않고 후면으로 돌아간다
+      let ok = behind;
+      if (ok && S.tactics >= 2) {   // 후열 대상이거나 우리 편이 대상 주변에 2명 이상 있을 때, 앞 칸이 아군에게 막혀 있지 않을 때만 돌진 (AI-B-03)
         const near = S.units.filter(m => m !== u && live(m) && m.team === u.team && dist(m, t) <= 2 * TILE).length, ang = Math.atan2(t.y - u.y, t.x - u.x), fx = u.tx + Math.round(Math.cos(ang)), fy = u.ty + Math.round(Math.sin(ang)), blocked = inMap(fx, fy) && S.occ[ti(fx, fy)] && S.units[S.occ[ti(fx, fy)] - 1] && S.units[S.occ[ti(fx, fy)] - 1].team === u.team;
-        ok = (isBack(t) || near >= 2) && !blocked; if (!ok) { u.dashSince ??= S.t; if (S.t - u.dashSince >= 3) ok = true; } else u.dashSince = null;
+        ok = (isBack(t) || near >= 2) && !blocked;
       }
+      if (!ok) { u.dashSince ??= S.t; if (S.t - u.dashSince >= 3) ok = true; } else u.dashSince = null;   // 3초 넘게 조건이 안 맞으면(후면으로 못 돌아가는 등) 그냥 돌진
       if (ok && useSpecial(S, u, t.x, t.y)) { u.dashSince = null; return true; }
     }
   }
