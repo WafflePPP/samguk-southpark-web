@@ -17,21 +17,24 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false, supportOpen = false, titleNotice = '';
 // 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
 const STAGES = [
-  { id: 'chenliu', name: '진류', region: '연주', faction: '여포', stage: 1, level: 2, difficulty: '초급', note: '출발·정비', theme: 'plains', x: 850, y: 90, owner: 'player', links: ['puyang'], reinforce: 0, mapSeed: 5 },
-  { id: 'puyang', name: '복양', region: '연주', faction: '조조', stage: 2, level: 2, difficulty: '초급', note: '평야 전초', theme: 'plains', x: 740, y: 175, owner: 'enemy', links: ['chenliu', 'dingtao'], reinforce: 1, mapSeed: 7 },
-  { id: 'dingtao', name: '정도', region: '연주', faction: '조조', stage: 3, level: 4, difficulty: '초급', note: '강가 넓은 여울', theme: 'riverside', wideRiver: true, x: 620, y: 270, owner: 'enemy', links: ['puyang', 'changyi', 'xiapi'], reinforce: 1, mapSeed: 11 },
-  { id: 'changyi', name: '창읍', region: '연주', faction: '조조', stage: 4, level: 6, difficulty: '중급', note: '평야 교전', theme: 'plains', x: 470, y: 215, owner: 'enemy', links: ['dingtao', 'rencheng'], reinforce: 2, mapSeed: 13 },
-  { id: 'xiapi', name: '하비', region: '서주', faction: '유비', stage: 5, level: 8, difficulty: '중급', note: '성채 전초', theme: 'fortress', x: 610, y: 395, owner: 'enemy', links: ['dingtao', 'xiaopei'], reinforce: 2, mapSeed: 17 },
-  { id: 'rencheng', name: '임성', region: '연주', faction: '조조', stage: 6, level: 10, difficulty: '중급', note: '산악 협로', theme: 'mountain', x: 350, y: 310, owner: 'enemy', links: ['changyi', 'tanxian'], reinforce: 3, mapSeed: 19 },
-  { id: 'xiaopei', name: '소패', region: '서주', faction: '유비', stage: 7, level: 14, difficulty: '상급', note: '평야 방어선', theme: 'plains', x: 530, y: 500, owner: 'enemy', links: ['xiapi', 'pengcheng'], reinforce: 3, mapSeed: 23 },
-  { id: 'pengcheng', name: '팽성', region: '서주', faction: '유비', stage: 8, level: 18, difficulty: '상급', note: '강가 도하', theme: 'riverside', wideRiver: true, x: 430, y: 575, owner: 'enemy', links: ['xiaopei', 'guangling'], reinforce: 4, mapSeed: 29 },
-  { id: 'guangling', name: '광릉', region: '서주', faction: '유비', stage: 9, level: 24, difficulty: '최상', note: '강가 관문', theme: 'riverside', wideRiver: true, x: 260, y: 440, owner: 'enemy', links: ['pengcheng', 'tanxian'], reinforce: 4, mapSeed: 31 },
-  { id: 'tanxian', name: '담현', region: '서주', faction: '유비', stage: 10, level: 30, difficulty: '최상', note: '성채 결전', theme: 'fortress', x: 310, y: 620, owner: 'enemy', links: ['rencheng', 'guangling'], reinforce: 5, mapSeed: 37 },
+  { id: 'chenliu', name: '진류', region: '연주', faction: '여포', stage: 1, level: 2, difficulty: '초급', note: '출발·정비', theme: 'plains', x: 880, y: 350, owner: 'player', links: ['puyang'], reinforce: 0, mapSeed: 5 },
+  { id: 'puyang', name: '복양', region: '연주', faction: '조조', stage: 2, level: 4, difficulty: '초급', note: '공통 진군로', theme: 'plains', x: 750, y: 350, owner: 'enemy', links: ['chenliu', 'yanjin', 'xiaopei'], reinforce: 1, mapSeed: 7 },
+  { id: 'yanjin', name: '연진', region: '연주', faction: '조조', stage: 3, level: 8, difficulty: '초급', note: '조조군 전초', theme: 'riverside', wideRiver: true, x: 620, y: 190, owner: 'enemy', links: ['puyang', 'guandu'], reinforce: 1, mapSeed: 11 },
+  { id: 'xiaopei', name: '소패', region: '서주', faction: '유비', stage: 4, level: 8, difficulty: '초급', note: '유비군 전초', theme: 'plains', x: 640, y: 510, owner: 'enemy', links: ['puyang', 'pengcheng'], reinforce: 1, mapSeed: 13 },
+  { id: 'guandu', name: '관도', region: '연주', faction: '조조', stage: 5, level: 16, difficulty: '중급', note: '수도 외곽 관문', theme: 'fortress', x: 470, y: 145, owner: 'enemy', links: ['yanjin', 'xuchang'], reinforce: 3, mapSeed: 17 },
+  { id: 'pengcheng', name: '팽성', region: '서주', faction: '유비', stage: 6, level: 16, difficulty: '중급', note: '평야 방어선', theme: 'plains', x: 510, y: 555, owner: 'enemy', links: ['xiaopei', 'guangling'], reinforce: 3, mapSeed: 19 },
+  { id: 'guangling', name: '광릉', region: '서주', faction: '유비', stage: 7, level: 22, difficulty: '상급', note: '강가 관문', theme: 'riverside', wideRiver: true, x: 380, y: 475, owner: 'enemy', links: ['pengcheng', 'langya'], reinforce: 4, mapSeed: 23 },
+  { id: 'langya', name: '낭야', region: '서주', faction: '유비', stage: 8, level: 26, difficulty: '상급', note: '수도 외곽 산성', theme: 'mountain', x: 280, y: 575, owner: 'enemy', links: ['guangling', 'xiapi'], reinforce: 4, mapSeed: 29 },
+  { id: 'xuchang', name: '허창', region: '연주', faction: '조조', stage: 9, level: 32, difficulty: '최상', note: '조조군 수도', theme: 'fortress', x: 300, y: 85, owner: 'enemy', links: ['guandu'], reinforce: 5, mapSeed: 31, capital: true },
+  { id: 'xiapi', name: '하비', region: '서주', faction: '유비', stage: 10, level: 32, difficulty: '최상', note: '유비군 수도', theme: 'fortress', x: 145, y: 500, owner: 'enemy', links: ['langya'], reinforce: 5, mapSeed: 37, capital: true },
 ];
-const START_STAGE = 'chenliu', FINAL_STAGE = 'tanxian';
+const START_STAGE = 'chenliu', CAPITALS = { '조조': 'xuchang', '유비': 'xiapi' };
 const stageById = id => STAGES.find(s => s.id === id);
+const campaignWon = () => Object.values(CAPITALS).every(id => stageById(id).owner === 'player');
+const capitalFor = force => CAPITALS[(stageById(force.home) || stageById(force.at)).faction] || START_STAGE;
 const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy');
-const RESERVE_LEADERS = ['guo', 'xuchu', 'zhanghe', 'machao', 'xuhuang', 'zhangfei', 'pangtong', 'jiangwei', 'weiyan'];
+const STAGE_LEADERS = ['dian', 'xia', 'guan', 'xun', 'zhao', 'huang', 'kong', 'cao', 'liubei'];
+const RESERVE_LEADERS = ['xuchu', 'guo', 'zhangfei', 'zhanghe', 'machao', 'pangtong', 'jiangwei', 'xuhuang', 'weiyan'];
 const THEME_NAME = { plains: '평야', mountain: '산악', riverside: '강가', fortress: '성채' };
 const FACTION_STYLE = {
   '여포': { main: '#2e77c7', light: '#cce8ff', dark: '#163b70' },
@@ -41,7 +44,7 @@ const FACTION_STYLE = {
 const stageFaction = stage => stage.owner === 'player' ? '여포' : stage.faction;
 const THEME_UNITS = { plains: ['ecav', 'esword', 'earcher'], mountain: ['esword', 'eshield', 'earcher'], riverside: ['earcher', 'esword', 'eshield'], fortress: ['eshield', 'earcher', 'esword'] };
 const ROUT_CHANCE = { 초급: 0.09, 중급: 0.075, 상급: 0.055, 최상: 0.035 };
-const EARLY_SUPPORT = { xiapi: 12, rencheng: 10, tanxian: 6 };
+const EARLY_SUPPORT = { guandu: 10, langya: 10, xuchang: 6, xiapi: 6 };
 const EXPEDITION_INTERVAL = 5, EXPEDITION_PER_CITY = 1;   // 도시당 기본 원정 군단 수 (v0.1.126: 2 → 1, 절반)
 const GARRISON_BY_STAGE = [0, 0, 3, 4, 4, 5, 5, 6, 6, 7, 7], garrisonTarget = stage => GARRISON_BY_STAGE[stage.stage] || 7;
 const tripleEnemyUnits = (units, pool, offset = 0) => units.concat(Array.from({ length: Math.min(Sim.ARMY_MAX, units.length * 3) - units.length }, (_, n) => pool[(offset + n) % pool.length]));
@@ -62,7 +65,7 @@ function addEnemyRoleForce(stage, role, n, at, offset = 0) {
   enemyForces.push(force);
 }
 for (let i = 0; i < BASE_ENEMIES.length; i++) {
-  const stage = STAGES[i + 1], army = BASE_ENEMIES[i], pool = THEME_UNITS[stage.theme], add = stage.reinforce, protect = stage.stage >= 7;
+  const stage = STAGES[i + 1], army = BASE_ENEMIES.find(a => a.leader === STAGE_LEADERS[i]), pool = THEME_UNITS[stage.theme], add = stage.reinforce, protect = stage.stage >= 7;
   const units = army.units.concat(Array.from({ length: add }, (_, n) => pool[(i + n) % pool.length]));
   enemyForces.push(setEnemyRole({ id: enemyForces.length, at: stage.id, active: true, army: { ...army, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(units, pool, i) } }, stage, 'garrison'));
   const leader = RESERVE_LEADERS[i], size = Math.min(8, 3 + Math.ceil(stage.stage / 2));
@@ -80,20 +83,20 @@ function fillEnemyRoleRatio() {
 }
 function applyGarrisonCurve() { for (const stage of STAGES.slice(1)) enemyForces.filter(f => f.active && f.home === stage.id && f.role === 'garrison').slice(garrisonTarget(stage)).forEach(f => f.active = false); fillEnemyRoleRatio(); }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
-const campaign = { at: START_STAGE, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: '진류에서 연주·서주 원정을 시작한다.' };
+const campaign = { at: START_STAGE, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: '진류에서 조조군 허창과 유비군 하비 공략을 시작한다.' };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [
   { id: 1, name: '신규 군단 1', at: START_STAGE, target: null, units: Sim.ARMIES.filter(a => a.team === 'player').flatMap(a => a.units), growth: [{ item: 'sky_halberd' }, ...Array(17).fill(null)] },
   { id: 2, name: '신규 군단 2', at: START_STAGE, target: null, units: ['gao', 'sword', 'shield', 'sword', 'shield', 'spear', 'chengong', 'mage', 'mage', 'shield', 'sword', 'spear', 'lulingqi', 'cav', 'cav', 'cav', 'archer', 'archer'], growth: Array(18).fill(null) },
 ];
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 3, SAVE_SLOTS = 3,   // v3: 연주·서주와 여포군 시나리오 — 이전 저장은 호환되지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 4, SAVE_SLOTS = 3,   // v4: 조조·유비 수도 이원화 지도 — 이전 저장은 호환되지 않는다
   INITIAL_CAMPAIGN = JSON.stringify({ owners: STAGES.map(s => s.owner), enemyForces, roster });
 let activeSaveSlot = 1, saveSlotMode = null;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function resetCampaignData() {
   const data = JSON.parse(INITIAL_CAMPAIGN); STAGES.forEach((s, i) => s.owner = data.owners[i]); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
-  Object.assign(campaign, { at: START_STAGE, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: '진류에서 연주·서주 원정을 시작한다.' });
+  Object.assign(campaign, { at: START_STAGE, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: '진류에서 조조군 허창과 유비군 하비 공략을 시작한다.' });
 }
 function saveCampaign(slot = activeSaveSlot) {
   activeSaveSlot = slot;
@@ -130,6 +133,11 @@ function restoreCampaign(data) {
   return true;
 }
 function defeatCampaign(message) { try { localStorage.removeItem(saveKey(activeSaveSlot)); if (activeSaveSlot === 1) localStorage.removeItem(SAVE_KEY); } catch (e) { /* 무시 */ } S = null; state = 'title'; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; saveSlotMode = null; titleNotice = message; }
+function completeCampaignIfWon() {
+  if (!campaignWon()) return false;
+  const active = roster[campaign.corps]; campaign.completed = true; campaign.at = active ? active.at : campaign.at; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; campaign.pendingEncounter = null; campaign.movement = []; campaign.destination = null; campaign.notice = '조조군 허창과 유비군 하비를 모두 함락했다.';
+  S = null; state = 'title'; moveSelectOpen = false; exploreSelectOpen = false; saveSlotMode = null; titleNotice = '허창과 하비를 모두 함락하여 원정에서 승리했습니다!'; saveCampaign(); return true;
+}
 let mapTool = null, scoutView = null, diplomacyRnd = Math.random;   // 지도 도구(정찰·외교) 선택 상태 / 정찰 보고 창
 let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0, exploreSelectOpen = false, explorePage = 0;
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '화살 5발 연속 사격', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
@@ -211,7 +219,7 @@ function startBattle(stage, explore = false) {
   return true;
 }
 function startCampaign() {
-  state = 'map'; S = null; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps'; campaign.notice = '이동 버튼에서 군단과 이동할 도시를 선택하세요.';
+  state = 'map'; S = null; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps'; campaign.notice = campaign.completed ? '허창과 하비를 모두 함락한 승리 기록입니다.' : '이동 버튼에서 군단과 이동할 도시를 선택하세요.';
 }
 function startNewGame() { resetCampaignData(); titleNotice = ''; startCampaign(); saveCampaign(); }
 function startNewFromTitle() { activeSaveSlot = Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).find(slot => !hasCampaign(slot)) || activeSaveSlot; startNewGame(); }
@@ -380,16 +388,17 @@ function finishBattle() {
   const turnEncounter = campaign.pendingEncounter; applyBattleResults(); const active = roster[campaign.corps], lostHome = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === START_STAGE;
   const routed = new Set(S ? S.armies.filter(A => A.team === 'enemy' && A.routed).map(A => A.forceId) : []);
   for (const force of enemyForces.filter(f => f.active && routed.has(f.id) && campaign.battle && f.at === campaign.battle.id)) {
-    const fallback = route(force.at, FINAL_STAGE), back = force.prevAt && stageById(force.prevAt) ? force.prevAt : fallback[1]; if (back) force.at = back; else force.active = false; force.prevAt = null;
+    const fallback = route(force.at, capitalFor(force)), back = force.prevAt && stageById(force.prevAt) ? force.prevAt : fallback[1]; if (back) force.at = back; else force.active = false; force.prevAt = null;
   }
   if (S && S.over === 'win' && campaign.battle) {
-    for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id)) { const path = route(force.at, FINAL_STAGE); if (path.length > 1) force.at = path[1]; else force.active = false; }
+    for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id)) { const path = route(force.at, capitalFor(force)); if (path.length > 1) force.at = path[1]; else force.active = false; }
     campaign.battle.owner = 'player'; const prize = captureReward(campaign.battle), drops = battleDrops(); campaign.notice = `${campaign.battle.name}을 점령했다.${prize ? ' 점령 보상: ' + prize + '.' : ''}${drops.length ? ' 전리품: ' + drops.join(', ') + '.' : ''}`;
   }
   else if (campaign.explore) campaign.notice = `${campaign.battle.name} 탐색을 마쳤다.`;
   else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.invasion && campaign.battle) campaign.battle.owner = 'enemy'; if (campaign.from) active.at = campaign.from; }
   if (lostHome) { defeatCampaign('진류 방어에 실패하여 원정에 패배했습니다.'); return; }
   campaign.at = active.at; campaign.destination = active.target; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false;
+  if (completeCampaignIfWon()) return;
   if (turnEncounter) finishMovementStep(); else saveCampaign();
 }
 const army = () => S.armies[armyIdx];
@@ -726,7 +735,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.149', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.150', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -768,7 +777,7 @@ function drawStageMap() {
     const on = s === here, faction = stageFaction(s), style = FACTION_STYLE[faction], targeted = s.id === (campaign.destination || corps.target);
     ctx.fillStyle = style.main; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 22 : 16, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? COLORS.gold : style.dark; ctx.lineWidth = on ? 5 : 3; ctx.stroke();
     drawMapFlag(s.x + 10, s.y - 3, faction, faction[0], on);
-    label(`${s.stage}. ${s.name}`, s.x, s.y + 38, 18, on ? COLORS.goldSel : '#f3eed8', 'center');
+    label(`${s.capital ? '★ ' : ''}${s.stage}. ${s.name}`, s.x, s.y + 38, 18, on ? COLORS.goldSel : '#f3eed8', 'center');
     label(`${THEME_NAME[s.theme]} · ${s.difficulty}`, s.x, s.y + 61, 14, s.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'center');
     if (targeted) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 28, 0, TAU); ctx.stroke(); }
     btns.push({ id: 'stage:' + s.id, x: s.x - 32, y: s.y - 36, w: 72, h: 84 });
@@ -778,9 +787,9 @@ function drawStageMap() {
   label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1025, 96, 15, COLORS.silver);
   label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 130, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
   ['여포', '조조', '유비'].forEach((faction, i) => { ctx.fillStyle = FACTION_STYLE[faction].main; ctx.fillRect(1025 + i * 70, 151, 12, 12); label(faction, 1042 + i * 70, 162, 12, FACTION_STYLE[faction].light); });
-  label('연주 진류 → 정도 → 2개 진군로 → 서주 담현', 1025, 184, 15, COLORS.gold);
+  label(`목표 수도: 허창 ${stageById('xuchang').owner === 'player' ? '함락' : '미점령'} · 하비 ${stageById('xiapi').owner === 'player' ? '함락' : '미점령'}`, 1025, 184, 14, COLORS.gold);
   STAGES.forEach((s, i) => {
-    const faction = stageFaction(s); label(`${s.stage}. ${s.region}·${s.name} · ${faction} · Lv${s.level}`, 1025, 210 + i * 21, 12, s === here ? COLORS.goldSel : FACTION_STYLE[faction].light);
+    const faction = stageFaction(s); label(`${s.stage}. ${s.region}·${s.name}${s.capital ? '·수도' : ''} · ${faction} · Lv${s.level}`, 1025, 210 + i * 21, 12, s === here ? COLORS.goldSel : FACTION_STYLE[faction].light);
     label(s.stage === 1 && !stageEnemyCount(s) ? '정비' : `${enemyRolesAt(s)} · ${stageEnemyCount(s)}명 ⚔${enemyPowerAt(s)}`, 1233, 210 + i * 21, 11, s.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'right');
   });
   button('campaign:scout', 1025, 418, 100, 34, '정찰', mapTool === 'scout', 15); button('campaign:diplomacy', 1135, 418, 100, 34, '외교', mapTool === 'diplomacy', 15);
@@ -1033,7 +1042,7 @@ function uiClick(id) {
   }
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
   if (id === 'campaign:intel:continue') { const encounter = campaign.pendingEncounter; if (!encounter) return; if (encounter.unopposed) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === START_STAGE) { defeatCampaign('진류가 함락되어 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name}이 무방비로 함락되었습니다.`; finishMovementStep(); return; } encounter.intelSeen = true; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
-  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${prize ? ' 점령 보상: ' + prize + '.' : ''}`; finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
+  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${prize ? ' 점령 보상: ' + prize + '.' : ''}`; if (!completeCampaignIfWon()) finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
   if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / 8), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
   if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; if (encounter.invasion) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === START_STAGE) { defeatCampaign('진류 방어를 포기하여 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name} 방어를 포기했다.`; } else { const mover = roster[encounter.moverIndex]; if (mover) mover.at = encounter.from; campaign.notice = `${encounter.stage.name} 공격을 포기하고 철수했다.`; } finishMovementStep(); return; }
   if (/^campaign:response:\d+$/.test(id)) {
