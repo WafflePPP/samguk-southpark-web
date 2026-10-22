@@ -659,7 +659,10 @@ function engage(S, u, t, canMove) {
   if (!canMove) return;
   if (u.range > 0) { stepToward(S, u, t.tx, t.ty); return; }
   const k = freeAdj(S, u, t);   // 근접: 적에게 인접한 빈 칸을 목표로 (다른 유닛이 잡은 칸 제외)
-  if (k >= 0) stepToward(S, u, k % MW, k / MW | 0); else if (cheb(u, t) > 2) stepToward(S, u, t.tx, t.ty);
+  if (k >= 0) { stepToward(S, u, k % MW, k / MW | 0); return; }
+  const alt = openEnemy(S, u, t);
+  if (alt) { if (u.order.type === 'charge') { u.order.tgt = alt.target; u.order.tgtT = S.t; } stepToward(S, u, alt.claim % MW, alt.claim / MW | 0); return; }
+  u.claim = -1; u.path = null; u.face = Math.atan2(t.y - u.y, t.x - u.x);   // 모든 전투 칸이 차 있으면 뒤에서 기다려 동선을 흔들지 않는다
 }
 function freeAdj(S, u, t) {
   const ok = k => { const x = k % MW, y = k / MW | 0; return cheb({ tx: x, ty: y }, t) === 1 && okTile(S, x, y) && (!S.occ[k] || S.occ[k] === u.id) && !S.units.some(v => v !== u && v.claim === k && v.claimT > S.t - 1 && live(v)); };
@@ -671,6 +674,15 @@ function freeAdj(S, u, t) {
     const k = ti(x, y); if (d < bd && ok(k)) { bd = d; best = k; }
   }
   u.claimT = S.t; return u.claim = best;
+}
+function openEnemy(S, u, except) {   // 현재 적 주변이 가득 찼으면 빈 공격 칸이 있는 가까운 적에게 분산한다
+  let target = null, claim = -1, best = 8 * TILE; u.claim = -1;
+  for (const e of S.units) {
+    if (!live(e) || e.team === u.team || e === except || dist(u, e) >= best) continue;
+    const k = freeAdj(S, u, e); if (k < 0) continue;
+    target = e; claim = k; best = dist(u, e);
+  }
+  u.claim = claim; u.claimT = S.t; return target && { target, claim };
 }
 function setFormation(A, type) {
   if (!FORMATION_NAME[type]) return false; A.formation = type;
