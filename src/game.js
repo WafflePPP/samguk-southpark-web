@@ -147,6 +147,7 @@ function completeCampaignIfWon() {
   S = null; state = 'title'; moveSelectOpen = false; exploreSelectOpen = false; diplomacyView = null; saveSlotMode = null; titleNotice = '허창과 하비를 모두 함락하여 원정에서 승리했습니다!'; saveCampaign(); return true;
 }
 let allyChoice = null, allyHelpIds = null;   // 동맹군과 같은 도시에서 전투 직전의 선택 {stage, explore, ids} / 도우기로 정한 동맹 군단 id
+let warnMove = null, diplomacyQueue = [];   // warnMove: 중립 도시 진입 경고 팝업 {id, stage} / diplomacyQueue: 한 번에 여러 외교 결과가 생길 때 순서대로 보여 줄 팝업
 let mapTool = null, scoutView = null, diplomacyView = null, diplomacyResult = null;   // diplomacyResult: 외교 결과 팝업 {title, lines, ok}   // 지도 도구(정찰·외교) 선택 상태 / 보고·외교 창
 let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0, exploreSelectOpen = false, explorePage = 0;
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '화살 5발 연속 사격', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
@@ -306,8 +307,12 @@ function route(from, to) {
   return [];
 }
 const moveTurns = corps => corps.target ? Math.max(0, route(corps.at, corps.target).length - 1) : 0;
-function moveCampaign(id) {
+function moveCampaign(id, confirmed = false) {
   const corps = roster[campaign.corps], next = stageById(id); if (!corps || !next) return;
+  if (!confirmed && corps.target !== next.id && corps.at !== next.id) {   // 경로에 중립 세력 도시가 있으면 전쟁 경고를 먼저 띄운다 (이동 도시를 고르는 단계)
+    const hit = route(corps.at, next.id).slice(1).map(stageById).find(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'neutral');
+    if (hit) { warnMove = { id, stage: hit }; return; }
+  }
   corps.target = corps.target === next.id || corps.at === next.id ? null : next.id; campaign.destination = corps.target;
   campaign.notice = corps.target ? `${corpsName(corps)}: ${stageById(corps.at).name} → ${next.name} · ${moveTurns(corps)}턴.${next.owner === 'enemy' && next.faction && relationOf(next.faction).status === 'neutral' ? ' ※ 중립 도시에 진입하면 전쟁이 시작됩니다.' : ''}` : `${corpsName(corps)}의 이동 계획을 취소했다.`;
   saveCampaign();
@@ -361,12 +366,12 @@ function continueCampaignTurn() {
 // 중립 세력(외교로 동맹·전쟁을 정하지 않은 세력)은 중립을 유지하다가, 아군 군단이 그 도시에 진입하면 즉시 전쟁이 된다 (명세 23).
 function enterNeutralCity(corps, stage) {
   if (!stage || stage.owner !== 'enemy' || !stage.faction || relationOf(stage.faction).status !== 'neutral') return;
-  setDiplomacy(stage.faction, 'war');
+  setDiplomacy(stage.faction, 'war', true);
   showDiplomacyResult(`${stage.faction}군과 전쟁 돌입`, [`${corpsName(corps)}이(가) 중립 도시 ${stage.name}에 진입했습니다.`, '관계: 중립 → 전쟁', '외교 없이 영토에 들어가 전쟁이 시작되었고, 이 도시의 군단과 교전합니다.'], false);
 }
 function endCampaignTurn() {
   campaign.turn++; campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null;
-  for (const [faction, relation] of Object.entries(campaign.relations)) if (relation.status === 'truce' && campaign.turn >= relation.truceUntil) { relation.status = 'war'; relation.truceUntil = 0; campaign.notice = `${faction}군과의 휴전이 끝나 전쟁 상태로 돌아갔다.`; }
+  for (const [faction, relation] of Object.entries(campaign.relations)) if (relation.status === 'truce' && campaign.turn >= relation.truceUntil) { relation.status = 'war'; relation.truceUntil = 0; campaign.notice = `${faction}군과의 휴전이 끝나 전쟁 상태로 돌아갔다.`; showDiplomacyResult(`${faction}군과 전쟁 재개`, ['휴전 기간이 끝났습니다.', '관계: 휴전 → 전쟁'], false); }
   roster.forEach((corps, index) => {
     const from = corps.at;
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.prevAt = from; corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
@@ -430,14 +435,14 @@ function useMapTool(stage) {
   const near = corpsNear(stage); if (!near.length) { campaign.notice = `${stage.name}은 군단이 같은 지역이나 연결된 지역에 있어야 합니다.`; return; }
   if (tool === 'scout') { scoutView = stage.id; campaign.notice = `${stage.name} 정찰 보고`; return; }
 }
-function showDiplomacyResult(title, lines, ok = true) { diplomacyResult = { title, lines, ok }; campaign.notice = title; }   // 외교 행위의 결과는 항상 팝업으로 알린다
-function setDiplomacy(faction, status) {
+function showDiplomacyResult(title, lines, ok = true) { const r = { title, lines, ok }; if (diplomacyResult) diplomacyQueue.push(r); else diplomacyResult = r; campaign.notice = title; }   // 외교 행위의 결과는 항상 팝업으로 알린다
+function setDiplomacy(faction, status, silent = false) {   // silent: 호출한 쪽이 따로 결과 팝업을 띄울 때
   const before = campaign.relations[faction] ? relationText(faction) : '전쟁';
   const relation = campaign.relations[faction] || (campaign.relations[faction] = { status: 'war', truceUntil: 0 });
   relation.status = status; relation.truceUntil = status === 'truce' ? campaign.turn + 20 : 0;
   if (status === 'war') fillEnemyRoleRatio();
   campaign.notice = `${faction}군과 ${status === 'truce' ? '20턴 휴전' : RELATION_NAME[status]} 상태가 되었다.`; diplomacyView = null; saveCampaign();
-  showDiplomacyResult(`${faction}군과의 외교: ${status === 'war' ? '전쟁 선포' : status === 'truce' ? '휴전 성립' : '동맹 성립'}`, [`관계: ${before} → ${relationText(faction)}`, status === 'war' ? '즉시 서로 공격할 수 있고, 적 도시에 수비·원정 군단이 다시 채워집니다.' : status === 'truce' ? `20턴 동안(${campaign.turn + 20}턴까지) 서로 침공하지 않습니다.` : '동맹이 되었습니다.' + (FACTION_ALLIES[faction] ? ` ${FACTION_ALLIES[faction]}군과는 상호 동맹 관계입니다.` : '')], status !== 'war');
+  if (!silent) showDiplomacyResult(`${faction}군과의 외교: ${status === 'war' ? '전쟁 선포' : status === 'truce' ? '휴전 성립' : '동맹 성립'}`, [`관계: ${before} → ${relationText(faction)}`, status === 'war' ? '즉시 서로 공격할 수 있고, 적 도시에 수비·원정 군단이 다시 채워집니다.' : status === 'truce' ? `20턴 동안(${campaign.turn + 20}턴까지) 서로 침공하지 않습니다.` : '동맹이 되었습니다.' + (FACTION_ALLIES[faction] ? ` ${FACTION_ALLIES[faction]}군과는 상호 동맹 관계입니다.` : '')], status !== 'war');
 }
 function finishBattle() {
   const turnEncounter = campaign.pendingEncounter; applyBattleResults(); const active = roster[campaign.corps], lostHome = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === START_STAGE;
@@ -791,7 +796,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.159', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.160', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -875,6 +880,7 @@ function drawStageMap() {
   else if (campaign.movement.length) drawMovementNotice();
   if (diplomacyResult) drawDiplomacyResult();   // 팝업은 대응 군단·이동 안내 창 위에 그려야 버튼이 가려지지 않는다
   if (allyChoice) drawAllyChoice();
+  if (warnMove) drawWarMoveWarn();
   if (saveSlotMode) drawSaveSlots();
 }
 function drawInvasionIntel() {
@@ -933,6 +939,14 @@ function drawAllyChoice() {
   button('campaign:ally:help', x + 60, y + h - 100, 270, 54, '동맹군과 함께 싸운다', true, 19); button('campaign:ally:retreat', x + w - 330, y + h - 100, 270, 54, '이전 도시로 퇴각', false, 19);
 }
 function alliedBack(corps, stage) { const id = corps && corps.prevAt && corps.prevAt !== stage.id ? corps.prevAt : (campaign.from && campaign.from !== stage.id ? campaign.from : stage.links.find(l => stageById(l).owner === 'player') || stage.links[0]); return id ? stageById(id) : null; }
+function drawWarMoveWarn() {   // 이동 경로에 중립 도시가 있을 때의 전쟁 경고 팝업
+  const w = 620, h = 270, x = (VW - w) / 2, y = (VH - h) / 2, s = warnMove.stage, f = s.faction;
+  ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, COLORS.danger, 4, 'rgba(8,20,25,.99)');
+  label('전쟁 경고', x + w / 2, y + 40, 18, COLORS.silver2, 'center'); label(f + '군 중립 도시 진입', x + w / 2, y + 84, 27, COLORS.danger, 'center');
+  label('이동 경로에 중립 세력 ' + f + '군의 ' + s.name + '이(가) 있습니다.', x + w / 2, y + 128, 17, COLORS.silver, 'center');
+  label('군단이 그 도시에 들어서면 즉시 전쟁이 시작됩니다.', x + w / 2, y + 162, 17, COLORS.silver, 'center');
+  button('campaign:warn:ok', x + w / 2 - 170, y + h - 60, 160, 38, '전쟁을 감수하고 이동', true, 16); button('campaign:warn:cancel', x + w / 2 + 10, y + h - 60, 160, 38, '이동 취소', false, 16);
+}
 function drawDiplomacyResult() {
   const r = diplomacyResult, w = 600, lines = r.lines || [], h = 190 + lines.length * 34, x = (VW - w) / 2, y = (VH - h) / 2, col = r.ok ? COLORS.gold : COLORS.danger;
   ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, col, 4, 'rgba(8,20,25,.99)');
@@ -1154,7 +1168,9 @@ function uiClick(id) {
     campaign.battle = null; campaign.invasion = false; campaign.at = corps ? corps.at : campaign.at; campaign.notice = `동맹 도시 ${c.stage.name}에서 ${back ? back.name : '이전 도시'}(으)로 퇴각했다.`;
     showDiplomacyResult('동맹군을 두고 퇴각', [`${corps ? corpsName(corps) : '군단'}이(가) ${c.stage.name}을 떠나 ${back ? back.name : '이전 도시'}(으)로 퇴각했습니다.`, '동맹군은 그 도시에 남아 싸웁니다.'], false); finishMovementStep(); return;
   }
-  if (id === 'campaign:diplomacy:ok') { diplomacyResult = null; return; }
+  if (id === 'campaign:warn:ok' && warnMove) { const w = warnMove; warnMove = null; moveCampaign(w.id, true); moveMode = 'corps'; moveSelectOpen = false; return; }
+  if (id === 'campaign:warn:cancel') { warnMove = null; moveMode = 'corps'; campaign.notice = '이동 계획을 취소했습니다.'; return; }
+  if (id === 'campaign:diplomacy:ok') { diplomacyResult = diplomacyQueue.shift() || null; return; }
   if (id === 'campaign:diplomacy:close') { diplomacyView = null; return; }
   if (/^campaign:diplomacy:(ally|truce|war)$/.test(id)) { const action = id.split(':')[2], relation = relationOf(diplomacyView); if (action === 'ally' && !['neutral', 'ally'].includes(relation.status) || action === 'truce' && !['war', 'truce'].includes(relation.status)) { const f = diplomacyView; diplomacyView = null; showDiplomacyResult('외교 실패', [`${f}군과 지금은 그 선택을 할 수 없습니다.`, `현재 관계: ${relationText(f)}`], false); return; } setDiplomacy(diplomacyView, action); return; }
   if (id === 'campaign:move') { mapTool = null; moveSelectOpen = true; moveMode = 'corps'; movePage = Math.floor(campaign.corps / 8); campaign.notice = '이동할 군단을 선택하세요.'; return; }
@@ -1193,7 +1209,7 @@ function uiClick(id) {
   if (id === 'roster:page:prev' || id === 'roster:page:next') { const pages = Math.max(1, Math.ceil((roster.length - 1) / 10)), d = id.endsWith('next') ? 1 : -1; rosterPage = (rosterPage + d + pages) % pages; return; }
   if (id.startsWith('roster:unit:')) { const [, , side, slot] = id.split(':'); pickRosterUnit(side, +slot); return; }
   if (id.startsWith('stage:') && mapTool) { useMapTool(stageById(id.slice(6))); return; }
-  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); moveMode = 'corps'; moveSelectOpen = false; } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
+  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); if (!warnMove) { moveMode = 'corps'; moveSelectOpen = false; } } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
   if (id === 'tut:skip') { finishTutorial(); return; }
@@ -1253,7 +1269,7 @@ cv.addEventListener('pointerdown', e => {
   const p = pos(e), b = hitBtn(p.x, p.y); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
   if (state === 'title') { if (mobile) goFullscreen(); if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); } else if (b && b.id === 'title:new') startNewFromTitle(); else if (b && b.id === 'title:load') saveSlotMode = 'load'; return; }
-  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && b.id.startsWith('campaign:diplomacy:') : scoutView ? b && b.id === 'campaign:scout:close' : exploreSelectOpen ? b && b.id.startsWith('campaign:explore:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
+  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && b.id.startsWith('campaign:diplomacy:') : scoutView ? b && b.id === 'campaign:scout:close' : exploreSelectOpen ? b && b.id.startsWith('campaign:explore:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { S.events.shift(); return; }
   if (S.over) { if (T - overAt > 1) finishBattle(); return; }
