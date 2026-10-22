@@ -161,15 +161,15 @@ const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, (((TITLE_EFFECT[u.sub
 const ARMIES = [
   { team: 'player', name: '1분대', at: [5, 18], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'player', name: '2분대', at: [5, 25], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', weak: 0.85, name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.85, name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.85, name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', weak: 0.85, name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.85, name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', weak: 0.85, name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
   { team: 'enemy', name: '조운군', at: [45, 27], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.85, name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', weak: 0.85, name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'player', name: '3분대', at: [5, 11], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
@@ -307,6 +307,7 @@ function createBattle(seed = 1, opts = {}) {
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
+      if (d.weak && d.weak !== 1) { u.maxHp = u.hp = Math.round(u.maxHp * d.weak); u.atk = Math.round(u.atk * d.weak); u.df = Math.round(u.df * d.weak); }   // 시나리오 군단 약화 배율 (HP·ATK·DF)
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
     });
