@@ -796,7 +796,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.162', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.163', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -903,18 +903,35 @@ function drawMovementNotice() {
   label(move.text, x + w / 2, y + 60, 14, COLORS.silver, 'center');
   button('campaign:movement:close', x + w / 2 - 66, y + h - 38, 132, 30, campaign.movementPage < pages - 1 ? '다음 군단' : campaign.pendingEncounter ? '계속' : '확인', true, 14);
 }
+const RESP_PAGE = 6;   // 대응 군단 선택 창 한 쪽에 보이는 군단 수
+function forceLine(f) { const faction = forceFaction(f), lead = Sim.U[f.army.leader] ? Sim.U[f.army.leader].name : f.army.name; return faction + '군 ' + lead + ' · ' + (f.role === 'garrison' ? '수비' : '원정') + ' Lv' + f.level + ' · ' + f.army.units.length + '명 · ⚔' + forcePow(f); }
+function responseForces(encounter) {   // 요격 때 보여 줄 정보: 도시를 공격하는 적 군단 / 동맹 도시라면 지원 가능한 동맹 군단
+  if (!encounter.invasion) return { attackers: [], allies: [] };
+  const at = enemyForces.filter(f => f.active && f.at === encounter.stage.id), allies = guestInfo(encounter.stage).allies;
+  return { attackers: at.filter(f => relationOf(forceFaction(f)).status === 'war'), allies };
+}
 function drawResponseSelect() {
-  const encounter = campaign.pendingEncounter, pageSize = 8, pages = Math.ceil(encounter.responders.length / pageSize), shown = encounter.responders.slice(campaign.responsePage * pageSize, campaign.responsePage * pageSize + pageSize);
+  const encounter = campaign.pendingEncounter, pageSize = RESP_PAGE, pages = Math.max(1, Math.ceil(encounter.responders.length / pageSize)), shown = encounter.responders.slice(campaign.responsePage * pageSize, campaign.responsePage * pageSize + pageSize), info = responseForces(encounter);
   ctx.fillStyle = 'rgba(10,12,20,.7)'; ctx.fillRect(0, 0, VW, VH);
-  const x = 300, y = 110, w = 680, h = 500; panel(x, y, w, h, COLORS.danger, 3, 'rgba(8,20,25,.98)');
-  label(`${encounter.stage.name} ${encounter.invasion ? '요격' : '공격'} · 대응 군단 선택`, x + w / 2, y + 42, 26, '#ffb06a', 'center');
-  label(`적 전투력 ⚔${enemyPowerAt(encounter.stage)} · 대응 가능 아군 ⚔${encounter.responders.reduce((n, i) => n + corpsPow(roster[i]), 0)}`, x + w / 2, y + 92, 15, COLORS.goldSel, 'center');
-  label(encounter.invasion ? '같은 도시 또는 연결된 도시의 군단이 요격할 수 있습니다.' : '도착한 군단으로 공격을 시작합니다.', x + w / 2, y + 76, 16, COLORS.silver, 'center');
-  shown.forEach((index, row) => { const corps = roster[index]; button(`campaign:response:${index}`, x + 40, y + 102 + row * 42, w - 80, 36, `${corpsName(corps)} · ${stageById(corps.at).name} · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, false, 16); });
+  const x = 240, y = 12, w = 800, h = 696; panel(x, y, w, h, COLORS.danger, 3, 'rgba(8,20,25,.98)');
+  label(encounter.stage.name + ' ' + (encounter.invasion ? '요격' : '공격') + ' · 대응 군단 선택', x + w / 2, y + 38, 26, '#ffb06a', 'center');
+  label(encounter.invasion ? '같은 도시 또는 연결된 도시의 군단이 요격할 수 있습니다.' : '도착한 군단으로 공격을 시작합니다.', x + w / 2, y + 70, 16, COLORS.silver, 'center');
+  label('적 전투력 ⚔' + enemyPowerAt(encounter.stage) + ' · 대응 가능 아군 ⚔' + encounter.responders.reduce((n, i) => n + corpsPow(roster[i]), 0), x + w / 2, y + 96, 15, COLORS.goldSel, 'center');
+  let cy = y + 124;
+  const block = (title, list, col, maxRows) => {
+    if (!list.length) return; label(title, x + 40, cy + 8, 15, col); cy += 24;
+    list.slice(0, maxRows).forEach(f => { label(forceLine(f), x + 56, cy + 8, 14, COLORS.silver); cy += 22; });
+    if (list.length > maxRows) { label('외 ' + (list.length - maxRows) + '개 군단', x + 56, cy + 8, 14, COLORS.silver2); cy += 22; }
+    cy += 6;
+  };
+  block('▼ 공격 세력 (' + [...new Set(info.attackers.map(forceFaction))].join('·') + '군 ' + info.attackers.length + '개 군단 · ⚔' + info.attackers.reduce((n, f) => n + forcePow(f), 0) + ')', info.attackers, '#ff9a7d', 4);
+  block('▼ 지원 가능한 동맹 군단 (' + [...new Set(info.allies.map(forceFaction))].join('·') + '군 ' + info.allies.length + '개 군단 · ⚔' + info.allies.reduce((n, f) => n + forcePow(f), 0) + ')', info.allies, '#8fd6ff', 2);
+  if (info.allies.length) { label('※ 대응 군단을 고르면 동맹군과 함께 싸울지 선택합니다.', x + 40, cy + 8, 14, COLORS.goldSel); cy += 26; }
+  shown.forEach((index, row) => { const corps = roster[index]; button('campaign:response:' + index, x + 40, cy + row * 42, w - 80, 36, corpsName(corps) + ' · ' + stageById(corps.at).name + ' · ' + corps.units.filter(Boolean).length + '/18명 · ⚔' + corpsPow(corps), false, 16); });
   button('campaign:response:prev', x + 40, y + h - 50, 90, 36, '◀', false, 18);
   button('campaign:response:abandon', x + w / 2 - 90, y + h - 50, 180, 36, encounter.invasion ? '방어 포기' : '공격 포기', false, 16);
   button('campaign:response:next', x + w - 130, y + h - 50, 90, 36, '▶', false, 18);
-  label(`${campaign.responsePage + 1}/${pages}`, x + w - 150, y + 44, 15, COLORS.silver, 'right');
+  label((campaign.responsePage + 1) + '/' + pages, x + w - 40, y + 38, 15, COLORS.silver, 'right');
 }
 function drawMoveSelect() {
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH);
@@ -1159,7 +1176,7 @@ function uiClick(id) {
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
   if (id === 'campaign:intel:continue') { const encounter = campaign.pendingEncounter; if (!encounter) return; if (encounter.unopposed) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === START_STAGE) { defeatCampaign('진류가 함락되어 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name}이 무방비로 함락되었습니다.`; finishMovementStep(); return; } encounter.intelSeen = true; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
   if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${prize ? ' 점령 보상: ' + prize + '.' : ''}`; if (!completeCampaignIfWon()) finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
-  if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / 8), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
+  if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / RESP_PAGE), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
   if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; if (encounter.invasion) { encounter.stage.owner = 'enemy'; if (encounter.stage.id === START_STAGE) { defeatCampaign('진류 방어를 포기하여 원정에 패배했습니다.'); return; } campaign.notice = `${encounter.stage.name} 방어를 포기했다.`; } else { const mover = roster[encounter.moverIndex]; if (mover) mover.at = encounter.from; campaign.notice = `${encounter.stage.name} 공격을 포기하고 철수했다.`; } finishMovementStep(); return; }
   if (/^campaign:response:\d+$/.test(id)) {
     const encounter = campaign.pendingEncounter, index = +id.slice(18), corps = roster[index]; if (!encounter || !encounter.responders.includes(index) || !corps) return;
