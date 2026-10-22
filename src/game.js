@@ -651,16 +651,17 @@ function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 �
   if (u.spells && u.spells.length) label(u.spells.map(k => SPELL[k].name).join('·'), x + w - 8, y + gh + 12, 14, COLORS.silver2, 'right');
   button('sel:ok', LEFT_W + VPW / 2 - 110, TB_H + vh - (mobile ? 92 : 70), 220, mobile ? 64 : 44, foe ? (mobile ? '확정 (집중 공격)' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
 }
-function drawMenu() {   // 시스템: 표시 설정·전투 설정
-  const items = [['m:pausesel', `선택 시 일시정지 [${SHOW.pauseSel ? 'ON' : 'OFF'}]`, SHOW.pauseSel], ['m:dmg', `피해량 표기 [${SHOW.dmg ? 'ON' : 'OFF'}]`, SHOW.dmg]];
-  if (mobile) items.push(['m:status', `장수 정보 [${SHOW.status ? 'ON' : 'OFF'}]`, SHOW.status]);
-  else items.push(['m:compact', `장수 정보 축소 [${tblCompact ? 'ON' : 'OFF'}]`, tblCompact], ['m:abil', tblAbility ? '표시 전환: 상태' : '표시 전환: 능력']);
-  items.push(['m:tutorial', '튜토리얼 다시 보기'], ['m:mode', mobile ? '화면 모드: 모바일 → PC' : '화면 모드: PC → 모바일']);
-  if (campaign.explore) items.push(['m:return', '탐색 종료 · 전략으로']); else items.push(['m:restart', '전투 다시 시작']);
-  items.push(['m:close', '닫기 (Esc)']);
-  const ih = mobile ? 54 : 38, st = mobile ? 62 : 44, w = 480, h = 70 + items.length * st, x = (VW - w) / 2, y = Math.max(6, (VH - h) / 2);
-  panel(x, y, w, h, COLORS.gold, 3); label('시스템', x + w / 2, y + 30, 22, COLORS.gold, 'center');
-  items.forEach((it, i) => button(it[0], x + 30, y + 56 + i * st, w - 60, ih, it[1], !!it[2], 18));
+function drawMenu() {   // 시스템: PC·모바일 공통 기능을 용도별 두 영역으로 구분한다
+  const display = [['m:pausesel', `캐릭터 선택 일시정지: ${SHOW.pauseSel ? 'ON' : 'OFF'}`, SHOW.pauseSel], ['m:dmg', `피해량 표시: ${SHOW.dmg ? 'ON' : 'OFF'}`, SHOW.dmg]];
+  if (mobile) display.push(['m:status', `조작 장수 정보: ${SHOW.status ? 'ON' : 'OFF'}`, SHOW.status]);
+  else display.push(['m:compact', tblCompact ? '하단 장수 정보: 축소' : '하단 장수 정보: 확대', !tblCompact], ['m:abil', tblAbility ? '하단 표 내용: 능력치' : '하단 표 내용: 상태']);
+  const game = [['m:tutorial', '조작법 다시 보기'], ['m:mode', mobile ? 'PC 화면으로 전환' : '모바일 화면으로 전환'], [campaign.explore ? 'm:return' : 'm:restart', campaign.explore ? '탐색 종료 · 전략으로' : '전투 다시 시작'], ['m:close', mobile ? '전투로 돌아가기' : '전투로 돌아가기 (Esc)']];
+  const ih = mobile ? 56 : 42, st = ih + 10, w = mobile ? 820 : 760, h = 112 + Math.max(display.length, game.length) * st, x = (VW - w) / 2, y = (VH - h) / 2, gap = 18, cw = (w - 72 - gap) / 2;
+  panel(x, y, w, h, COLORS.gold, 3, 'rgba(10,12,20,.96)');
+  label(mobile ? '모바일 시스템' : 'PC 시스템', x + 24, y + 30, 24, COLORS.gold); label('설정 중에는 전투가 일시정지됩니다', x + w - 24, y + 30, 15, COLORS.silver2, 'right');
+  label('전투 표시', x + 28, y + 68, 18, COLORS.gold); label('화면 · 게임', x + 44 + cw + gap, y + 68, 18, COLORS.gold);
+  display.forEach((it, i) => button(it[0], x + 26, y + 82 + i * st, cw, ih, it[1], !!it[2], mobile ? 18 : 16));
+  game.forEach((it, i) => button(it[0], x + 44 + cw + gap, y + 82 + i * st, cw, ih, it[1], false, mobile ? 18 : 16));
 }
 function finishTutorial() {
   tutorialStep = -1; tutorialSeen = true;
@@ -707,7 +708,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.145', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.146', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '오른쪽 끝: 부대 버튼 · 왼쪽 위: 시스템·자동·속도·거리·장수 정보'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
