@@ -823,7 +823,9 @@ function commanderDialogue(S) {
 }
 function checkEnd(S) {
   const lord = S.armies.find(A => A.team === 'player' && A.units.length)?.leader;
-  if (!lord || lord.dead || !S.units.some(u => u.team === 'player' && !u.dead)) S.over = 'lose';
+  const mine = S.units.filter(u => u.team === 'player' && !u.dead);
+  if (!lord || lord.dead || !mine.length) S.over = 'lose';
+  else if (mine.every(u => u.retreated)) { S.over = 'lose'; S.overWhy = 'retreat'; }   // 살아남은 병력이 모두 후퇴한 군단(후퇴한 분대·장수·병사만 남음)은 패배 처리
   else if (!S.explore && !S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
 }
 function step(S, dt) {
