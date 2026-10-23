@@ -657,11 +657,6 @@ function pickTarget(S, u, maxTiles = 14, fallback = true) {   // 병종 우선 �
 function engage(S, u, t, canMove) {
   if (!t || !live(t) || t.team === u.team) return;
   if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
-  if (u.cls === 'cavalry' && canMove && !handCtl(S, u)) {   // 접근 중에는 후면을 노리되 이미 인접했다면 위에서 즉시 공격한다
-    const changed = u.flankTgt !== t; if (changed || S.t >= (u.flankFaceUntil || 0)) { u.flankTgt = t; u.flankFace = t.face; u.flankFaceUntil = S.t + 1.5; if (changed) u.flankSince = null; }
-    if ((u.x - t.x) * Math.cos(u.flankFace) + (u.y - t.y) * Math.sin(u.flankFace) < 0) u.flankSince = null;
-    else { u.flankSince ??= S.t; if (S.t - u.flankSince < 3) { const k = freeAdj(S, u, t); if (k >= 0 && k !== ti(u.tx, u.ty)) { stepToward(S, u, k % MW, k / MW | 0); return; } } }
-  }
   if (!canMove) return;
   if (u.range > 0) { stepToward(S, u, t.tx, t.ty); return; }
   const k = freeAdj(S, u, t);   // 근접: 적에게 인접한 빈 칸을 목표로 (다른 유닛이 잡은 칸 제외)
@@ -673,10 +668,10 @@ function engage(S, u, t, canMove) {
 function freeAdj(S, u, t) {
   const ok = k => { const x = k % MW, y = k / MW | 0; return cheb({ tx: x, ty: y }, t) === 1 && okTile(S, x, y) && (!S.occ[k] || S.occ[k] === u.id) && !S.units.some(v => v !== u && v.claim === k && v.claimT > S.t - 1 && live(v)); };
   if (u.claim >= 0 && ok(u.claim)) { u.claimT = S.t; return u.claim; }
-  const face = u.cls === 'cavalry' && u.flankTgt === t && u.flankFaceUntil > S.t ? u.flankFace : t.face; let best = -1, bd = 1e9;
+  let best = -1, bd = 1e9;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     if (!dx && !dy) continue; const x = t.tx + dx, y = t.ty + dy; if (!inMap(x, y)) continue;
-    let d = Math.hypot(x - u.tx, y - u.ty); if (u.cls === 'cavalry' && !handCtl(S, u)) d += 3 * (1 + (dx * Math.cos(face) + dy * Math.sin(face)) / Math.hypot(dx, dy));   // 기병: 목표 방향은 잠시 고정해 후면 칸이 매 틱 뒤집히지 않게 한다
+    const d = Math.hypot(x - u.tx, y - u.ty);
     const k = ti(x, y); if (d < bd && ok(k)) { bd = d; best = k; }
   }
   u.claimT = S.t; return u.claim = best;
@@ -759,16 +754,9 @@ function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상
 const handCtl = (S, u) => u.team === 'player' && u === u.army.ctrl && (!S.auto || u.manual);   // 플레이어가 직접 조작 중인 유닛 — 돌진 등 특수기를 자동으로 쓰지 않는다
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
-  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, SPECIAL.dash.range);
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), locked = u.order && (u.order.target || u.order.tgt), t = locked && live(locked) && locked.team !== u.team ? (dist(u, locked) <= SPECIAL.dash.range ? locked : null) : nearestEnemy(S, u, SPECIAL.dash.range);
     if (t && (any || dist(u, t) > TILE * 1.5)) {
-      const behind = (u.x - t.x) * Math.cos(t.face) + (u.y - t.y) * Math.sin(t.face) < 0;   // 기병은 적의 후면(등 뒤)에서만 돌진한다 — 앞에서 마주 보고는 돌진하지 않고 후면으로 돌아간다
-      let ok = any || behind;
-      if (!any && ok && S.tactics >= 2) {   // 일반 기병만 후열 대상·아군 합류·전방 차단 조건을 적용한다 (AI-B-03)
-        const near = S.units.filter(m => m !== u && live(m) && m.team === u.team && dist(m, t) <= 2 * TILE).length, ang = Math.atan2(t.y - u.y, t.x - u.x), fx = u.tx + Math.round(Math.cos(ang)), fy = u.ty + Math.round(Math.sin(ang)), blocked = inMap(fx, fy) && S.occ[ti(fx, fy)] && S.units[S.occ[ti(fx, fy)] - 1] && S.units[S.occ[ti(fx, fy)] - 1].team === u.team;
-        ok = (isBack(t) || near >= 2) && !blocked;
-      }
-      if (!ok) { u.dashSince ??= S.t; if (S.t - u.dashSince >= 3) ok = true; } else u.dashSince = null;   // 3초 넘게 조건이 안 맞으면(후면으로 못 돌아가는 등) 그냥 돌진
-      if (ok) { if (any) u.face = Math.atan2(t.y - u.y, t.x - u.x); if (useSpecial(S, u, t.x, t.y)) { u.dashSince = null; return true; } }
+      u.face = Math.atan2(t.y - u.y, t.x - u.x); if (useSpecial(S, u, t.x, t.y)) return true;
     }
   }
   if (u.spells.includes('heal')) {
