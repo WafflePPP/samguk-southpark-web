@@ -91,9 +91,9 @@ const START_STAGE = 'xiapi', CAPITALS = { '여포': 'xiapi', '원소': 'ye', '�
 const FACTIONS = ['여포', '원소', '조조', '유비'], INITIAL_RULERS = { '여포': 'lubu', '원소': 'yuan', '조조': 'cao', '유비': 'liubei' }, SUCCESSORS = { lubu: ['lulingqi'], yuan: ['yuantan'], cao: ['caopi'], liubei: ['liushan'] };
 const FACTION_HEROES = {
   '여포': ['lubu', 'jang', 'diao', 'gao', 'chengong', 'lulingqi', 'haomeng', 'caoxing', 'chenglian', 'songxian', 'weixu', 'houcheng', 'zhangmiao', 'zhangchao', 'zhangyang', 'xuelan', 'lifeng_lu', 'wangkai', 'yinli', 'xusi'],
-  '원소': ['yuan', 'yan', 'wen', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'yuantan', 'yuanxi', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'yuanshang', 'gaogan', 'xinping', 'chenlin', 'lvweihuang', 'lvkuang', 'lvxiang', 'mayan', 'zhangyi_yuan', 'jiaochu', 'lvyang', 'guoyuan'],
-  '조조': ['cao', 'xia', 'xiahouyuan', 'dian', 'xuchu', 'caoren', 'guo', 'xuhuang', 'zhanghe', 'yujin', 'yuejin', 'caohong', 'caozhen', 'caoxiu', 'zangba', 'caopi', 'xun', 'lidian', 'chengyu', 'xunyou', 'manchong', 'liuye', 'lvqian'],
-  '유비': ['liubei', 'guan', 'kong', 'zhao', 'zhangfei', 'machao', 'huang', 'fazheng', 'pangtong', 'mizhu', 'lady_mi', 'weiyan', 'yanyan', 'liushan', 'mifang', 'guanping', 'zhoucang', 'sunqian', 'jianyong']
+  '원소': ['yuan', 'yan', 'wen', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'yuantan', 'yuanxi', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'yuanshang', 'gaogan', 'xinping', 'chenlin', 'lvweihuang', 'lvkuang', 'lvxiang', 'mayan', 'zhangyi_yuan', 'jiaochu', 'lvyang', 'guoyuan', 'xuyou', 'xunchen', 'xinpi', 'chenzhen', 'gaorou', 'qianzhao', 'hanjuzi', 'suiyuanjin', 'zhaorui', 'zhangnan_yuan', 'lifu', 'yinkui', 'shenrong'],
+  '조조': ['cao', 'xia', 'xiahouyuan', 'dian', 'xuchu', 'caoren', 'guo', 'xuhuang', 'zhanghe', 'yujin', 'yuejin', 'caohong', 'caozhen', 'caoxiu', 'zangba', 'caopi', 'xun', 'lidian', 'chengyu', 'xunyou', 'manchong', 'liuye', 'lvqian', 'sima', 'jiaxu', 'caoang', 'caozhi', 'simalang', 'haozhao', 'wenpin'],
+  '유비': ['liubei', 'guan', 'kong', 'zhao', 'zhangfei', 'machao', 'huang', 'pangtong', 'lady_mi', 'liushan'],
 };
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
@@ -142,7 +142,7 @@ const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 9, SAVE_SLOTS = 3;   // v9: 사예·연주 도시 축소와 허창 수도 복구 — 이전 저장은 보존하되 불러오지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 10, SAVE_SLOTS = 3;   // v10: 장수·군단 100개(원소40·조조30·여포20·유비10) — 이전 저장은 보존하되 불러오지 않는다
 let activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function initialPlayerRelations(faction) {
@@ -1153,7 +1153,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.226', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.227', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
