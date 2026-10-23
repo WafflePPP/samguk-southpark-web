@@ -656,6 +656,7 @@ function applyBattleResults() {
   for (const u of S.units.filter(x => x.dead && x.originTeam === 'player')) {
     const corps = roster.find(c => c.id === u.army.corps); if (!corps || !Number.isInteger(u.rosterSlot)) continue; corps.units[u.rosterSlot] = null; corps.growth[u.rosterSlot] = null; if (u.item) campaign.items[u.item] = (campaign.items[u.item] || 0) + 1;
   }
+  for (const u of S.units.filter(x => x.army && x.army.ally && x.dead)) { const force = enemyForces.find(f => 'ally:' + f.id === String(u.army.corps)), slot = force ? force.army.units.indexOf(u.key) : -1; if (slot > 0) force.army.units.splice(slot, 1); }   // 동맹군(아군 편 AI 군단)의 손실도 전략맵 병력에 반영 (군단장 칸은 남긴다)
   for (const u of S.units.filter(x => x.originTeam === 'enemy' && (x.dead || x.team === 'player'))) { const force = enemyForces.find(f => f.id === u.forceId); if (!force) continue; const slot = force.army.units.indexOf(u.key); if (slot >= 0) force.army.units.splice(slot, 1); }
   for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) force.active = false;
   for (const u of S.units.filter(x => !x.dead && x.originTeam === 'enemy' && x.team === 'player')) {
@@ -712,10 +713,13 @@ function showDiplomacyResult(title, lines, ok = true, kind = '') { if (popupSink
 function setDiplomacy(faction, status, silent = false) {   // silent: 호출한 쪽이 따로 결과 팝업을 띄울 때
   const before = campaign.relations[faction] ? relationText(faction) : '전쟁';
   const relation = campaign.relations[faction] || (campaign.relations[faction] = { status: 'war', truceUntil: 0 });
+  const wasAlly = relation.status === 'ally';
   relation.status = status; relation.truceUntil = status === 'truce' ? campaign.turn + 20 : 0;
   if (status === 'war') fillEnemyRoleRatio();
+  const evicted = []; if (wasAlly && status !== 'ally') for (const corps of roster) { const st = stageById(corps.at); if (corps.units.some(Boolean) && st && st.owner === 'enemy' && st.faction === faction) { const back = alliedBack(corps, st); if (back) { corps.at = back.id; corps.target = null; evicted.push(`${corpsName(corps)} → ${back.name}`); } } }   // 동맹이 깨졌으니 그 도시에 머무를 수 없다
+  const roster0 = roster[campaign.corps]; if (evicted.length && roster0) campaign.at = roster0.at;
   campaign.notice = `${faction}군과 ${status === 'truce' ? '20턴 휴전' : RELATION_NAME[status]} 상태가 되었다.`; diplomacyView = null; saveCampaign();
-  if (!silent) showDiplomacyResult(`${faction}군과의 외교: ${status === 'war' ? '전쟁 선포' : status === 'truce' ? '휴전 성립' : '동맹 성립'}`, [`관계: ${before} → ${relationText(faction)}`, status === 'war' ? '즉시 서로 공격할 수 있고, 적 도시에 수비·원정 군단이 다시 채워집니다.' : status === 'truce' ? `20턴 동안(${campaign.turn + 20}턴까지) 서로 침공하지 않습니다.` : '동맹이 되었습니다.' + (FACTION_ALLIES[faction] ? ` ${FACTION_ALLIES[faction]}군과는 상호 동맹 관계입니다.` : '')], status !== 'war');
+  if (!silent) showDiplomacyResult(`${faction}군과의 외교: ${status === 'war' ? '전쟁 선포' : status === 'truce' ? '휴전 성립' : '동맹 성립'}`, [`관계: ${before} → ${relationText(faction)}`, status === 'war' ? '즉시 서로 공격할 수 있고, 적 도시에 수비·원정 군단이 다시 채워집니다.' : status === 'truce' ? `20턴 동안(${campaign.turn + 20}턴까지) 서로 침공하지 않습니다.` : '동맹이 되었습니다.' + (FACTION_ALLIES[faction] ? ` ${FACTION_ALLIES[faction]}군과는 상호 동맹 관계입니다.` : ''), ...evicted.map(e => `주둔 군단 철수: ${e}`)], status !== 'war');
 }
 function finishBattle() {
   const turnEncounter = campaign.pendingEncounter; applyBattleResults(); const active = roster[campaign.corps], lostHome = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === START_STAGE;
@@ -724,7 +728,8 @@ function finishBattle() {
     const fallback = route(force.at, capitalFor(force)), back = force.prevAt && stageById(force.prevAt) ? force.prevAt : fallback[1]; if (back) force.at = back; else force.active = false; force.prevAt = null;
   }
   if (S && S.over === 'win' && campaign.battle) {
-    for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id)) { const path = route(force.at, capitalFor(force)); if (path.length > 1) force.at = path[1]; else force.active = false; }
+    const foeIds = new Set(S.armies.filter(A => A.team === 'enemy' && A.forceId != null).map(A => A.forceId));   // 적 편으로 싸운 군단만 물러난다 — 아군 편 동맹 수비군·원군은 그 도시에 남는다
+    for (const force of enemyForces.filter(f => f.active && f.at === campaign.battle.id && foeIds.has(f.id))) { const path = route(force.at, capitalFor(force)); if (path.length > 1) force.at = path[1]; else force.active = false; }
     const keep = isAllyCity(campaign.battle), drops = battleDrops();   // keep: 동맹 중립 세력의 도시를 요격해 지킨 경우 — 점령하지 않고 그 세력의 도시로 유지
     if (keep) campaign.notice = `${campaign.battle.name} 방어에 성공했다. 동맹 ${campaign.battle.faction}군의 도시로 유지된다.${drops.length ? ' 전리품: ' + drops.join(', ') + '.' : ''}`;
     else if (campaign.battle.owner === 'player') campaign.notice = `${campaign.battle.name} 방어에 성공했다.${drops.length ? ' 전리품: ' + drops.join(', ') + '.' : ''}`;
@@ -1072,7 +1077,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.191', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.192', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
