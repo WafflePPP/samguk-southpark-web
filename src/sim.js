@@ -571,6 +571,18 @@ function knockBack(S, u, dx, dy, tiles) {
   if (q.length) { u.path = null; u.knockQ = q; }
   return q.length;
 }
+function pushDashLine(S, first, dx, dy, max) {   // 연속된 적 대열 뒤가 비었을 때만 전원을 한 칸 밀어 한 칸 한 명을 지킨다
+  const line = []; let x = first.tx, y = first.ty;
+  while (line.length < max) {
+    const e = S.units[S.occ[ti(x, y)] - 1]; if (!e || !live(e) || e.team !== first.team || e.category === 'spear' || e.mv || e.knockQ) return null;
+    line.push(e); const nx = x + dx, ny = y + dy; if (!okTile(S, nx, ny) || !diagOk(S, x, y, dx, dy)) return null;
+    if (!S.occ[ti(nx, ny)]) break; x = nx; y = ny;
+  }
+  const tail = line[line.length - 1], tx = tail.tx + dx, ty = tail.ty + dy; if (line.length === max && S.occ[ti(tx, ty)]) return null;
+  for (const e of line) if (S.occ[ti(e.tx, e.ty)] === e.id) S.occ[ti(e.tx, e.ty)] = 0;
+  for (let i = line.length - 1; i >= 0; i--) { const e = line[i], nx = e.tx + dx, ny = e.ty + dy; e.path = null; e.mv = { fx: e.x, fy: e.y, nx, ny, t: 0, dur: 0.08 }; S.occ[ti(nx, ny)] = e.id; e.face = Math.atan2(dy, dx); e.stuck = 0; tire(e, 'step'); }
+  return line;
+}
 function advanceMove(S, u, dt) {
   const m = u.mv; m.t += dt; const p = Math.min(1, m.t / m.dur); u.moving = true;
   u.x = m.fx + (tcx(m.nx) - m.fx) * p; u.y = m.fy + (tcy(m.ny) - m.fy) * p;
@@ -791,10 +803,10 @@ function updateUnit(S, u, dt) {
   if (u.dashQ) {
     const n = u.dashQ[0], o = n && S.units[S.occ[ti(n.tx, n.ty)] - 1];
     if (n && o && u.titleDash && live(o) && o.team !== u.team) {
-      if (u.dashHit.has(o.id) && (o.knockQ || o.mv)) return;
-      const moved = knockBack(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 6 - u.dashMoved));
-      if (!u.dashHit.has(o.id)) { u.dashHit.add(o.id); hurt(S, u, o, phys(u, o, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(o) && D && D.foeFt) foeFt(S, o, D.foeFt, D.scale || 1); ring(S, o.x, o.y, 30, '#7fd0ff', 0.3); }
-      if (!moved) u.dashQ.length = 0;
+      if (u.dashHit.has(o.id) && o.mv) return;
+      const line = pushDashLine(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 6 - u.dashMoved)), hit = line || [o], moved = line ? 1 : 0;
+      for (const e of hit) if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, D.scale || 1); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); }
+      if (!line) u.dashQ.length = 0;
       return;
     }
     if (n && !S.occ[ti(n.tx, n.ty)]) { u.dashQ.shift(); u.dashMoved++; beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
