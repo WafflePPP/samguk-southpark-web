@@ -148,7 +148,7 @@ function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장
   if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
   if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
   if (T.hp) L.push(`HP ${T.hp.below * 100}% 이하 진입 시 ${modsText(T.hp.mods)} ${TRAIT_TIME}초.`);
-  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('거리 제한 없이 돌진. 0칸에서도 충격 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
+  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
   if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) L.push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + modsText(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + o.foeFt + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
   if (T.skill) L.push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + T.skill.dmg + '%', T.skill.cd && '쿨타임 −' + T.skill.cd + '%', T.skill.heal && '치유량 +' + T.skill.heal + '%'].filter(Boolean).join(' · ') + '.');
   return L;
@@ -753,7 +753,7 @@ function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상
 const handCtl = (S, u) => u.team === 'player' && u === u.army.ctrl && (!S.auto || u.manual);   // 플레이어가 직접 조작 중인 유닛 — 돌진 등 특수기를 자동으로 쓰지 않는다
 function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역 마법 / 특수기 자동 사용 — 썼으면 true
   if (u.cdT > 0 || u.stun > 0) return false;
-  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, any ? 1e9 : SPECIAL.dash.range);
+  if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, SPECIAL.dash.range);
     if (t && (any || dist(u, t) > TILE * 1.5)) {
       const behind = (u.x - t.x) * Math.cos(t.face) + (u.y - t.y) * Math.sin(t.face) < 0;   // 기병은 적의 후면(등 뒤)에서만 돌진한다 — 앞에서 마주 보고는 돌진하지 않고 후면으로 돌아간다
       let ok = behind;
