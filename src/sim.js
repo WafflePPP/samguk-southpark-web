@@ -43,15 +43,16 @@ const U = {
   emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'roll', 'tornado'], generic: true },
   esage: { name: '적 군사', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'phoenix', 'thunder', 'quake', 'web'], fanatic: true },
 };
-// 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 이름 있는 장수는 같은 병종 일반 대장 × S~D 등급 배율.
+// 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 이름 있는 장수는 같은 병종 일반 대장 × SS~D 등급 배율.
 const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };   // 군단장급 병사(= 가상 대장·적 장수·적 군사)
-// 이름 있는 장수(삼국지 정사·연의 인물)의 등급 = 연의에서의 비중. 군단장급 병사(CAPTAIN) 능력치 × 등급 배율. 기획 명세 17.
-const GRADE_MUL = { S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
+// 이름 있는 장수(삼국지 정사·연의 인물)의 등급 = 연의에서의 비중. 군단장급 병사(CAPTAIN) 능력치 × SS~D 등급 배율. 기획 명세 17.
+const GRADE_MUL = { SS: 4.3, S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
 const GRADE = {
-  lubu: 'S', guan: 'S', cao: 'S', kong: 'S',
-  zhao: 'A', zhangfei: 'A', machao: 'A', huang: 'A', jang: 'A', gao: 'A', chengong: 'A', fazheng: 'A', pangtong: 'A', xia: 'A', xiahouyuan: 'A', dian: 'A', xuchu: 'A', yan: 'A', wen: 'A', caoren: 'A', guo: 'A', xuhuang: 'A', zhanghe: 'A', hua: 'A', yuan: 'A', liubei: 'A',
-  diao: 'B', mizhu: 'B', lady_mi: 'B', haomeng: 'B', yujin: 'B', lulingqi: 'B', caopi: 'B', yuejin: 'B', caohong: 'B', caozhen: 'B', caoxiu: 'B', weiyan: 'B', yanyan: 'B', zangba: 'B', gaolan: 'B', quyi: 'B', jushou: 'B', tianfeng: 'B', shenpei: 'B', xun: 'B', jiangwei: 'B', zhangmiao: 'B', zhangchao: 'B', zhangyang: 'B', yuanshang: 'B', gaogan: 'B', xinping: 'B', chenlin: 'B', lvweihuang: 'B', lidian: 'B', chengyu: 'B', xunyou: 'B', manchong: 'B', guanping: 'B', zhoucang: 'B',
-  caoxing: 'C', yuantan: 'C', yuanxi: 'C', chenglian: 'C', songxian: 'C', weixu: 'C', houcheng: 'C', chunyuqiong: 'C', hanmeng: 'C', jiangyiqu: 'C', guotu: 'C', fengji: 'C', dong: 'C', sima: 'C', xuelan: 'C', lifeng_lu: 'C', wangkai: 'C', yinli: 'C', xusi: 'C', lvkuang: 'C', lvxiang: 'C', mayan: 'C', zhangyi_yuan: 'C', jiaochu: 'C', lvyang: 'C', guoyuan: 'C', liuye: 'C', lvqian: 'C', sunqian: 'C', jianyong: 'C',
+  lubu: 'SS', guan: 'SS', cao: 'SS', kong: 'SS',
+  zhao: 'S', zhangfei: 'S', machao: 'S', huang: 'S', jang: 'S', guo: 'S', sima: 'S', xun: 'S', pangtong: 'S',
+  gao: 'A', chengong: 'A', fazheng: 'A', xia: 'A', xiahouyuan: 'A', dian: 'A', xuchu: 'A', yan: 'A', wen: 'A', caoren: 'A', xuhuang: 'A', zhanghe: 'A', hua: 'A', yuan: 'A', liubei: 'A', weiyan: 'A',
+  diao: 'B', mizhu: 'B', lady_mi: 'B', haomeng: 'B', yujin: 'B', lulingqi: 'B', caopi: 'B', yuejin: 'B', caohong: 'B', caozhen: 'B', caoxiu: 'B', yanyan: 'B', zangba: 'B', gaolan: 'B', quyi: 'B', jushou: 'B', tianfeng: 'B', shenpei: 'B', jiangwei: 'B', zhangmiao: 'B', zhangchao: 'B', zhangyang: 'B', yuanshang: 'B', gaogan: 'B', xinping: 'B', chenlin: 'B', lvweihuang: 'B', lidian: 'B', chengyu: 'B', xunyou: 'B', manchong: 'B', guanping: 'B', zhoucang: 'B',
+  caoxing: 'C', yuantan: 'C', yuanxi: 'C', chenglian: 'C', songxian: 'C', weixu: 'C', houcheng: 'C', chunyuqiong: 'C', hanmeng: 'C', jiangyiqu: 'C', guotu: 'C', fengji: 'C', dong: 'C', xuelan: 'C', lifeng_lu: 'C', wangkai: 'C', yinli: 'C', xusi: 'C', lvkuang: 'C', lvxiang: 'C', mayan: 'C', zhangyi_yuan: 'C', jiaochu: 'C', lvyang: 'C', guoyuan: 'C', liuye: 'C', lvqian: 'C', sunqian: 'C', jianyong: 'C',
   liushan: 'D', mifang: 'D', gong: 'D', lijue: 'D'
 };
 const ELITE = Object.fromEntries(Object.entries(GRADE).map(([k, g]) => [k, GRADE_MUL[g]]));
@@ -72,6 +73,7 @@ const CLONES = {
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
 for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo']) U[k].style = k;
+for (const k of ['xiahouyuan', 'xuhuang', 'yan', 'wen']) Object.assign(U[k], { cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 8, special: 'dash', range: k === 'xiahouyuan' ? 270 : 0 });   // 참조 디자인에서 말에 탑승한 장수는 기병
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 const HERO_DEFAULT = {
