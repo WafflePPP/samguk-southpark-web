@@ -154,7 +154,7 @@ function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장
   if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
   if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
   if (T.hp) L.push(`HP ${T.hp.below * 100}% 이하 진입 시 ${modsText(T.hp.mods)} ${TRAIT_TIME}초.`);
-  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '바라보는 방향으로 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
+  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '현재 바라보는 방향으로 제자리에서 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
   if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) L.push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + modsText(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + o.foeFt + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
   if (T.skill) L.push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + T.skill.dmg + '%', T.skill.cd && '쿨타임 −' + T.skill.cd + '%', T.skill.heal && '치유량 +' + T.skill.heal + '%'].filter(Boolean).join(' · ') + '.');
   return L;
@@ -530,10 +530,10 @@ function castSpell(S, u, key, x, y) {
 }
 function useSpecial(S, u, x, y) {
   if (!live(u) || !u.special || u.spT > 0 || u.stun > 0 || u.dashQ || u.knockQ) return false;
-  cur = S; const ang = Math.atan2(y - u.y, x - u.x), sp = SPECIAL[u.special];
+  cur = S; const titleDash = u.special === 'dash' && dashAny(u), ang = titleDash ? u.face : Math.atan2(y - u.y, x - u.x), sp = SPECIAL[u.special];
   if (u.special === 'spin') aoe(S, u, u.x, u.y, 80, e => hurt(S, u, e, phys(u, e, 2.2)), '#ffd34d');
   else if (u.special === 'dash') {   // 칭호 돌진은 6칸 경로의 적을 밀며 통과, 일반 돌진은 빈 칸으로 최대 6칸
-    const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), titled = dashAny(u), q = []; let cx = u.tx, cy = u.ty;
+    const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), titled = titleDash, q = []; let cx = u.tx, cy = u.ty;
     if ((!dx && !dy) || u.mv) return false;
     while (q.length < 6) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || !diagOk(S, cx, cy, dx, dy)) break; const o = S.units[S.occ[ti(nx, ny)] - 1]; if (o && (!titled || !live(o) || o.team === u.team)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
     if (!q.length) return false;
@@ -762,13 +762,13 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), t = nearestEnemy(S, u, SPECIAL.dash.range);
     if (t && (any || dist(u, t) > TILE * 1.5)) {
       const behind = (u.x - t.x) * Math.cos(t.face) + (u.y - t.y) * Math.sin(t.face) < 0;   // 기병은 적의 후면(등 뒤)에서만 돌진한다 — 앞에서 마주 보고는 돌진하지 않고 후면으로 돌아간다
-      let ok = behind;
-      if (ok && S.tactics >= 2) {   // 후열 대상이거나 우리 편이 대상 주변에 2명 이상 있을 때, 앞 칸이 아군에게 막혀 있지 않을 때만 돌진 (AI-B-03)
+      let ok = any || behind;
+      if (!any && ok && S.tactics >= 2) {   // 일반 기병만 후열 대상·아군 합류·전방 차단 조건을 적용한다 (AI-B-03)
         const near = S.units.filter(m => m !== u && live(m) && m.team === u.team && dist(m, t) <= 2 * TILE).length, ang = Math.atan2(t.y - u.y, t.x - u.x), fx = u.tx + Math.round(Math.cos(ang)), fy = u.ty + Math.round(Math.sin(ang)), blocked = inMap(fx, fy) && S.occ[ti(fx, fy)] && S.units[S.occ[ti(fx, fy)] - 1] && S.units[S.occ[ti(fx, fy)] - 1].team === u.team;
         ok = (isBack(t) || near >= 2) && !blocked;
       }
       if (!ok) { u.dashSince ??= S.t; if (S.t - u.dashSince >= 3) ok = true; } else u.dashSince = null;   // 3초 넘게 조건이 안 맞으면(후면으로 못 돌아가는 등) 그냥 돌진
-      if (ok && useSpecial(S, u, t.x, t.y)) { u.dashSince = null; return true; }
+      if (ok) { if (any) u.face = Math.atan2(t.y - u.y, t.x - u.x); if (useSpecial(S, u, t.x, t.y)) { u.dashSince = null; return true; } }
     }
   }
   if (u.spells.includes('heal')) {
