@@ -43,13 +43,18 @@ const U = {
   emage: { name: '적 법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'emage', spells: ['bolt', 'roll', 'tornado'], generic: true },
   esage: { name: '적 군사', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'emage', spells: ['bolt', 'phoenix', 'thunder', 'quake', 'web'], fanatic: true },
 };
-// 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 정예 장수는 같은 병종 일반 대장 × 배율 (2배 이상, 관우·여포 4배, 조운·황충·전위 3배 = 기본 2배 × 1.5, 초선·제갈량 2배).
+// 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 이름 있는 장수는 같은 병종 일반 대장 × S~D 등급 배율.
 const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };   // 군단장급 병사(= 가상 대장·적 장수·적 군사)
 // 이름 있는 장수(삼국지 정사·연의 인물)의 등급 = 연의에서의 비중. 군단장급 병사(CAPTAIN) 능력치 × 등급 배율. 기획 명세 17.
 const GRADE_MUL = { S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
-const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', zhangfei: 'A', machao: 'A', kong: 'S', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', liubei: 'B', pangtong: 'B', jiangwei: 'B', weiyan: 'B', chengong: 'B', lulingqi: 'S', yan: 'C', wen: 'C', cao: 'S', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D', caopi: 'C', liushan: 'D', yuantan: 'D' };
+const GRADE = {
+  lubu: 'S', guan: 'S', cao: 'S', kong: 'S',
+  zhao: 'A', zhangfei: 'A', machao: 'A', huang: 'A', jang: 'A', gao: 'A', chengong: 'A', fazheng: 'A', pangtong: 'A', xia: 'A', xiahouyuan: 'A', dian: 'A', xuchu: 'A', yan: 'A', wen: 'A', caoren: 'A', guo: 'A', xuhuang: 'A', zhanghe: 'A', hua: 'A',
+  diao: 'B', mizhu: 'B', lady_mi: 'B', haomeng: 'B', yujin: 'B', lulingqi: 'B', caopi: 'B', yuan: 'B', yuejin: 'B', caohong: 'B', caozhen: 'B', caoxiu: 'B', weiyan: 'B', yanyan: 'B', zangba: 'B', gaolan: 'B', quyi: 'B', jushou: 'B', tianfeng: 'B', shenpei: 'B', xun: 'B', liubei: 'B', jiangwei: 'B',
+  caoxing: 'C', yuantan: 'C', yuanxi: 'C', chenglian: 'C', songxian: 'C', weixu: 'C', houcheng: 'C', chunyuqiong: 'C', hanmeng: 'C', jiangyiqu: 'C', guotu: 'C', fengji: 'C', dong: 'C', sima: 'C',
+  liushan: 'D', mifang: 'D', gong: 'D', lijue: 'D'
+};
 const ELITE = Object.fromEntries(Object.entries(GRADE).map(([k, g]) => [k, GRADE_MUL[g]]));
-ELITE.lulingqi = GRADE_MUL.S * 0.7;   // 여령기: 여포(S)의 70% 성능 (명세 26)
 const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
 const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
@@ -57,6 +62,10 @@ const CLONES = {
   xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
   chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['guan', '유비'], zhangfei: ['hua', '장비'], caopi: ['hua', '조비'], liushan: ['guan', '유선'], yuantan: ['hua', '원담'],
   machao: ['jang', '마초'], pangtong: ['xun', '방통'], jiangwei: ['jang', '강유'], weiyan: ['hua', '위연'],
+  fazheng: ['xun', '법정'], xiahouyuan: ['huang', '하후연'], caoren: ['hua', '조인'], mizhu: ['xun', '미축'], lady_mi: ['diao', '미씨'], haomeng: ['hua', '학맹'], yujin: ['hua', '우금'],
+  yuejin: ['hua', '악진'], caohong: ['hua', '조홍'], caozhen: ['hua', '조진'], caoxiu: ['jang', '조휴'], yanyan: ['huang', '엄안'], zangba: ['hua', '장패'], gaolan: ['hua', '고람'], quyi: ['huang', '국의'],
+  jushou: ['xun', '저수'], tianfeng: ['xun', '전풍'], shenpei: ['xun', '심배'], caoxing: ['huang', '조성'], yuanxi: ['hua', '원희'], chenglian: ['jang', '성렴'], songxian: ['hua', '송헌'],
+  weixu: ['hua', '위속'], houcheng: ['hua', '후성'], chunyuqiong: ['hua', '순우경'], hanmeng: ['hua', '한맹'], jiangyiqu: ['hua', '장의거'], guotu: ['xun', '곽도'], fengji: ['xun', '봉기'], mifang: ['hua', '미방'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
 U.gao.style = 'gao'; U.lulingqi.style = 'lulingqi';
@@ -86,7 +95,8 @@ const TARGET_PRIORITY = {
 };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
-const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', caopi: '세자', liushan: '후주', yuantan: '장자', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
+const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', caopi: '세자', liushan: '후주', yuantan: '장자', fazheng: '기모', xiahouyuan: '신속', caoren: '천인', mizhu: '자중', lady_mi: '현덕부인', haomeng: '건장', yujin: '의중', yuejin: '선등', caohong: '복장', caozhen: '대사마', caoxiu: '천리구', yanyan: '노장', zangba: '태산', gaolan: '용건', quyi: '선등장', jushou: '충렬', tianfeng: '강직', shenpei: '정렬', caoxing: '명사', yuanxi: '중자', chenglian: '효기', songxian: '건위', weixu: '친장', houcheng: '마도', chunyuqiong: '오소', hanmeng: '맹진', jiangyiqu: '독장', guotu: '참모', fengji: '권모', mifang: '남군', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
+const RANK_ONLY_KEYS = ['caopi', 'liushan', 'yuantan', 'fazheng', 'xiahouyuan', 'caoren', 'mizhu', 'lady_mi', 'haomeng', 'yujin', 'yuejin', 'caohong', 'caozhen', 'caoxiu', 'yanyan', 'zangba', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'caoxing', 'yuanxi', 'chenglian', 'songxian', 'weixu', 'houcheng', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'mifang'];
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1.2, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 0.8 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
 // CLASS_DAMAGE 가 최종 피해 배율이다. 별도 우세 보너스를 겹치지 않는다.
@@ -148,9 +158,11 @@ const TITLE_EFFECT = {
   와룡: { skill: { dmg: 30, cd: 20 } }, 봉추: { skill: { dmg: 20 } }, 왕좌: { skill: { cd: 15 } }, 모주: { skill: { dmg: 10, cd: 10 } }, 귀재: { skill: { dmg: 10 } },
   호치: { passive: { df: 10, ad: 10 } }, 교변: { passive: { sp: 10, aa: 5 } }, 주아부: { passive: { df: 8, ad: 8 } }, 상장: { passive: { atk: 10 } }, 용장: { passive: { df: 10 } }, 총호: { passive: { md: 15, dr: 10 } }, 횡포: { passive: { atk: 5 } },
 };
+for (const key of RANK_ONLY_KEYS) TITLE_EFFECT[SUBCLASS[key]] = { rank: true };   // 신규 장수는 이번 리밸런싱에서 등급 능력치만 적용
 const modsText = (m, k = 1) => Object.entries(m).map(([s, v]) => STAT_NAME[s] + ' +' + +(v * k).toFixed(1) + '%').join(' ');
 function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장
   const T = TITLE_EFFECT[name]; if (!T) return null; const L = [];
+  if (T.rank) L.push('등급 능력치만 적용.');
   if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
   if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
   if (T.hp) L.push(`HP ${T.hp.below * 100}% 이하 진입 시 ${modsText(T.hp.mods)} ${TRAIT_TIME}초.`);
