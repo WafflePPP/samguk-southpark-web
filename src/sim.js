@@ -126,7 +126,7 @@ const SPELL = {
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
 const MAGIC = 1;   // 장풍은 일반 궁병의 실효 사격 DPS 대비 약 4.8배, 광역 주문은 다중 타격으로 효율을 얻는다
 const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
-const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6, pass: 2 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
+const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 const TRAIT_TIME = 5, AURA_RANGE = 150;
 const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: 'AT', df: 'DF', ad: 'AD', md: 'MD', aa: 'AA', hr: 'HR', sp: 'SP', ar: 'AR', dr: 'DR' };
 // 칭호 효과 (명세 26). aura 반경 안 아군(cats 가 있으면 그 병종만) · passive 상시 · hp 기준 이하 진입 시 5초 버프 · dash 돌진 후 · onSpecial 특수기 발동 시 · skill 군사의 스킬 효율(마법 피해·쿨타임·치유량 %). 수치는 % (자기 능력치 곱).
@@ -154,7 +154,7 @@ function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장
   if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
   if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
   if (T.hp) L.push(`HP ${T.hp.below * 100}% 이하 진입 시 ${modsText(T.hp.mods)} ${TRAIT_TIME}초.`);
-  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '바라보는 방향으로 3칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
+  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '바라보는 방향으로 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
   if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) L.push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + modsText(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + o.foeFt + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
   if (T.skill) L.push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + T.skill.dmg + '%', T.skill.cd && '쿨타임 −' + T.skill.cd + '%', T.skill.heal && '치유량 +' + T.skill.heal + '%'].filter(Boolean).join(' · ') + '.');
   return L;
@@ -532,10 +532,10 @@ function useSpecial(S, u, x, y) {
   if (!live(u) || !u.special || u.spT > 0 || u.stun > 0 || u.dashQ || u.knockQ) return false;
   cur = S; const ang = Math.atan2(y - u.y, x - u.x), sp = SPECIAL[u.special];
   if (u.special === 'spin') aoe(S, u, u.x, u.y, 80, e => hurt(S, u, e, phys(u, e, 2.2)), '#ffd34d');
-  else if (u.special === 'dash') {   // 칭호 돌진은 3칸 경로의 적을 밀며 통과, 일반 돌진은 빈 칸으로 최대 6칸
+  else if (u.special === 'dash') {   // 칭호 돌진은 6칸 경로의 적을 밀며 통과, 일반 돌진은 빈 칸으로 최대 6칸
     const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), titled = dashAny(u), q = []; let cx = u.tx, cy = u.ty;
     if ((!dx && !dy) || u.mv) return false;
-    while (q.length < (titled ? 3 : 6)) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || !diagOk(S, cx, cy, dx, dy)) break; const o = S.units[S.occ[ti(nx, ny)] - 1]; if (o && (!titled || !live(o) || o.team === u.team)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
+    while (q.length < 6) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || !diagOk(S, cx, cy, dx, dy)) break; const o = S.units[S.occ[ti(nx, ny)] - 1]; if (o && (!titled || !live(o) || o.team === u.team)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
     if (!q.length) return false;
     u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; u.titleDash = titled; u.dashHit = titled ? new Set() : null; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
@@ -804,14 +804,14 @@ function updateUnit(S, u, dt) {
     const n = u.dashQ[0], o = n && S.units[S.occ[ti(n.tx, n.ty)] - 1];
     if (n && o && u.titleDash && live(o) && o.team !== u.team) {
       if (u.dashHit.has(o.id) && (o.knockQ || o.mv)) return;
-      const moved = knockBack(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 3 - u.dashMoved));
+      const moved = knockBack(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 6 - u.dashMoved));
       if (!u.dashHit.has(o.id)) { u.dashHit.add(o.id); hurt(S, u, o, phys(u, o, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(o) && D && D.foeFt) foeFt(S, o, D.foeFt, D.scale || 1); ring(S, o.x, o.y, 30, '#7fd0ff', 0.3); }
       if (!moved) u.dashQ.length = 0;
       return;
     }
     if (n && !S.occ[ti(n.tx, n.ty)]) { u.dashQ.shift(); u.dashMoved++; beginStep(S, u, n.tx, n.ty, 0.06); advanceMove(S, u, 0); return; }
     const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
-    const titled = u.titleDash; u.dashQ = null; u.titleDash = false; u.dashHit = null; u.passT = SPECIAL.dash.pass;
+    const titled = u.titleDash; u.dashQ = null; u.titleDash = false; u.dashHit = null; u.passT = 0;
     const D = (TITLE_EFFECT[u.subclass] || {}).dash, sc = (D && D.scale) || 1;
     if (!titled) aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
     if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
