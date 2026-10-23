@@ -959,12 +959,17 @@ function releaseManualControl(S, except) {
 // 퍼스트퀸4 조작: 군단마다 "조작 캐릭터" 한 명을 직접 움직이고(방향 입력 = 한 칸 이동, 적이 있는 칸으로 밀면 공격), 나머지는 AI + 군단 명령(돌격·정지·후퇴·자유)
 function setCtrl(S, A, u) {
   if (!u || !live(u)) return;
+  if (A.ctrl === u && u.manual) return;
   releaseManualControl(S, u); if (A.ctrl === u) return;
   const old = A.ctrl; A.ctrl = u; u.manual = false; if (u.order.type !== 'retreat') u.order = { type: S.auto ? 'charge' : 'stop' }; u.ctrlIn = null; u.autoCharge = S.auto; u.path = null;
   if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: S.auto ? 'charge' : A.order }; old.ctrlIn = null; old.manual = false; old.autoCharge = S.auto; }   // 풀려난 캐릭터는 군단 명령을 따른다
 }
-function takeControl(S, u) { if (S.auto && u.team === 'player' && u === u.army.ctrl && !u.manual) { releaseManualControl(S, u); u.manual = true; u.order = { type: 'stop' }; u.autoCharge = false; u.path = null; } }
-function control(S, u, dx, dy) { if (retreating(u)) return; takeControl(S, u); u.ctrlIn = { dx, dy, t: S.t }; }   // 자동 중에는 현재 장수만 수동으로 전환
+function takeControl(S, u) {
+  if (!S.auto || u.team !== 'player' || u !== u.army.ctrl || u.manual) return;
+  releaseManualControl(S, u);
+  for (const m of (u.squad ? u.squad.units : [u])) if (live(m) && m.team === 'player') { m.manual = true; m.ctrlIn = null; if (m.order.type !== 'retreat') { m.order = { type: m === u ? 'stop' : 'idle' }; m.autoCharge = false; m.path = null; } }
+}
+function control(S, u, dx, dy) { if (retreating(u)) return; takeControl(S, u); u.ctrlIn = { dx, dy, t: S.t }; }   // 자동 중 수동 입력 시 현재 분대 전체가 조작 장수를 따른다
 function directMove(S, u, dx, dy) {
   if (u.root > 0) return;   // 속박(거미줄) 중에는 걷지 못한다
   let nx = u.tx + dx, ny = u.ty + dy; u.face = Math.atan2(dy, dx);
