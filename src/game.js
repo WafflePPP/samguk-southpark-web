@@ -20,10 +20,10 @@ let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false
 // 도시 65개 (명세 43): [번호, id, 이름, 지역, 세력, 열, 행, 지형(p평 r강 w강·광 m산 f성), Lv, 난이도(초중상최), 길(양방향, 한쪽만 적어도 됨)]. 좌표는 격자 col,row 에서 계산한다.
 const STAGE_ROWS = [
   [1, 'chenliu', '진류', '연주', '여포', 6, 8, 'p', 2, '초', 'suanzao waihuang'],
-  [2, 'suanzao', '산조', '연주', '원소', 6, 7, 'p', 3, '초', 'chenliu dingtao'],
-  [3, 'dingtao', '정도', '연주', '원소', 8, 7, 'w', 5, '초', 'suanzao ye'],
+  [2, 'suanzao', '산조', '연주', '여포', 6, 7, 'p', 3, '초', 'chenliu dingtao'],
+  [3, 'dingtao', '정도', '연주', '여포', 8, 7, 'w', 5, '초', 'suanzao ye'],
   [4, 'ye', '업', '기주', '원소', 6, 5, 'f', 7, '중', 'dingtao puyang xiaopei liyang handan shangdang'],
-  [5, 'puyang', '복양', '연주', '조조', 7, 6, 'p', 8, '초', 'ye yanjin baima donge'],
+  [5, 'puyang', '복양', '연주', '여포', 7, 6, 'p', 8, '초', 'ye yanjin baima donge'],
   [6, 'yanjin', '연진', '연주', '조조', 5, 7, 'w', 12, '중', 'puyang guandu yangwu'],
   [7, 'xiaopei', '소패', '서주', '유비', 10, 7, 'p', 8, '초', 'ye pengcheng xiao donghai'],
   [8, 'guandu', '관도', '연주', '조조', 5, 8, 'f', 20, '상', 'yanjin xuchang yangwu hulao'],
@@ -48,10 +48,10 @@ const STAGE_ROWS = [
   [27, 'pingyuan', '평원', '청주', '원소', 9, 4, 'p', 12, '중', 'xindu nanpi'],
   [28, 'ji', '계', '유주', '원소', 9, 0, 'f', 14, '중', 'hejian beiping'],
   [29, 'beiping', '북평', '유주', '원소', 13, 0, 'm', 15, '중', 'ji'],
-  [30, 'baima', '백마', '연주', '조조', 7, 7, 'w', 9, '초', 'puyang yangguo'],
-  [31, 'donge', '동아', '연주', '조조', 8, 5, 'p', 10, '중', 'puyang juye'],
-  [32, 'juye', '거야', '연주', '조조', 9, 6, 'p', 11, '중', 'donge yangguo'],
-  [33, 'yangguo', '양국', '예주', '조조', 8, 8, 'p', 12, '중', 'baima juye qiao'],
+  [30, 'baima', '백마', '연주', '여포', 7, 7, 'w', 9, '초', 'puyang yangguo'],
+  [31, 'donge', '동아', '연주', '여포', 8, 5, 'p', 10, '중', 'puyang juye'],
+  [32, 'juye', '거야', '연주', '여포', 9, 6, 'p', 11, '중', 'donge yangguo'],
+  [33, 'yangguo', '양국', '예주', '여포', 8, 8, 'p', 12, '중', 'baima juye qiao'],
   [34, 'qiao', '초', '예주', '조조', 9, 9, 'p', 14, '중', 'yangguo chen'],
   [35, 'yangwu', '양무', '연주', '조조', 4, 7, 'p', 13, '중', 'yanjin guandu henei luoyang hulao'],
   [36, 'henei', '하내', '사예', '조조', 4, 6, 'f', 15, '중', 'luoyang yangwu'],
@@ -105,15 +105,12 @@ const FACTION_HEROES = {
 };
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
-// 군단 편성표 (명세 43 2-2): [군단장(슬롯 0), 2분대장(슬롯 6), 3분대장(슬롯 12), 병사 칸(슬롯 1)에 넣는 잉여 장수, 역할 g수비·e원정, AI 일 때 시작 도시]. 장수 수 ÷ 3 = 군단 수, 가상 지휘관은 없다.
-const FACTION_CORPS = {
-  '여포': [['lubu', 'xusi', 'yinli', null, 'g', 'chenliu'], ['jang', 'haomeng', 'caoxing', null, 'e', 'chenliu'], ['gao', 'chenglian', 'houcheng', null, 'g', 'waihuang'], ['chengong', 'weixu', 'songxian', null, 'g', 'yongqiu'], ['zhangmiao', 'zhangyang', 'lifeng_lu', 'wangkai', 'g', 'gaoyang'], ['lulingqi', 'zhangchao', 'diao', 'xuelan', 'g', 'xiangyi']],
-  '원소': [['yuan', 'yuantan', 'shenpei', null, 'g', 'ye'], ['yan', 'tianfeng', 'lvkuang', null, 'g', 'dingtao'], ['wen', 'jushou', 'lvxiang', null, 'g', 'suanzao'], ['gaolan', 'yuanshang', 'guoyuan', null, 'e', 'ye'], ['quyi', 'chenlin', 'jiaochu', null, 'e', 'handan'], ['gaogan', 'xinping', 'chunyuqiong', null, 'g', 'jinyang'], ['lvweihuang', 'yuanxi', 'hanmeng', null, 'g', 'xindu'], ['lvyang', 'jiangyiqu', 'guotu', null, 'g', 'ji'], ['mayan', 'zhangyi_yuan', 'fengji', null, 'g', 'beiping']],
-  '조조': [['cao', 'xun', 'xunyou', 'caopi', 'g', 'xuchang'], ['xia', 'chengyu', 'caohong', null, 'g', 'guandu'], ['dian', 'yujin', 'liuye', 'lvqian', 'g', 'yanjin'], ['xuhuang', 'guo', 'manchong', null, 'g', 'puyang'], ['caoren', 'zhanghe', 'zangba', null, 'e', 'puyang'], ['xiahouyuan', 'yuejin', 'caozhen', null, 'e', 'yanjin'], ['xuchu', 'caoxiu', 'lidian', null, 'g', 'luoyang']],
-  '유비': [['liubei', 'guan', 'jianyong', null, 'g', 'xiapi'], ['kong', 'weiyan', 'mifang', null, 'g', 'langya'], ['zhao', 'fazheng', 'sunqian', null, 'g', 'xiaopei'], ['zhangfei', 'pangtong', 'liushan', null, 'e', 'pengcheng'], ['machao', 'mizhu', 'zhoucang', null, 'g', 'guangling'], ['huang', 'lady_mi', 'yanyan', 'guanping', 'e', 'xiaopei']],
-};
-for (const corps of Object.values(FACTION_CORPS)) for (const c of corps) stageById(c[5]).garrison++;   // garrison = 시작 때 이 도시에 주둔하는 군단 수 (AI 세력일 때)
-{ for (const [faction, heroes] of Object.entries(FACTION_HEROES)) { const placed = FACTION_CORPS[faction].flatMap(c => c.slice(0, 4).filter(Boolean)); if (placed.length !== heroes.length || heroes.some(k => !placed.includes(k)) || FACTION_CORPS[faction].length !== Math.floor(heroes.length / 3)) throw new Error(`${faction} 군단 편성표가 세력 장수와 맞지 않습니다.`); } }
+// 군단 편성 (명세 43 후속): 장수 한 명 = 군단 하나(군단장, 슬롯 0). 나머지 17칸은 일반 병사. 군주가 맨 앞, 나머지는 등급 높은 순. 3번째마다 원정군.
+const FACTION_CORPS = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, list]) => [f, [list[0], ...list.slice(1).sort((a, b) => Sim.GRADE_MUL[Sim.GRADE[b]] - Sim.GRADE_MUL[Sim.GRADE[a]])]]));
+const factionCities = f => STAGES.filter(s => INITIAL_FACTIONS[s.stage - 1] === f).sort((a, b) => (b.id === CAPITALS[f]) - (a.id === CAPITALS[f]));   // 수도가 맨 앞
+const startCity = (f, n) => { const c = factionCities(f); return c[n % c.length].id; };   // n번째 군단의 시작 도시: 자기 세력 도시에 라운드로빈 (수도 우선)
+for (const f of Object.keys(FACTION_CORPS)) FACTION_CORPS[f].forEach((_, n) => stageById(startCity(f, n)).garrison++);   // garrison = 시작 때 이 도시에 주둔하는 군단 수
+if (Object.entries(FACTION_HEROES).some(([f, h]) => FACTION_CORPS[f].length !== h.length || new Set(FACTION_CORPS[f]).size !== h.length)) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
 const playerFaction = () => campaign.playerFaction || '여포';
 const playerCapital = () => CAPITALS[playerFaction()] || START_STAGE;
 const victoryCapitals = () => PLAYABLE_FACTIONS.filter(f => f !== playerFaction()).map(f => CAPITALS[f]);
@@ -140,12 +137,11 @@ function setEnemyRole(force, stage, role, level = stage.level) {
   force.army.growth = force.army.units.map(key => enemyGrowth(key, level)); return force;
 }
 const enemyForces = [];
-function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 슬롯 0·6·12 는 이름 있는 장수(분대장), 나머지는 도시 지형의 병사
+function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 군단장(슬롯 0)만 이름 있는 장수, 나머지는 도시 지형의 병사. 자기 도시에 분산 배치
   const perCity = {};
-  FACTION_CORPS[faction].forEach(([lead, s6, s12, extra, kind, at], n) => {
-    const stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length]);
-    units[0] = lead; units[6] = s6; units[12] = s12; if (extra) units[1] = extra;
-    enemyForces.push(setEnemyRole({ id: enemyForces.length, fac: faction, corpsNo: n + 1, at, home: at, active: true, army: { team: 'enemy', name: '', at: [45, 18 + 7 * k], leader: lead, squadLeaders: [s6, s12], units, reserve: k > 0, reserveAt: 12, leaderRear: n === 0, formation: n === 0 ? 'guard' : 'block', trig: { near: 12, t: 60 } } }, stage, kind === 'g' ? 'garrison' : 'expedition'));
+  FACTION_CORPS[faction].forEach((lead, n) => {
+    const at = startCity(faction, n), stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length]); units[0] = lead;
+    enemyForces.push(setEnemyRole({ id: enemyForces.length, fac: faction, corpsNo: n + 1, at, home: at, active: true, army: { team: 'enemy', name: '', at: [45, 18 + 7 * k], leader: lead, units, reserve: k > 0, reserveAt: 12, leaderRear: n === 0, formation: n === 0 ? 'guard' : 'block', trig: { near: 12, t: 60 } } }, stage, n % 3 === 2 ? 'expedition' : 'garrison'));
   });
 }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
@@ -153,8 +149,8 @@ const campaign = { playerFaction: '여포', at: START_STAGE, corps: 0, from: nul
 const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS[faction] || { status: 'war', truceUntil: 0 };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
-const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0·6·12 가 1·2·3분대장
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 6, SAVE_SLOTS = 3;   // v6: 도시 65개·군단 28개(분대장 3명) — 이전 저장은 호환되지 않는다
+const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 7, SAVE_SLOTS = 3;   // v7: 도시 65개·군단 89개(장수 1명 = 군단 1개, 여포 12개 도시) — 이전 저장은 호환되지 않는다
 let activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function initialPlayerRelations(faction) {
@@ -162,15 +158,14 @@ function initialPlayerRelations(faction) {
   for (const other of FACTIONS) if (other !== faction) out[other] = JSON.parse(JSON.stringify(faction === '여포' ? DEFAULT_RELATIONS[other] || { status: 'neutral', truceUntil: 0 } : other === '여포' ? DEFAULT_RELATIONS[faction] : DEFAULT_AI_RELATIONS[[faction, other].sort().join('|')] || { status: 'neutral', truceUntil: 0 }));
   return out;
 }
-function buildPlayerRoster(faction, at) {   // 플레이어 세력의 군단 전부 (수도에서 시작): 슬롯 0·6·12 는 이름 있는 장수
+function buildPlayerRoster(faction) {   // 플레이어 세력의 군단 전부: 군단장(슬롯 0)만 이름 있는 장수, 시작 도시는 자기 도시에 분산
   const troops = ['sword', 'shield', 'archer', 'cav', 'sword', 'shield', 'mage'];
   roster.length = 0;
-  FACTION_CORPS[faction].forEach(([lead, s6, s12, extra], n) => {
-    const units = Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length]);
-    units[0] = lead; units[6] = s6; units[12] = s12; if (extra) units[1] = extra;
+  FACTION_CORPS[faction].forEach((lead, n) => {
+    const units = Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length]); units[0] = lead;
     const growth = units.map(key => Sim.levelStats(key, 'player', 1));
     for (let i = 0; i < units.length; i++) { const item = Object.entries(Sim.ITEMS).find(([, v]) => v.unique && v.owner === units[i]); if (item) { growth[i].item = item[0]; campaign.items[item[0]] = 0; } }
-    roster.push({ id: n + 1, name: `신규 군단 ${n + 1}`, at, target: null, units, growth });
+    roster.push({ id: n + 1, name: `신규 군단 ${n + 1}`, at: startCity(faction, n), target: null, units, growth });
   });
 }
 function distributePlayerInfantry() {
@@ -181,7 +176,7 @@ function resetCampaignData(faction = '여포') {
   STAGES.forEach((s, i) => { s.faction = INITIAL_FACTIONS[i]; s.owner = s.faction === faction ? 'player' : 'enemy'; }); enemyForces.length = 0;
   const at = CAPITALS[faction];
   Object.assign(campaign, { playerFaction: faction, at, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: initialPlayerRelations(faction), aiRelations: JSON.parse(JSON.stringify(DEFAULT_AI_RELATIONS)), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', difficulty: 'normal', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: `${faction}군의 수도 ${stageById(at).name}에서 원정을 시작한다.` });
-  buildPlayerRoster(faction, at); for (const f of FACTIONS) if (f !== faction) addEnemyFaction(f);
+  buildPlayerRoster(faction); for (const f of FACTIONS) if (f !== faction) addEnemyFaction(f);
   distributePlayerInfantry();
 }
 function canManualSave() { return state === 'map' && !campaign.pendingEncounter && !campaign.movement.length && !allyChoice && !warnMove && !diplomacyResult && !diplomacyView && !scoutView && !heroView && !campaign.battle; }   // 전략 화면에서 이동·교전 처리가 끝난 시점에만 저장할 수 있다
@@ -744,7 +739,7 @@ function applyBattleResults() {
   }
   for (const u of S.units.filter(x => x.army && x.army.ally && x.dead)) { const force = enemyForces.find(f => 'ally:' + f.id === String(u.army.corps)), slot = force ? force.army.units.indexOf(u.key) : -1; if (slot > 0) force.army.units.splice(slot, 1); }   // 동맹군(아군 편 AI 군단)의 손실도 전략맵 병력에 반영 (군단장 칸은 남긴다)
   for (const u of S.units.filter(x => x.originTeam === 'enemy' && (x.dead || x.team === 'player'))) { const force = enemyForces.find(f => f.id === u.forceId); if (!force) continue; const slot = force.army.units.indexOf(u.key); if (slot >= 0) force.army.units.splice(slot, 1); }
-  for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) { const next = (force.army.squadLeaders || []).find(key => force.army.units.includes(key)); if (next) { force.army.leader = next; setEnemyRole(force, stageById(force.home) || stageById(force.at), force.role || 'garrison', force.level); } else force.active = false; }   // 군단장이 쓰러지면 2분대장 → 3분대장 순으로 이어받는다
+  for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) { const next = force.army.units.find(key => namedRosterUnit(key)); if (next) { force.army.leader = next; setEnemyRole(force, stageById(force.home) || stageById(force.at), force.role || 'garrison', force.level); } else force.active = false; }   // 군단장이 쓰러져도 군단에 이름 있는 장수가 남아 있으면 이어받고, 없으면 군단이 사라진다
   for (const u of S.units.filter(x => !x.dead && x.originTeam === 'enemy' && x.team === 'player')) {
     let corps = roster.find(c => c.units.some((x, i) => !x && i > 0)), slot = corps ? corps.units.findIndex((x, i) => !x && i > 0) : -1;
     if (!corps && roster.length < ROSTER_MAX) {
@@ -1520,7 +1515,7 @@ function drawRoster() {
         label(squadStart ? `${slot / 6 + 1}분대` : '', x + 55, ry + 12, 13, COLORS.gold);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
         if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`HP${stats.maxHp} AT${stats.atk} DF${stats.df} AD${stats.ad} MD${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
-        label(commander ? '군단장' : slot === 6 || slot === 12 ? (namedRosterUnit(key) ? '분대장' : '분대장 없음') : '', x + 570, ry + 12, 13, commander || namedRosterUnit(key) ? COLORS.gold : COLORS.danger, 'right');
+        label(commander ? '군단장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right');
         btns.push({ id: `roster:unit:${side}:${slot}`, x: x + 10, y: ry, w: 580, h: 24 });
       });
     };
