@@ -6,11 +6,11 @@
 const Sim = (() => {
 const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
-const SOLDIER_HP = 2.5;   // 일반 병사(generic) 최종 체력 ×5 — 장수는 그대로
-const FRONTLINE_HP = 3.75; // 일반 보병·방패병 HP: v0.1.96 기준 50%
+const SOLDIER_HP = 1.25;   // 일반 병사 HP 누적 배율 정리: 물리 교전이 20~45초 안에 끝나도록 조정
+const FRONTLINE_HP = 1.5;  // 보병·방패병은 같은 HP, 방패병 생존력은 DF·AD·정면 방패로 확보
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_MUL = 1.25;   // v0.1.115: 모든 장수·병사 체력을 v0.1.113 기준의 50%로 축소 (고정 회복량도 동일 비율)
-const DMG = 0.32;   // 전체 피해 배율(전투 길이). 적도 아군과 같은 능력치 기준 — 난이도는 적 군단 구성(장수·병사 수)으로 맞춘다
+const DMG = 0.45;   // 물리 피해 배율. 적도 아군과 같은 능력치 기준 — 난이도는 군단 수·레벨·AI로 맞춘다
 const DEF_EFF = 1.3;   // 모든 장수·병사의 DF·AD·MD 방어 효율
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -124,7 +124,7 @@ const SPELL = {
   heal: { name: '치유', kind: 'heal', mp: 6, range: 130, cd: 1.2 },
 };
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
-const MAGIC = 1;   // 장풍은 일반 궁병의 실효 사격 DPS 대비 약 4.8배, 광역 주문은 다중 타격으로 효율을 얻는다
+const MAGIC = 1;   // 장풍은 물리 피해 조정 후 일반 궁병 실효 DPS의 약 3~5배 범위, 광역 주문은 다중 타격으로 효율을 얻는다
 const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 const TRAIT_TIME = 5, AURA_RANGE = 150;
@@ -167,25 +167,25 @@ const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, ((TITLE_EFFECT[u.subc
 const ARMIES = [
   { team: 'player', name: '1분대', at: [5, 18], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
   { team: 'player', name: '2분대', at: [5, 25], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', weak: 0.71, name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.71, name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', weak: 0.71, name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', weak: 0.71, name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.71, name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', weak: 0.71, name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
   { team: 'enemy', name: '조운군', at: [45, 27], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', weak: 0.71, name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', weak: 0.71, name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
   { team: 'player', name: '3분대', at: [5, 11], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
-// 병종별 기본 최대 체력. warrior 장수는 등급 HP를 그대로 써서 검병·창병 등급 차이를 보존한다.
+// 모든 장수·군단장급 유닛은 등급 HP를 보존하되 같은 병종 일반 병사보다 최소 50% 높다.
 function baseMaxHp(key, team) {
   const T = U[key], frontline = ['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key), ownHp = Math.round(T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1));
-  if (T.generic || (T.cls === 'warrior' && GRADE[key])) return ownHp;
+  if (T.generic) return ownHp;
   const peerKey = (team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey];
   const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP));
-  return !peer ? ownHp : Math.max(ownHp * 1.5, peerHp * 1.5);
+  return !peer ? ownHp : Math.max(ownHp, Math.round(peerHp * 1.5));
 }
 
 // ---------- 전투력 ----------
@@ -314,7 +314,6 @@ function createBattle(seed = 1, opts = {}) {
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, attackT: -1e9, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
-      if (d.weak && d.weak !== 1) { u.maxHp = u.hp = Math.round(u.maxHp * d.weak); u.atk = Math.round(u.atk * d.weak); u.df = Math.round(u.df * d.weak); }   // 시나리오 군단 약화 배율 (HP·ATK·DF)
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
     });
@@ -425,7 +424,7 @@ function tryHpRetreat(S, A) {
   if (leaderLow && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
   startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
 }
-function orphanRetreat(S, units, team, label) {   // 군단장·분대장이 전사하면 같은 군단·분대의 병사들이 후퇴할 수 있다 (확률 = 퇴각 사기 판정, 광신자 제외)
+function orphanRetreat(S, units, team, label) {   // 군단장이 전사하면 같은 군단 병사들이 후퇴할 수 있다 (확률 = 퇴각 사기 판정, 광신자 제외)
   const list = units.filter(m => live(m) && !retreating(m) && !m.fanatic); if (!list.length) return false;
   if (S.rnd() >= S.routChance) { notice(S, team, `${label} 지휘관 전사 — 병사들은 후퇴할 수 있습니다.`); return false; }
   for (const m of list) { m.surrenderChecked = false; m.order = { type: 'flee' }; m.path = null; m.autoCharge = false; }
@@ -437,10 +436,8 @@ function die(S, u, killer) {
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
   if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
-  const squadUnits = u.squad ? u.squad.units : u.army.units, squadGone = u.named && !squadUnits.some(m => m.named && live(m));   // 분대의 마지막 이름 있는 장수가 전사
   const corpsLead = u.team === 'player' && u.isLeader && u.army === S.armies.find(B => B.team === 'player' && B.corps === u.army.corps);   // 아군 군단장(군단 첫 분대의 지휘관)
   if (corpsLead) { for (const B of S.armies) if (B.team === 'player' && B.corps === u.army.corps) orphanRetreat(S, B.units, 'player', B.name); }
-  else if (squadGone && !(u.team === 'enemy' && u.isLeader)) orphanRetreat(S, squadUnits, u.team, u.army.name);   // 분대장(분대의 마지막 이름 있는 장수) 전사 → 그 분대 병사
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
     if (u.team === 'enemy') dialogue(S, u, '내가 여기서 쓰러지다니…');
@@ -451,7 +448,16 @@ function die(S, u, killer) {
   }
 }
 function surrender(S, u) {
-  let A = S.armies.find(a => a.team === 'player' && a.units.filter(x => !x.dead).length < 6);
+  let A = S.armies.find(a => a.team === 'player' && !a.ally && a.units.filter(x => !x.dead).length < 6);
+  if (!A) {
+    const groups = [...new Set(S.armies.filter(a => a.team === 'player' && !a.ally && a.corps !== 'surrender').map(a => a.corps))].map(corps => S.armies.filter(a => a.team === 'player' && !a.ally && a.corps === corps));
+    const group = groups.find(g => g.length < SQUAD_MAX && g.reduce((n, a) => n + a.units.filter(x => !x.dead).length, 0) < ARMY_MAX);
+    if (group) {
+      const first = group[0], squadIndex = Math.max(-1, ...group.map(a => a.squadIndex ?? 0)) + 1, squad = { id: 0, units: [] };
+      A = { id: S.armies.length, team: 'player', name: first.name.replace(/\s+\d+분대$/, '') + ` ${squadIndex + 1}분대`, corps: first.corps, squadIndex, units: [], squads: [squad], leader: null, commander: false, trig: null, support: first.support, state: first.state, formation: first.formation, routed: false, order: 'idle', ctrl: null };
+      S.armies.push(A);
+    }
+  }
   if (!A) {
     const squad = { id: 0, units: [] };
     A = { id: S.armies.length, team: 'player', name: '투항 군단', corps: 'surrender', squadIndex: 0, units: [], squads: [squad], leader: null, commander: false, trig: null, support: false, state: 'player', formation: 'block', routed: false, order: 'idle', ctrl: null };
@@ -571,7 +577,9 @@ function knockBack(S, u, dx, dy, tiles) {
   if (q.length) { u.path = null; u.knockQ = q; }
   return q.length;
 }
-function pushDashLine(S, first, dx, dy, max) {   // 연속된 적 대열 뒤가 비었을 때만 전원을 한 칸 밀어 한 칸 한 명을 지킨다
+const DASH_CHAIN_MAX = 3, DASH_CHAIN_DAMAGE = 0.65;
+function pushDashLine(S, first, dx, dy, max) {   // 연속 적은 최대 3명만 밀어 돌진 한 번의 피해·전열 붕괴를 제한한다
+  max = Math.min(max, DASH_CHAIN_MAX);
   const line = []; let x = first.tx, y = first.ty;
   while (line.length < max) {
     const e = S.units[S.occ[ti(x, y)] - 1]; if (!e || !live(e) || e.team !== first.team || e.category === 'spear' || e.mv || e.knockQ) return null;
@@ -648,7 +656,7 @@ function unitRetreat(S, u) {   // 개인 후퇴: 이 장수 한 명만 가장자
 }
 
 // ---------- 유닛 AI ----------
-const SIGHT = 6.5 * TILE;
+const SIGHT = 6.5 * TILE, TARGET_SCAN = 8, ENGAGE_LOCK = 3;
 function nearestEnemy(S, u, maxD) {
   let best = null, bd = maxD;
   for (const e of S.units) { if (!live(e) || e.team === u.team) continue; const d = Math.hypot(e.x - u.x, e.y - u.y); if (d < bd) { bd = d; best = e; } }
@@ -656,11 +664,11 @@ function nearestEnemy(S, u, maxD) {
   return leader || best;
 }
 function inReach(u, t) { return u.range > 0 ? Math.hypot((u.tx - t.tx) * TILE, (u.ty - t.ty) * TILE) <= u.range : cheb(u, t) <= 1; }   // 근접 = 인접한 8칸
-function pickTarget(S, u, maxTiles = 14, fallback = true) {   // 병종 우선 등급을 먼저 비교하고, 같은 등급 안에서 거리·후열·체력·집중도·지휘관 점수로 고른다
+function pickTarget(S, u, maxTiles = TARGET_SCAN, fallback = true) {   // 가까운 교전은 유지하고, 그 밖에서 병종 우선순위와 거리로 고른다
   const aim = new Map(); for (const m of S.units) if (live(m) && m.team === u.team && m.order && m.order.tgt && live(m.order.tgt)) aim.set(m.order.tgt, (aim.get(m.order.tgt) || 0) + 1);
+  const candidates = S.units.filter(e => live(e) && e.team !== u.team).map(e => ({ e, d: dist(u, e) / TILE })).filter(x => x.d <= maxTiles), close = candidates.filter(x => x.d <= ENGAGE_LOCK), pool = close.length ? close : candidates;
   const priority = TARGET_PRIORITY[u.category] || {}; let best = null, bp = -1, bs = -1e9;
-  for (const e of S.units) {
-    if (!live(e) || e.team === u.team) continue; const d = Math.hypot(e.x - u.x, e.y - u.y) / TILE; if (d > maxTiles) continue;
+  for (const { e, d } of pool) {
     const p = priority[e.category] || 0; let sc = -d; if (isBack(e) && d <= 6) sc += 8; if (e.hp < e.maxHp * 0.3) sc += 5; sc += (aim.get(e) || 0) <= 2 ? 3 : -3; if (u.named && e.isLeader) sc += 3;
     if (p > bp || p === bp && sc > bs) { bp = p; bs = sc; best = e; }
   }
@@ -752,9 +760,9 @@ function combatKite(S, u) {   // 공격을 마친 쿨타임에만, 심하게 포
   const foe = nearestEnemy(S, u, TILE * 2), cover = squadMates(u).filter(m => !isBack(m));
   if (!foe || cheb(u, foe) > 1 || !cover.length) return false;
   const near = S.units.filter(e => live(e) && e.team !== u.team && cheb(u, e) <= 1).length;
-  if (near < 2 && u.hp >= u.maxHp * 0.4) return false;
+  if (near < 3 && u.hp >= u.maxHp * 0.3) return false;
   if (!kiteFrom(S, u, foe, cover)) return false;
-  u.kiteT = 3; return true;
+  u.kiteT = 4; return true;
 }
 function healerFollow(S, u) {   // 치유 장수는 명령(정지 포함)과 상관없이 자기 분대를 따라다니며, 공격 사이 위기 때만 한 칸 물러난다
   const mates = squadMates(u); if (!mates.length) return;
@@ -768,7 +776,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   if (u.cdT > 0 || u.stun > 0) return false;
   if (u.cls === 'cavalry' && u.special === 'dash' && u.spT <= 0 && !handCtl(S, u)) { const any = dashAny(u), locked = u.order && (u.order.target || u.order.tgt), t = locked && live(locked) && locked.team !== u.team ? (dist(u, locked) <= SPECIAL.dash.range ? locked : null) : nearestEnemy(S, u, SPECIAL.dash.range);
     if (t && (any || dist(u, t) > TILE * 1.5)) {
-      u.face = Math.atan2(t.y - u.y, t.x - u.x); if (useSpecial(S, u, t.x, t.y)) return true;
+      u.face = Math.atan2(t.y - u.y, t.x - u.x); if (useSpecial(S, u, t.x, t.y)) { if (u.order.type === 'charge') { u.order.tgt = t; u.order.tgtT = S.t; } return true; }
     }
   }
   if (u.spells.includes('heal')) {
@@ -805,7 +813,7 @@ function updateUnit(S, u, dt) {
     if (n && o && u.titleDash && live(o) && o.team !== u.team) {
       if (u.dashHit.has(o.id) && o.mv) return;
       const line = pushDashLine(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 6 - u.dashMoved)), hit = line || [o], moved = line ? 1 : 0;
-      for (const e of hit) if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, D.scale || 1); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); }
+      for (let i = 0; i < hit.length; i++) { const e = hit[i]; if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * (i ? DASH_CHAIN_DAMAGE : 1))); const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, D.scale || 1); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); } }
       if (!line) u.dashQ.length = 0;
       return;
     }
@@ -836,7 +844,7 @@ function updateUnit(S, u, dt) {
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
-    if (!handCtl(S, u)) { const engaged = !stale && inReach(u, o.tgt); if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 3)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 난이도와 관계없이 병종 우선순위를 적용하고 목표를 최소 3초 유지한다
+    if (!handCtl(S, u)) { const engaged = !stale && dist(u, o.tgt) <= ENGAGE_LOCK * TILE; if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 3)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 가까운 교전 상대는 유지하고, 멀어진 뒤에만 병종 우선순위로 재선정한다
     else if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }

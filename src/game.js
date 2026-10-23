@@ -224,7 +224,7 @@ function resolveAiGuests(stage) {   // C: AI 동맹 군단이 전투력 비교�
   return { join, notes };
 }
 function stageArmies(stage, helpIds = [], joinIds = []) {
-  const enemies = enemyForces.filter(f => f.active && f.at === stage.id && (relationOf(forceFaction(f)).status === 'war' || joinIds.includes(f.id))).map(f => ({ ...f.army, units: [...f.army.units], forceId: f.id, weak: aiP().weak !== 1 ? aiP().weak : undefined }));   // 난이도: 적 군단 능력 배율 (보통 1)
+  const enemies = enemyForces.filter(f => f.active && f.at === stage.id && (relationOf(forceFaction(f)).status === 'war' || joinIds.includes(f.id))).map(f => ({ ...f.army, units: [...f.army.units], forceId: f.id }));   // 적 능력치는 동일 기준, 난이도는 수량·레벨·AI로 조정
   const helpers = enemyForces.filter(f => f.active && f.at === stage.id && helpIds.includes(f.id)).map((f, k) => ({ ...f.army, units: [...f.army.units], team: 'player', ally: true, corps: 'ally:' + f.id, forceId: undefined, name: `${forceFaction(f)}군 동맹군`, at: [9, 10 + k * 6], reserve: false, trig: null, support: false, commander: false, squadIndex: undefined }));
   return rosterArmies().concat(enemies, helpers);
 }
@@ -296,9 +296,9 @@ const enemyRolesAt = stage => { const forces = enemyForces.filter(f => f.active 
 // 어떤 도시에 개입할 수 있는 아군 군단(같은 도시 또는 연결된 도시)의 전투력 합 — 침공 대응 규칙과 같은 범위
 const playerPowerNear = stage => roster.filter(c => combatReadyCorps(c) && (c.at === stage.id || stage.links.includes(c.at))).reduce((n, c) => n + corpsPow(c), 0);
 const AI_PROFILES = {   // AI 난이도 프로필 (명세 36 AI-S-07). 보통 = 기존 코드값. 쉬움·어려움은 설계 추정(측정 전)
-  easy: { name: '쉬움', attack: 1.5, defend: 1.0, retreat: 0.1, expedition: 7, tactics: 0, weak: 0.85 },
-  normal: { name: '보통', attack: 1.2, defend: 0.8, retreat: 0.1, expedition: 5, tactics: 1, weak: 1 },
-  hard: { name: '어려움', attack: 1.0, defend: 0.6, retreat: 0.05, expedition: 4, tactics: 2, weak: 1.1 },
+  easy: { name: '쉬움', attack: 1.5, defend: 1.0, retreat: 0.1, expedition: 7, tactics: 0 },
+  normal: { name: '보통', attack: 1.2, defend: 0.8, retreat: 0.1, expedition: 5, tactics: 1 },
+  hard: { name: '어려움', attack: 1.0, defend: 0.6, retreat: 0.05, expedition: 4, tactics: 2 },
 };
 const aiP = () => AI_PROFILES[campaign.difficulty] || AI_PROFILES.normal;
 const AI_ATTACK_RATIO = 1.2;   // 침공: 집결한 적 전투력이 상대 대응 전투력의 1.2배 이상일 때만
@@ -1079,7 +1079,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.201', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.202', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
