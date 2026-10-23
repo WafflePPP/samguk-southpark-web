@@ -71,7 +71,7 @@ const CLONES = {
   lidian: ['hua', '이전'], chengyu: ['xun', '정욱'], xunyou: ['xun', '순유'], manchong: ['xun', '만총'], liuye: ['xun', '유엽'], lvqian: ['hua', '여건'], guanping: ['hua', '관평'], zhoucang: ['hua', '주창'], sunqian: ['xun', '손건'], jianyong: ['xun', '간옹'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
-U.gao.style = 'gao'; U.lulingqi.style = 'lulingqi';
+for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo']) U[k].style = k;
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 const HERO_DEFAULT = {
