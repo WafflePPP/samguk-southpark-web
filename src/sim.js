@@ -72,8 +72,9 @@ const CLONES = {
   lidian: ['hua', '이전'], chengyu: ['xun', '정욱'], xunyou: ['xun', '순유'], manchong: ['xun', '만총'], liuye: ['xun', '유엽'], lvqian: ['hua', '여건'], guanping: ['hua', '관평'], zhoucang: ['hua', '주창'], sunqian: ['xun', '손건'], jianyong: ['xun', '간옹'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
-for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo']) U[k].style = k;
-for (const k of ['xiahouyuan', 'xuhuang', 'yan', 'wen']) Object.assign(U[k], { cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 8, special: 'dash', range: k === 'xiahouyuan' ? 270 : 0 });   // 참조 디자인에서 말에 탑승한 장수는 기병
+for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo', 'gong']) U[k].style = k;
+for (const k of ['xiahouyuan', 'xuhuang', 'yan', 'wen', 'gong']) Object.assign(U[k], { cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 8, special: 'dash', range: 0 });   // 참조 디자인에서 말에 탑승한 장수는 기병
+for (const k of ['xiahouyuan', 'gong']) Object.assign(U[k], { range: 270, movingShot: true });   // 기마궁병은 이동 중에도 원거리 공격
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = CAPTAIN[U[k].cls][i]; });
 for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(CAPTAIN[U[k].cls][i] * x); });
 const HERO_DEFAULT = {
@@ -824,7 +825,7 @@ function updateUnit(S, u, dt) {
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
-  if (u.mv) { advanceMove(S, u, dt); if (u.mv) return; }   // 한 칸을 걷는 동안에는 다른 행동을 하지 않는다. 칸에 도착하면 같은 틱에 다음 입력·행동을 이어서 처리 (끊김 없이)
+  if (u.mv) { advanceMove(S, u, dt); if (u.mv) { if (U[u.key].movingShot && u.cdT <= 0) { const t = pickTarget(S, u, u.range / TILE, false); if (t) attack(S, u, t); } return; } }   // 기마궁병만 이동 중 사격, 나머지는 도착 후 행동
   if (u.knockQ) { const n = u.knockQ.shift(); if (n && !S.occ[ti(n.tx, n.ty)]) { beginStep(S, u, n.tx, n.ty, 0.08); advanceMove(S, u, 0); return; } u.knockQ = null; return; }
   if (u.dashQ) {
     const n = u.dashQ[0], o = n && S.units[S.occ[ti(n.tx, n.ty)] - 1];

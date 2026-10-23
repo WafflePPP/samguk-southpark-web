@@ -30,6 +30,7 @@ const STYLES = {
   captain: { body: '#5a1c24', trim: '#e0b13a', skin: '#c9946a', helm: true, helmColor: '#24222c', plume: 1.6, pauldrons: true, weapon: 'sword' },
   hua: { body: '#7a1c24', trim: '#ffd34d', skin: '#c9946a', cape: '#3a0e14', helm: true, helmColor: '#1c1c26', plume: 1.8, pauldrons: true, beard: true, weapon: 'axe' },
   jang: { body: '#29263d', trim: '#c99a52', skin: '#c98f6a', cape: '#513285', helm: true, helmColor: '#c8d1dc', plume: 1.9, plumeColor: '#4655b8', pauldrons: true, beard: true, weapon: 'lance', tassel: '#b53632', horse: '#24212b' },
+  gong: { body: '#e3e7e4', trim: '#4f83a8', skin: '#d8a17b', cape: '#d7e1df', helm: true, helmColor: '#d8dde0', plume: 1.5, plumeColor: '#eef4f2', pauldrons: true, beard: true, weapon: 'bow', horse: '#f1eee4' },
   lulingqi: { body: '#e3e4e8', trim: '#7650a5', skin: '#f1d0b3', sleeves: '#d8d9e2', hairCap: true, longHair: true, crown: true, pauldrons: true, weapon: 'lance', tassel: '#c9302c', horse: '#343039' },
   gao: { body: '#302722', trim: '#755a3f', skin: '#c68f6d', cape: '#17171c', helm: true, helmColor: '#29272d', plume: 2, plumeColor: '#c42e2e', pauldrons: true, beard: true, weapon: 'sword' },
   cao: { body: '#242334', trim: '#c79b3b', skin: '#c98f6a', cape: '#30294e', hairCap: true, crown: true, beard: true, pauldrons: true, armorPlate: '#54515a', weapon: 'sword' },
