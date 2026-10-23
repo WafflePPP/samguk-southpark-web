@@ -51,8 +51,8 @@ const STAGE_ROWS = [
   [30, 'baima', '백마', '연주', '여포', 7, 7, 'w', 9, '초', 'puyang yangguo'],
   [31, 'donge', '동아', '연주', '여포', 8, 5, 'p', 10, '중', 'puyang juye'],
   [32, 'juye', '거야', '연주', '여포', 9, 6, 'p', 11, '중', 'donge yangguo'],
-  [33, 'yangguo', '양국', '예주', '여포', 8, 8, 'p', 12, '중', 'baima juye qiao'],
-  [34, 'qiao', '초', '예주', '조조', 9, 9, 'p', 14, '중', 'yangguo chen'],
+  [33, 'yangguo', '양국', '예주', '여포', 8, 8, 'p', 12, '중', 'baima juye qiao gaoyang'],
+  [34, 'qiao', '초', '예주', '조조', 9, 9, 'p', 14, '중', 'yangguo chen xiao'],
   [35, 'yangwu', '양무', '연주', '조조', 4, 7, 'p', 13, '중', 'yanjin guandu henei luoyang hulao'],
   [36, 'henei', '하내', '사예', '조조', 4, 6, 'f', 15, '중', 'luoyang yangwu'],
   [37, 'luoyang', '낙양', '사예', '조조', 3, 7, 'f', 17, '중', 'henei hongnong yangwu hulao'],
@@ -423,10 +423,10 @@ function enemyDecision(force) {
   const next = stageById(tgt.path[1]); base.to = next.id;
   if (tgt.kind === 'player' && threat > 0 && threat >= own * aiP().defend) return { ...base, act: 'hold', mode: '방어', reason: `아군 위협 ${threat} ≥ 주둔 ${own}×${aiP().defend}` };
   if (next.owner === 'player' || hostsPlayer(next)) {
-    const def = playerPowerNear(next);
+    const def = playerPowerNear(next), ratio = aiPressure('P|' + faction + '|' + next.id, aiP().attack);
     if (def === 0) return { ...base, act: 'advance', mode: '침공', def, reason: '무방비 지역' };
-    if (own >= def * aiP().attack) return { ...base, act: 'advance', mode: '침공', def, reason: `집결 ${own} ≥ 대응 ${def}×${aiP().attack}` };
-    return { ...base, act: 'hold', mode: '집결', def, reason: `집결 ${own} < 대응 ${def}×${aiP().attack}` };
+    if (own >= def * ratio) return { ...base, act: 'advance', mode: '침공', def, reason: `집결 ${own} ≥ 대응 ${def}×${ratio.toFixed(2)}` };
+    return { ...base, act: 'hold', mode: '집결', def, reason: `집결 ${own} < 대응 ${def}×${ratio.toFixed(2)}` };
   }
   if (next.owner === 'enemy' && next.faction && next.faction !== faction && !alliedFactions(faction, next.faction)) {   // 전쟁 상대(AI)의 도시
     const key = next.id + '|' + pairKey(faction, next.faction), last = campaign.aiLast && campaign.aiLast[key];
