@@ -19,66 +19,76 @@ let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false
 // 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
 // 화북·연주·사예·서주 도시 (참조 지도 기반): [번호, id, 이름, 지역, 세력, 열, 행, 지형(p평 r강 w강·광 m산 f성), Lv, 난이도(초중상최), 길(양방향, 한쪽만 적어도 됨)]. 좌표는 격자 col,row 에서 계산한다.
 const STAGE_ROWS = [
-  [1, 'chenliu', '진류', '연주', '조조', 6, 8, 'p', 2, '초', 'suanzao waihuang'],
-  [2, 'suanzao', '산조', '연주', '조조', 6, 7, 'p', 3, '초', 'chenliu dingtao'],
-  [3, 'dingtao', '정도', '연주', '조조', 8, 7, 'w', 5, '초', 'suanzao ye xiaopei'],
-  [4, 'ye', '업', '화북', '원소', 6, 5, 'f', 7, '중', 'dingtao puyang liyang handan shangdang'],
-  [5, 'puyang', '복양', '연주', '조조', 7, 6, 'p', 8, '초', 'ye yanjin baima donge'],
-  [6, 'yanjin', '연진', '연주', '조조', 5, 7, 'w', 12, '중', 'puyang guandu yangwu'],
-  [7, 'xiaopei', '소패', '서주', '유비', 10, 7, 'p', 8, '초', 'pengcheng xiao donghai'],
-  [8, 'guandu', '관도', '연주', '조조', 5, 8, 'f', 20, '상', 'yanjin yangwu hulao chenliu'],
-  [9, 'pengcheng', '팽성', '서주', '여포', 10, 8, 'p', 14, '중', 'xiaopei guangling xiao quli'],
-  [10, 'guangling', '광릉', '서주', '여포', 13, 11, 'w', 20, '상', 'pengcheng langya huaiyin'],
-  [11, 'langya', '낭야', '서주', '여포', 12, 6, 'm', 26, '상', 'guangling xiapi kaiyang ju dongguan'],
-  [12, 'xiapi', '하비', '서주', '여포', 11, 8, 'f', 32, '최', 'langya xiaxiang'],
-  [13, 'waihuang', '외황', '연주', '조조', 7, 8, 'p', 3, '초', 'chenliu yongqiu'],
-  [14, 'yongqiu', '옹구', '연주', '조조', 7, 9, 'p', 3, '초', 'waihuang gaoyang xiangyi'],
-  [15, 'gaoyang', '고양', '연주', '조조', 8, 9, 'p', 4, '초', 'yongqiu xiangyi'],
-  [16, 'xiangyi', '양읍', '연주', '조조', 8, 10, 'p', 4, '초', 'yongqiu gaoyang'],
-  [17, 'liyang', '여양', '화북', '원소', 6, 6, 'r', 8, '초', 'ye'],
-  [18, 'handan', '한단', '화북', '원소', 6, 4, 'p', 8, '초', 'ye julu shangdang'],
-  [19, 'julu', '거록', '화북', '원소', 7, 4, 'p', 9, '초', 'handan xindu zhongshan'],
-  [20, 'shangdang', '상당', '화북', '원소', 4, 5, 'm', 9, '초', 'ye handan jinyang'],
-  [21, 'xindu', '신도', '화북', '원소', 8, 3, 'p', 10, '중', 'julu nanpi pingyuan'],
-  [22, 'zhongshan', '중산', '화북', '원소', 7, 2, 'p', 11, '중', 'julu hejian jinyang'],
-  [23, 'jinyang', '진양', '화북', '원소', 4, 3, 'm', 11, '중', 'shangdang zhongshan'],
-  [24, 'hejian', '하간', '화북', '원소', 9, 2, 'p', 12, '중', 'zhongshan nanpi ji'],
-  [25, 'nanpi', '남피', '화북', '원소', 9, 3, 'r', 12, '중', 'xindu pingyuan hejian'],
-  [26, 'pingyuan', '평원', '화북', '원소', 9, 4, 'p', 12, '중', 'xindu nanpi donge beihai'],
-  [27, 'ji', '계', '화북', '원소', 9, 0, 'f', 14, '중', 'hejian beiping'],
-  [28, 'beiping', '북평', '화북', '원소', 13, 0, 'm', 15, '중', 'ji'],
-  [29, 'baima', '백마', '연주', '조조', 7, 7, 'w', 9, '초', 'puyang'],
-  [30, 'donge', '동아', '연주', '조조', 8, 5, 'p', 10, '중', 'puyang juye'],
-  [31, 'juye', '거야', '연주', '조조', 9, 6, 'p', 11, '중', 'donge xiao'],
-  [32, 'yangwu', '양무', '연주', '조조', 4, 7, 'p', 13, '중', 'yanjin guandu henei luoyang hulao'],
-  [33, 'henei', '하내', '사예', '조조', 4, 6, 'f', 15, '중', 'luoyang yangwu'],
-  [34, 'luoyang', '낙양', '사예', '조조', 3, 7, 'f', 17, '중', 'henei hongnong yangwu hulao'],
-  [35, 'hulao', '호뢰', '사예', '조조', 4, 8, 'f', 19, '중', 'luoyang yangwu guandu'],
-  [36, 'hongnong', '홍농', '사예', '조조', 1, 7, 'm', 20, '상', 'luoyang'],
-  [37, 'xiao', '소', '서주', '여포', 9, 8, 'p', 9, '초', 'xiaopei pengcheng'],
-  [38, 'donghai', '동해', '서주', '여포', 11, 7, 'p', 10, '중', 'xiaopei kaiyang'],
-  [39, 'kaiyang', '개양', '서주', '여포', 11, 6, 'p', 15, '중', 'donghai langya linzi'],
-  [40, 'quli', '취려', '서주', '여포', 10, 9, 'p', 12, '중', 'pengcheng xiaxiang'],
-  [41, 'xiaxiang', '하상', '서주', '여포', 11, 9, 'r', 14, '중', 'quli xiapi siyang xuyi'],
-  [42, 'siyang', '사양', '서주', '여포', 12, 9, 'p', 16, '중', 'xiaxiang xuyi huaiyin'],
-  [43, 'xuyi', '우이', '서주', '여포', 12, 10, 'r', 18, '중', 'xiaxiang siyang huaiyin'],
-  [44, 'huaiyin', '회음', '서주', '여포', 13, 10, 'w', 20, '상', 'siyang xuyi guangling'],
-  [45, 'ju', '거', '서주', '여포', 13, 6, 'm', 24, '상', 'langya dongguan gaomi'],
-  [46, 'dongguan', '동완', '서주', '여포', 12, 5, 'm', 25, '상', 'langya ju gaomi beihai'],
-  [47, 'beihai', '북해', '화북', '원소', 12, 4, 'p', 26, '상', 'dongguan linzi gaomi'],
-  [48, 'linzi', '임치', '화북', '원소', 11, 4, 'f', 24, '상', 'beihai kaiyang pingyuan'],
-  [49, 'gaomi', '고밀', '화북', '원소', 13, 5, 'p', 28, '상', 'ju dongguan jimo'],
-  [50, 'jimo', '즉묵', '화북', '원소', 14, 5, 'p', 28, '상', 'gaomi donglai'],
-  [51, 'donglai', '동래', '화북', '원소', 14, 3, 'm', 29, '상', 'jimo'],
-  [52, 'changan', '장안', '사예', '조조', 0, 6, 'f', 20, '상', 'hongnong'],
-  [53, 'xiangping', '양평', '화북', '원소', 14, 0, 'f', 15, '중', 'beiping'],
+  [1, 'chenliu', '진류', '연주', '조조', 6, 8, 'p', 2, '초', 'suanzao waihuang guandu'],
+  [2, 'suanzao', '산조', '연주', '조조', 6, 7, 'p', 3, '초', 'baima'],
+  [3, 'dingtao', '정도', '연주', '조조', 8, 7, 'w', 5, '초', 'xiaopei baima'],
+  [4, 'ye', '업', '화북', '원소', 6, 5, 'f', 7, '중', 'puyang liyang handan shangdang'],
+  [5, 'puyang', '복양', '연주', '조조', 7, 6, 'p', 8, '초', 'yanjin baima donge liyang'],
+  [6, 'yanjin', '연진', '연주', '조조', 5, 7, 'w', 12, '중', 'guandu yangwu'],
+  [7, 'xiaopei', '소패', '서주', '유비', 10, 7, 'p', 8, '초', 'pengcheng donghai'],
+  [8, 'guandu', '관도', '연주', '조조', 5, 8, 'f', 20, '상', 'hulao'],
+  [9, 'pengcheng', '팽성', '서주', '유비', 10, 8, 'p', 14, '중', 'xiao quli xiapi'],
+  [10, 'guangling', '광릉', '서주', '여포', 13, 11, 'w', 20, '상', 'huaiyin'],
+  [11, 'langya', '낭야', '서주', '여포', 12, 6, 'm', 26, '상', 'kaiyang ju dongguan'],
+  [12, 'xiapi', '하비', '서주', '여포', 11, 8, 'f', 32, '최', 'xiaxiang donghai'],
+  [13, 'waihuang', '외황', '연주', '조조', 7, 8, 'p', 3, '초', 'yongqiu'],
+  [14, 'yongqiu', '옹구', '연주', '조조', 7, 9, 'p', 3, '초', 'gaoyang'],
+  [15, 'gaoyang', '고양', '연주', '조조', 8, 9, 'p', 4, '초', 'xiangyi'],
+  [16, 'xiangyi', '양읍', '연주', '조조', 8, 10, 'p', 4, '초', ''],
+  [17, 'liyang', '여양', '화북', '원소', 6, 6, 'r', 8, '초', ''],
+  [18, 'handan', '한단', '화북', '원소', 6, 4, 'p', 8, '초', 'julu shangdang'],
+  [19, 'julu', '거록', '화북', '원소', 7, 4, 'p', 9, '초', 'xindu zhongshan'],
+  [20, 'shangdang', '상당', '화북', '원소', 4, 5, 'm', 9, '초', 'jinyang'],
+  [21, 'xindu', '신도', '화북', '원소', 8, 3, 'p', 10, '중', 'nanpi pingyuan'],
+  [22, 'zhongshan', '중산', '화북', '원소', 7, 2, 'p', 11, '중', 'hejian'],
+  [23, 'jinyang', '진양', '화북', '원소', 4, 3, 'm', 11, '중', ''],
+  [24, 'hejian', '하간', '화북', '원소', 9, 2, 'p', 12, '중', 'nanpi ji'],
+  [25, 'nanpi', '남피', '화북', '원소', 9, 3, 'r', 12, '중', 'pingyuan'],
+  [26, 'pingyuan', '평원', '화북', '원소', 9, 4, 'p', 12, '중', 'donge linzi'],
+  [27, 'ji', '계', '화북', '원소', 9, 0, 'f', 14, '중', 'beiping'],
+  [28, 'beiping', '북평', '화북', '원소', 11, 0, 'm', 15, '중', 'xiangping'],
+  [29, 'baima', '백마', '연주', '조조', 7, 7, 'w', 9, '초', ''],
+  [30, 'donge', '동아', '연주', '조조', 8, 5, 'p', 10, '중', 'juye'],
+  [31, 'juye', '거야', '연주', '조조', 9, 6, 'p', 11, '중', 'xiao'],
+  [32, 'yangwu', '양무', '연주', '조조', 4, 7, 'p', 13, '중', 'luoyang'],
+  [33, 'henei', '하내', '사예', '조조', 4, 6, 'f', 15, '중', 'luoyang'],
+  [34, 'luoyang', '낙양', '사예', '조조', 3, 7, 'f', 17, '중', 'hongnong hulao'],
+  [35, 'hulao', '호뢰', '사예', '조조', 4, 8, 'f', 19, '중', ''],
+  [36, 'hongnong', '홍농', '사예', '조조', 1, 7, 'm', 20, '상', 'changan'],
+  [37, 'xiao', '소', '서주', '유비', 9, 8, 'p', 9, '초', ''],
+  [38, 'donghai', '동해', '서주', '여포', 11, 7, 'p', 10, '중', 'kaiyang'],
+  [39, 'kaiyang', '개양', '서주', '여포', 11, 6, 'p', 15, '중', 'linzi'],
+  [40, 'quli', '취려', '서주', '여포', 10, 9, 'p', 12, '중', 'xiaxiang'],
+  [41, 'xiaxiang', '하상', '서주', '여포', 11, 9, 'r', 14, '중', 'siyang'],
+  [42, 'siyang', '사양', '서주', '여포', 12, 9, 'p', 16, '중', 'xuyi'],
+  [43, 'xuyi', '우이', '서주', '여포', 12, 10, 'r', 18, '중', 'huaiyin'],
+  [44, 'huaiyin', '회음', '서주', '여포', 13, 10, 'w', 20, '상', ''],
+  [45, 'ju', '거', '서주', '여포', 13, 6, 'm', 24, '상', 'dongguan gaomi'],
+  [46, 'dongguan', '동완', '서주', '여포', 12, 5, 'm', 25, '상', 'gaomi beihai'],
+  [47, 'beihai', '북해', '화북', '원소', 12, 4, 'p', 26, '상', 'linzi gaomi'],
+  [48, 'linzi', '임치', '화북', '원소', 11, 4, 'f', 24, '상', ''],
+  [49, 'gaomi', '고밀', '화북', '원소', 13, 5, 'p', 28, '상', 'jimo'],
+  [50, 'jimo', '즉묵', '화북', '원소', 14, 5, 'p', 28, '상', 'donglai'],
+  [51, 'donglai', '동래', '화북', '원소', 14, 3, 'm', 29, '상', ''],
+  [52, 'changan', '장안', '사예', '조조', 0, 6, 'f', 20, '상', ''],
+  [53, 'xiangping', '양평', '화북', '원소', 13, 0, 'f', 15, '중', ''],
 ];
 const WORLD_W = 1700, WORLD_H = 1200;   // 지도 월드 크기 (카메라로 1000×720 만 보인다)
+// 참조 지도의 상대 위치를 현재 도시 격자에 맞춘 개략 지형이다.
+const YELLOW_RIVER = [[0, 505], [150, 535], [300, 600], [410, 675], [525, 690], [625, 675], [690, 660], [800, 580], [950, 490], [1100, 475], [1320, 470], [1490, 395], [1665, 365]];
+const MAP_MOUNTAINS = [
+  { name: '태행산맥', x: 575, y: 200, n: 8, dx: 0, dy: 44, h: 54, lx: 600, ly: 425 },
+  { name: '연산산맥', x: 820, y: 35, n: 8, dx: 95, dy: 0, h: 32, lx: 1190, ly: 135 },
+  { name: '진령산맥', x: 40, y: 875, n: 7, dx: 46, dy: 2, h: 44, lx: 170, ly: 930 },
+  { name: '화산', x: 155, y: 790, n: 2, dx: 27, dy: 4, h: 58, lx: 170, ly: 830 },
+  { name: '숭산', x: 410, y: 865, n: 3, dx: 28, dy: -4, h: 43, lx: 438, ly: 900 },
+  { name: '태산', x: 1100, y: 560, n: 3, dx: 26, dy: -6, h: 48, lx: 1130, ly: 600 },
+];
 const OLD_STAGE = { chenliu: ['조조군 수도', 5], suanzao: ['연주 전초', 7], dingtao: ['서주 방면 관문', 11], ye: ['원소군 수도', 13], puyang: ['조조군 전초', 17], yanjin: ['강가 방어선', 19], xiaopei: ['유비군 수도', 23], guandu: ['수도 외곽 관문', 29], pengcheng: ['평야 방어선', 31], guangling: ['강가 관문', 37], langya: ['수도 외곽 산성', 41], xiapi: ['여포군 수도', 47] };
 const STAGES = STAGE_ROWS.map(([stage, id, name, region, faction, col, row, t, level, d, links]) => ({
   id, name, region, faction, stage, level, difficulty: { 초: '초급', 중: '중급', 상: '상급', 최: '최상' }[d], note: OLD_STAGE[id] ? OLD_STAGE[id][0] : `${region} 거점`,
   theme: { p: 'plains', r: 'riverside', w: 'riverside', m: 'mountain', f: 'fortress' }[t], ...(t === 'w' ? { wideRiver: true } : {}),
-  x: 60 + 105 * col + (row % 2 ? 52 : 0), y: 60 + 95 * row, owner: faction === '여포' ? 'player' : 'enemy', links: links.split(' '), garrison: 0, mapSeed: OLD_STAGE[id] ? OLD_STAGE[id][1] : 100 + stage,
+  x: 60 + 105 * col + (row % 2 ? 52 : 0), y: 60 + 95 * row, owner: faction === '여포' ? 'player' : 'enemy', links: links ? links.split(' ') : [], garrison: 0, mapSeed: OLD_STAGE[id] ? OLD_STAGE[id][1] : 100 + stage,
   ...(['xiapi', 'ye', 'chenliu', 'xiaopei'].includes(id) ? { capital: true } : {}),
 }));
 for (const s of STAGES) for (const id of s.links) { const t = STAGES.find(x => x.id === id); if (!t) throw new Error(`${s.id}: 없는 도시 ${id}`); if (!t.links.includes(s.id)) t.links.push(s.id); }   // 길은 양방향
@@ -1149,7 +1159,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.223', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.224', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1213,8 +1223,23 @@ function drawStageMap() {
   const stationedAt = s => roster.map((c, i) => ({ c, i })).filter(({ c }) => c.units.some(Boolean) && c.at === s.id);   // 이 도시에 주둔 중인 아군 군단
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, MAP_VW, VH); ctx.clip(); ctx.translate(-ox, -oy);
   ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(WORLD_W, 0); ctx.lineTo(1665, 0); ctx.bezierCurveTo(1640, 300, 1690, 500, 1660, 700); ctx.bezierCurveTo(1630, 900, 1680, 1050, 1650, WORLD_H); ctx.lineTo(WORLD_W, WORLD_H); ctx.closePath(); ctx.fill();   // 동쪽 바다
-  ctx.strokeStyle = 'rgba(206,231,224,.6)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, 260); ctx.bezierCurveTo(260, 330, 420, 470, 520, 590); ctx.bezierCurveTo(640, 700, 880, 560, 1180, 520); ctx.bezierCurveTo(1400, 490, 1560, 430, 1665, 400); ctx.stroke();   // 황하 (대략)
   ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 60; x < WORLD_W; x += 90) for (let y = 75; y < WORLD_H; y += 75) if (vis(x, y, 40)) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
+  for (const m of MAP_MOUNTAINS) {
+    for (let i = 0; i < m.n; i++) {
+      const x = m.x + i * m.dx, y = m.y + i * m.dy, h = m.h + (i % 3) * 7;
+      if (!vis(x, y, 100)) continue;
+      ctx.beginPath(); ctx.moveTo(x - 35, y + 18); ctx.lineTo(x - 6, y - h); ctx.lineTo(x + 36, y + 18); ctx.closePath();
+      ctx.fillStyle = '#77745c'; ctx.fill(); ctx.strokeStyle = '#414b3a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 6, y - h); ctx.lineTo(x + 36, y + 18); ctx.lineTo(x + 3, y + 7); ctx.closePath(); ctx.fillStyle = '#4a5743'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 6, y - h); ctx.lineTo(x - 14, y - h + 22); ctx.lineTo(x - 4, y - h + 15); ctx.lineTo(x + 8, y - h + 25); ctx.closePath(); ctx.fillStyle = '#c4b995'; ctx.fill();
+    }
+    if (vis(m.lx, m.ly)) label(m.name, m.lx, m.ly, 19, '#e0d4ad', 'center');
+  }
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath();
+  YELLOW_RIVER.forEach(([x, y], i) => { if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+  for (const [width, color] of [[29, '#626b45'], [23, '#397c91'], [12, '#6ea5ac'], [3, '#a6c7bb']]) { ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); }
+  ctx.restore();
+  if (vis(1035, 525)) label('황하', 1035, 525, 23, '#bce6e8', 'center');
   for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id && Math.max(s.x, t.x) >= ox - 20 && Math.min(s.x, t.x) <= ox + MAP_VW + 20 && Math.max(s.y, t.y) >= oy - 20 && Math.min(s.y, t.y) <= oy + VH + 20) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
   for (const [name, x, y] of [['화북', 850, 140], ['사예', 270, 570], ['연주', 780, 1100], ['서주', 1480, 880]]) if (vis(x, y)) label(name, x, y, 32, 'rgba(255,239,190,.65)', 'center');
   const targetRows = {};
