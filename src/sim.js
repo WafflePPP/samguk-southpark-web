@@ -47,7 +47,7 @@ const U = {
 const CAPTAIN = { warrior: [400, 64, 40, 24, 20], cavalry: [400, 70, 32, 20, 18], archer: [260, 68, 12, 12, 16], mage: [300, 30, 18, 18, 30], cleric: [400, 66, 30, 24, 24] };   // 군단장급 병사(= 가상 대장·적 장수·적 군사)
 // 이름 있는 장수(삼국지 정사·연의 인물)의 등급 = 연의에서의 비중. 군단장급 병사(CAPTAIN) 능력치 × 등급 배율. 기획 명세 17.
 const GRADE_MUL = { S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
-const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', zhangfei: 'A', machao: 'A', kong: 'S', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', liubei: 'B', pangtong: 'B', jiangwei: 'B', weiyan: 'B', chengong: 'B', lulingqi: 'S', yan: 'C', wen: 'C', cao: 'S', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D' };
+const GRADE = { guan: 'S', lubu: 'S', zhao: 'A', dian: 'A', huang: 'A', jang: 'A', hua: 'A', zhangfei: 'A', machao: 'A', kong: 'S', diao: 'B', xun: 'B', xia: 'B', xuchu: 'B', liubei: 'B', pangtong: 'B', jiangwei: 'B', weiyan: 'B', chengong: 'B', lulingqi: 'S', yan: 'C', wen: 'C', cao: 'S', dong: 'C', sima: 'C', guo: 'C', gao: 'D', zhanghe: 'D', xuhuang: 'D', gong: 'D', yuan: 'D', lijue: 'D', caopi: 'C', liushan: 'D', yuantan: 'D' };
 const ELITE = Object.fromEntries(Object.entries(GRADE).map(([k, g]) => [k, GRADE_MUL[g]]));
 ELITE.lulingqi = GRADE_MUL.S * 0.7;   // 여령기: 여포(S)의 70% 성능 (명세 26)
 const STAT5 = ['hp', 'atk', 'df', 'ad', 'md'];
@@ -55,7 +55,7 @@ const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
   gong: ['jang', '공손찬'], yuan: ['hua', '원소'], cao: ['hua', '조조'], dong: ['hua', '동탁'], zhanghe: ['hua', '장합'],
   xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
-  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['guan', '유비'], zhangfei: ['hua', '장비'],
+  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['guan', '유비'], zhangfei: ['hua', '장비'], caopi: ['hua', '조비'], liushan: ['guan', '유선'], yuantan: ['hua', '원담'],
   machao: ['jang', '마초'], pangtong: ['xun', '방통'], jiangwei: ['jang', '강유'], weiyan: ['hua', '위연'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
@@ -86,7 +86,7 @@ const TARGET_PRIORITY = {
 };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
-const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
+const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', caopi: '세자', liushan: '후주', yuantan: '장자', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1.2, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 0.8 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
 // CLASS_DAMAGE 가 최종 피해 배율이다. 별도 우세 보너스를 겹치지 않는다.
@@ -912,9 +912,8 @@ function commanderDialogue(S) {
   }
 }
 function checkEnd(S) {
-  const lord = S.armies.find(A => A.team === 'player' && !A.ally && A.units.length)?.leader;
   const mine = S.units.filter(u => u.team === 'player' && !u.dead && !u.army.ally);   // 동맹 AI 군단은 제외
-  if (!lord || lord.dead || !mine.length) S.over = 'lose';
+  if (!mine.length) S.over = 'lose';   // 군단장·군주 전사만으로 즉시 패배하지 않고 생존 병력이 전투를 계속한다
   else if (mine.every(u => u.retreated)) { S.over = 'lose'; S.overWhy = 'retreat'; }   // 살아남은 병력이 모두 후퇴한 군단(후퇴한 분대·장수·병사만 남음)은 패배 처리
   else if (!S.explore && !S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
 }
