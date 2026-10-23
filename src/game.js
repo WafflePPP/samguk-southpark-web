@@ -17,21 +17,84 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false, supportOpen = false, titleNotice = '';
 // 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
-const STAGES = [
-  { id: 'chenliu', name: '진류', region: '연주', faction: '여포', stage: 1, level: 2, difficulty: '초급', note: '출발·정비', theme: 'plains', x: 900, y: 350, owner: 'player', links: ['suanzao'], reinforce: 0, garrison: 0, mapSeed: 5, capital: true },
-  { id: 'suanzao', name: '산조', region: '연주', faction: '원소', stage: 2, level: 3, difficulty: '초급', note: '중립 전초', theme: 'plains', x: 800, y: 350, owner: 'enemy', links: ['chenliu', 'dingtao'], reinforce: 0, garrison: 2, mapSeed: 7 },
-  { id: 'dingtao', name: '정도', region: '연주', faction: '원소', stage: 3, level: 5, difficulty: '초급', note: '중립 교역로', theme: 'riverside', wideRiver: true, x: 700, y: 350, owner: 'enemy', links: ['suanzao', 'ye'], reinforce: 1, garrison: 3, mapSeed: 11 },
-  { id: 'ye', name: '업', region: '기주', faction: '원소', stage: 4, level: 7, difficulty: '중급', note: '원소군 수도', theme: 'fortress', x: 600, y: 350, owner: 'enemy', links: ['dingtao', 'puyang', 'xiaopei'], reinforce: 1, garrison: 4, mapSeed: 13, capital: true },
-  { id: 'puyang', name: '복양', region: '연주', faction: '조조', stage: 5, level: 8, difficulty: '초급', note: '조조군 전초', theme: 'plains', x: 510, y: 210, owner: 'enemy', links: ['ye', 'yanjin'], reinforce: 1, garrison: 3, mapSeed: 17 },
-  { id: 'yanjin', name: '연진', region: '연주', faction: '조조', stage: 6, level: 12, difficulty: '중급', note: '강가 방어선', theme: 'riverside', wideRiver: true, x: 410, y: 155, owner: 'enemy', links: ['puyang', 'guandu'], reinforce: 2, garrison: 4, mapSeed: 19 },
-  { id: 'xiaopei', name: '소패', region: '서주', faction: '유비', stage: 7, level: 8, difficulty: '초급', note: '유비군 전초', theme: 'plains', x: 510, y: 500, owner: 'enemy', links: ['ye', 'pengcheng'], reinforce: 1, garrison: 3, mapSeed: 23 },
-  { id: 'guandu', name: '관도', region: '연주', faction: '조조', stage: 8, level: 20, difficulty: '상급', note: '수도 외곽 관문', theme: 'fortress', x: 300, y: 110, owner: 'enemy', links: ['yanjin', 'xuchang'], reinforce: 4, garrison: 5, mapSeed: 29 },
-  { id: 'pengcheng', name: '팽성', region: '서주', faction: '유비', stage: 9, level: 14, difficulty: '중급', note: '평야 방어선', theme: 'plains', x: 410, y: 555, owner: 'enemy', links: ['xiaopei', 'guangling'], reinforce: 2, garrison: 4, mapSeed: 31 },
-  { id: 'guangling', name: '광릉', region: '서주', faction: '유비', stage: 10, level: 20, difficulty: '상급', note: '강가 관문', theme: 'riverside', wideRiver: true, x: 300, y: 475, owner: 'enemy', links: ['pengcheng', 'langya'], reinforce: 4, garrison: 5, mapSeed: 37 },
-  { id: 'langya', name: '낭야', region: '서주', faction: '유비', stage: 11, level: 26, difficulty: '상급', note: '수도 외곽 산성', theme: 'mountain', x: 210, y: 580, owner: 'enemy', links: ['guangling', 'xiapi'], reinforce: 4, garrison: 6, mapSeed: 41 },
-  { id: 'xuchang', name: '허창', region: '연주', faction: '조조', stage: 12, level: 32, difficulty: '최상', note: '조조군 수도', theme: 'fortress', x: 170, y: 80, owner: 'enemy', links: ['guandu'], reinforce: 5, garrison: 7, mapSeed: 43, capital: true },
-  { id: 'xiapi', name: '하비', region: '서주', faction: '유비', stage: 13, level: 32, difficulty: '최상', note: '유비군 수도', theme: 'fortress', x: 95, y: 500, owner: 'enemy', links: ['langya'], reinforce: 5, garrison: 7, mapSeed: 47, capital: true },
+// 도시 65개 (명세 43): [번호, id, 이름, 지역, 세력, 열, 행, 지형(p평 r강 w강·광 m산 f성), Lv, 난이도(초중상최), 길(양방향, 한쪽만 적어도 됨)]. 좌표는 격자 col,row 에서 계산한다.
+const STAGE_ROWS = [
+  [1, 'chenliu', '진류', '연주', '여포', 6, 8, 'p', 2, '초', 'suanzao waihuang'],
+  [2, 'suanzao', '산조', '연주', '원소', 6, 7, 'p', 3, '초', 'chenliu dingtao'],
+  [3, 'dingtao', '정도', '연주', '원소', 8, 7, 'w', 5, '초', 'suanzao ye'],
+  [4, 'ye', '업', '기주', '원소', 6, 5, 'f', 7, '중', 'dingtao puyang xiaopei liyang handan shangdang'],
+  [5, 'puyang', '복양', '연주', '조조', 7, 6, 'p', 8, '초', 'ye yanjin baima donge'],
+  [6, 'yanjin', '연진', '연주', '조조', 5, 7, 'w', 12, '중', 'puyang guandu yangwu'],
+  [7, 'xiaopei', '소패', '서주', '유비', 10, 7, 'p', 8, '초', 'ye pengcheng xiao donghai'],
+  [8, 'guandu', '관도', '연주', '조조', 5, 8, 'f', 20, '상', 'yanjin xuchang yangwu hulao'],
+  [9, 'pengcheng', '팽성', '서주', '유비', 10, 8, 'p', 14, '중', 'xiaopei guangling xiao quli'],
+  [10, 'guangling', '광릉', '서주', '유비', 13, 11, 'w', 20, '상', 'pengcheng langya huaiyin jianye'],
+  [11, 'langya', '낭야', '서주', '유비', 12, 6, 'm', 26, '상', 'guangling xiapi kaiyang ju dongguan'],
+  [12, 'xuchang', '허창', '연주', '조조', 5, 9, 'f', 32, '최', 'guandu yangzhai yanling shangcai'],
+  [13, 'xiapi', '하비', '서주', '유비', 11, 8, 'f', 32, '최', 'langya xiaxiang'],
+  [14, 'waihuang', '외황', '연주', '여포', 7, 8, 'p', 3, '초', 'chenliu yongqiu'],
+  [15, 'yongqiu', '옹구', '연주', '여포', 7, 9, 'p', 3, '초', 'waihuang gaoyang xiangyi'],
+  [16, 'gaoyang', '고양', '연주', '여포', 8, 9, 'p', 4, '초', 'yongqiu xiangyi'],
+  [17, 'xiangyi', '양읍', '연주', '여포', 8, 10, 'p', 4, '초', 'yongqiu gaoyang'],
+  [18, 'liyang', '여양', '기주', '원소', 6, 6, 'r', 8, '초', 'ye'],
+  [19, 'handan', '한단', '기주', '원소', 6, 4, 'p', 8, '초', 'ye julu shangdang'],
+  [20, 'julu', '거록', '기주', '원소', 7, 4, 'p', 9, '초', 'handan xindu zhongshan'],
+  [21, 'shangdang', '상당', '병주', '원소', 4, 5, 'm', 9, '초', 'ye handan jinyang'],
+  [22, 'xindu', '신도', '기주', '원소', 8, 3, 'p', 10, '중', 'julu nanpi pingyuan'],
+  [23, 'zhongshan', '중산', '기주', '원소', 7, 2, 'p', 11, '중', 'julu hejian jinyang'],
+  [24, 'jinyang', '진양', '병주', '원소', 4, 3, 'm', 11, '중', 'shangdang zhongshan'],
+  [25, 'hejian', '하간', '기주', '원소', 9, 2, 'p', 12, '중', 'zhongshan nanpi ji'],
+  [26, 'nanpi', '남피', '기주', '원소', 9, 3, 'r', 12, '중', 'xindu pingyuan hejian'],
+  [27, 'pingyuan', '평원', '청주', '원소', 9, 4, 'p', 12, '중', 'xindu nanpi'],
+  [28, 'ji', '계', '유주', '원소', 9, 0, 'f', 14, '중', 'hejian beiping'],
+  [29, 'beiping', '북평', '유주', '원소', 13, 0, 'm', 15, '중', 'ji'],
+  [30, 'baima', '백마', '연주', '조조', 7, 7, 'w', 9, '초', 'puyang yangguo'],
+  [31, 'donge', '동아', '연주', '조조', 8, 5, 'p', 10, '중', 'puyang juye'],
+  [32, 'juye', '거야', '연주', '조조', 9, 6, 'p', 11, '중', 'donge yangguo'],
+  [33, 'yangguo', '양국', '예주', '조조', 8, 8, 'p', 12, '중', 'baima juye qiao'],
+  [34, 'qiao', '초', '예주', '조조', 9, 9, 'p', 14, '중', 'yangguo chen'],
+  [35, 'yangwu', '양무', '연주', '조조', 4, 7, 'p', 13, '중', 'yanjin guandu henei luoyang hulao'],
+  [36, 'henei', '하내', '사예', '조조', 4, 6, 'f', 15, '중', 'luoyang yangwu'],
+  [37, 'luoyang', '낙양', '사예', '조조', 3, 7, 'f', 17, '중', 'henei hongnong yangwu hulao'],
+  [38, 'hulao', '호뢰', '사예', '조조', 4, 8, 'f', 19, '중', 'luoyang yangwu guandu yangzhai'],
+  [39, 'hongnong', '홍농', '사예', '조조', 1, 7, 'm', 20, '상', 'luoyang'],
+  [40, 'yangzhai', '양책', '예주', '조조', 4, 9, 'p', 26, '상', 'hulao xuchang shangcai'],
+  [41, 'yanling', '언릉', '예주', '조조', 6, 9, 'p', 26, '상', 'xuchang chen'],
+  [42, 'shangcai', '상채', '예주', '조조', 5, 10, 'p', 28, '상', 'xuchang yangzhai runan wan'],
+  [43, 'chen', '진', '예주', '조조', 7, 10, 'p', 22, '상', 'yanling qiao runan'],
+  [44, 'runan', '여남', '예주', '조조', 6, 11, 'p', 24, '상', 'chen shangcai'],
+  [45, 'wan', '완', '형주', '조조', 3, 11, 'p', 24, '상', 'shangcai'],
+  [46, 'xiao', '소', '서주', '유비', 9, 8, 'p', 9, '초', 'xiaopei pengcheng'],
+  [47, 'donghai', '동해', '서주', '유비', 11, 7, 'p', 10, '중', 'xiaopei kaiyang'],
+  [48, 'kaiyang', '개양', '서주', '유비', 11, 6, 'p', 15, '중', 'donghai langya linzi'],
+  [49, 'quli', '취려', '서주', '유비', 10, 9, 'p', 12, '중', 'pengcheng xiaxiang shouchun'],
+  [50, 'xiaxiang', '하상', '서주', '유비', 11, 9, 'r', 14, '중', 'quli xiapi siyang xuyi'],
+  [51, 'siyang', '사양', '서주', '유비', 12, 9, 'p', 16, '중', 'xiaxiang xuyi huaiyin'],
+  [52, 'xuyi', '우이', '서주', '유비', 12, 10, 'r', 18, '중', 'xiaxiang siyang huaiyin jianye'],
+  [53, 'huaiyin', '회음', '서주', '유비', 13, 10, 'w', 20, '상', 'siyang xuyi guangling jianye'],
+  [54, 'shouchun', '수춘', '양주', '유비', 10, 10, 'f', 14, '중', 'quli hefei luan'],
+  [55, 'hefei', '합비', '양주', '유비', 10, 11, 'f', 18, '중', 'liyang2 luan shouchun'],
+  [56, 'luan', '육안', '양주', '유비', 9, 11, 'm', 16, '중', 'hefei shouchun'],
+  [57, 'liyang2', '역양', '양주', '유비', 11, 11, 'r', 22, '상', 'jianye hefei'],
+  [58, 'jianye', '건업', '양주', '유비', 12, 11, 'w', 24, '상', 'guangling huaiyin xuyi liyang2'],
+  [59, 'ju', '거', '서주', '유비', 13, 6, 'm', 24, '상', 'langya dongguan gaomi'],
+  [60, 'dongguan', '동완', '서주', '유비', 12, 5, 'm', 25, '상', 'langya ju gaomi beihai'],
+  [61, 'beihai', '북해', '청주', '유비', 12, 4, 'p', 26, '상', 'dongguan linzi'],
+  [62, 'linzi', '임치', '청주', '유비', 11, 4, 'f', 24, '상', 'beihai kaiyang'],
+  [63, 'gaomi', '고밀', '청주', '유비', 13, 5, 'p', 28, '상', 'ju dongguan jimo'],
+  [64, 'jimo', '즉묵', '청주', '유비', 14, 5, 'p', 28, '상', 'gaomi donglai'],
+  [65, 'donglai', '동래', '청주', '유비', 14, 3, 'm', 29, '상', 'jimo'],
 ];
+const WORLD_W = 1700, WORLD_H = 1200;   // 지도 월드 크기 (카메라로 1000×720 만 보인다)
+const OLD_STAGE = { chenliu: ['출발·정비', 5], suanzao: ['중립 전초', 7], dingtao: ['중립 교역로', 11], ye: ['원소군 수도', 13], puyang: ['조조군 전초', 17], yanjin: ['강가 방어선', 19], xiaopei: ['유비군 전초', 23], guandu: ['수도 외곽 관문', 29], pengcheng: ['평야 방어선', 31], guangling: ['강가 관문', 37], langya: ['수도 외곽 산성', 41], xuchang: ['조조군 수도', 43], xiapi: ['유비군 수도', 47] };
+const STAGES = STAGE_ROWS.map(([stage, id, name, region, faction, col, row, t, level, d, links]) => ({
+  id, name, region, faction, stage, level, difficulty: { 초: '초급', 중: '중급', 상: '상급', 최: '최상' }[d], note: OLD_STAGE[id] ? OLD_STAGE[id][0] : `${region} 거점`,
+  theme: { p: 'plains', r: 'riverside', w: 'riverside', m: 'mountain', f: 'fortress' }[t], ...(t === 'w' ? { wideRiver: true } : {}),
+  x: 60 + 105 * col + (row % 2 ? 52 : 0), y: 60 + 95 * row, owner: id === 'chenliu' ? 'player' : 'enemy', links: links.split(' '), garrison: 0, mapSeed: OLD_STAGE[id] ? OLD_STAGE[id][1] : 100 + stage,
+  ...(['chenliu', 'ye', 'xuchang', 'xiapi'].includes(id) ? { capital: true } : {}),
+}));
+for (const s of STAGES) for (const id of s.links) { const t = STAGES.find(x => x.id === id); if (!t) throw new Error(`${s.id}: 없는 도시 ${id}`); if (!t.links.includes(s.id)) t.links.push(s.id); }   // 길은 양방향
+const INITIAL_FACTIONS = STAGES.map(s => s.faction);
 const START_STAGE = 'chenliu', CAPITALS = { '여포': 'chenliu', '원소': 'ye', '조조': 'xuchang', '유비': 'xiapi' }, PLAYABLE_FACTIONS = ['여포', '조조', '유비'];
 const FACTIONS = ['여포', '원소', '조조', '유비'], INITIAL_RULERS = { '여포': 'lubu', '원소': 'yuan', '조조': 'cao', '유비': 'liubei' }, SUCCESSORS = { lubu: ['lulingqi'], yuan: ['yuantan'], cao: ['caopi'], liubei: ['liushan'] };
 const FACTION_HEROES = {
@@ -41,28 +104,21 @@ const FACTION_HEROES = {
   '유비': ['liubei', 'guan', 'kong', 'zhao', 'zhangfei', 'machao', 'huang', 'fazheng', 'pangtong', 'mizhu', 'lady_mi', 'weiyan', 'yanyan', 'liushan', 'mifang', 'guanping', 'zhoucang', 'sunqian', 'jianyong']
 };
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
-const NEW_FACTION_HEROES = {
-  '여포': ['haomeng', 'caoxing', 'chenglian', 'songxian', 'weixu', 'houcheng'],
-  '원소': ['gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'yuanxi', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji'],
-  '조조': ['xiahouyuan', 'caoren', 'yujin', 'yuejin', 'caohong', 'caozhen', 'caoxiu', 'zangba'],
-  '유비': ['fazheng', 'mizhu', 'lady_mi', 'yanyan', 'mifang']
-};
-const NEW_FACTION_HEROES_V2 = {
-  '여포': ['zhangmiao', 'zhangchao', 'zhangyang', 'xuelan', 'lifeng_lu', 'wangkai', 'yinli', 'xusi'],
-  '원소': ['yuanshang', 'gaogan', 'xinping', 'chenlin', 'lvweihuang', 'lvkuang', 'lvxiang', 'mayan', 'zhangyi_yuan', 'jiaochu', 'lvyang', 'guoyuan'],
-  '조조': ['xun', 'lidian', 'chengyu', 'xunyou', 'manchong', 'liuye', 'lvqian'],
-  '유비': ['guanping', 'zhoucang', 'sunqian', 'jianyong']
-};
-for (const faction of FACTIONS) NEW_FACTION_HEROES[faction].push(...NEW_FACTION_HEROES_V2[faction]);
 const stageById = id => STAGES.find(s => s.id === id);
+// 군단 편성표 (명세 43 2-2): [군단장(슬롯 0), 2분대장(슬롯 6), 3분대장(슬롯 12), 병사 칸(슬롯 1)에 넣는 잉여 장수, 역할 g수비·e원정, AI 일 때 시작 도시]. 장수 수 ÷ 3 = 군단 수, 가상 지휘관은 없다.
+const FACTION_CORPS = {
+  '여포': [['lubu', 'xusi', 'yinli', null, 'g', 'chenliu'], ['jang', 'haomeng', 'caoxing', null, 'e', 'chenliu'], ['gao', 'chenglian', 'houcheng', null, 'g', 'waihuang'], ['chengong', 'weixu', 'songxian', null, 'g', 'yongqiu'], ['zhangmiao', 'zhangyang', 'lifeng_lu', 'wangkai', 'g', 'gaoyang'], ['lulingqi', 'zhangchao', 'diao', 'xuelan', 'g', 'xiangyi']],
+  '원소': [['yuan', 'yuantan', 'shenpei', null, 'g', 'ye'], ['yan', 'tianfeng', 'lvkuang', null, 'g', 'dingtao'], ['wen', 'jushou', 'lvxiang', null, 'g', 'suanzao'], ['gaolan', 'yuanshang', 'guoyuan', null, 'e', 'ye'], ['quyi', 'chenlin', 'jiaochu', null, 'e', 'handan'], ['gaogan', 'xinping', 'chunyuqiong', null, 'g', 'jinyang'], ['lvweihuang', 'yuanxi', 'hanmeng', null, 'g', 'xindu'], ['lvyang', 'jiangyiqu', 'guotu', null, 'g', 'ji'], ['mayan', 'zhangyi_yuan', 'fengji', null, 'g', 'beiping']],
+  '조조': [['cao', 'xun', 'xunyou', 'caopi', 'g', 'xuchang'], ['xia', 'chengyu', 'caohong', null, 'g', 'guandu'], ['dian', 'yujin', 'liuye', 'lvqian', 'g', 'yanjin'], ['xuhuang', 'guo', 'manchong', null, 'g', 'puyang'], ['caoren', 'zhanghe', 'zangba', null, 'e', 'puyang'], ['xiahouyuan', 'yuejin', 'caozhen', null, 'e', 'yanjin'], ['xuchu', 'caoxiu', 'lidian', null, 'g', 'luoyang']],
+  '유비': [['liubei', 'guan', 'jianyong', null, 'g', 'xiapi'], ['kong', 'weiyan', 'mifang', null, 'g', 'langya'], ['zhao', 'fazheng', 'sunqian', null, 'g', 'xiaopei'], ['zhangfei', 'pangtong', 'liushan', null, 'e', 'pengcheng'], ['machao', 'mizhu', 'zhoucang', null, 'g', 'guangling'], ['huang', 'lady_mi', 'yanyan', 'guanping', 'e', 'xiaopei']],
+};
+for (const corps of Object.values(FACTION_CORPS)) for (const c of corps) stageById(c[5]).garrison++;   // garrison = 시작 때 이 도시에 주둔하는 군단 수 (AI 세력일 때)
+{ for (const [faction, heroes] of Object.entries(FACTION_HEROES)) { const placed = FACTION_CORPS[faction].flatMap(c => c.slice(0, 4).filter(Boolean)); if (placed.length !== heroes.length || heroes.some(k => !placed.includes(k)) || FACTION_CORPS[faction].length !== Math.floor(heroes.length / 3)) throw new Error(`${faction} 군단 편성표가 세력 장수와 맞지 않습니다.`); } }
 const playerFaction = () => campaign.playerFaction || '여포';
 const playerCapital = () => CAPITALS[playerFaction()] || START_STAGE;
 const victoryCapitals = () => PLAYABLE_FACTIONS.filter(f => f !== playerFaction()).map(f => CAPITALS[f]);
 const campaignWon = () => victoryCapitals().every(id => stageById(id).owner === 'player');
 const capitalFor = force => campaignCapital(forceFaction(force)) || START_STAGE;
-const BASE_ENEMIES = Sim.ARMIES.filter(a => a.team === 'enemy');
-const STAGE_LEADERS = ['gaolan', 'yan', 'yuan', 'dian', 'xia', 'guan', 'caoren', 'zhao', 'huang', 'kong', 'cao', 'liubei'];
-const RESERVE_LEADERS = ['quyi', 'wen', 'yuantan', 'xuchu', 'guo', 'zhangfei', 'zhanghe', 'machao', 'pangtong', 'weiyan', 'xuhuang', 'fazheng'];
 const DEFAULT_AI_RELATIONS = { '원소|조조': { status: 'war', truceUntil: 0 }, '원소|유비': { status: 'neutral', truceUntil: 0 }, '조조|유비': { status: 'ally', truceUntil: 0 } };   // AI 세력끼리의 관계 (이름순 키)
 const DEFAULT_RELATIONS = { '원소': { status: 'neutral', truceUntil: 0 }, '조조': { status: 'war', truceUntil: 0 }, '유비': { status: 'war', truceUntil: 0 } };
 const FACTION_ALLIES = { '조조': '유비', '유비': '조조' };   // 두 세력은 서로 공격하지 않는 동맹
@@ -76,87 +132,29 @@ const FACTION_STYLE = {
 const stageFaction = stage => stage.owner === 'player' ? playerFaction() : stage.faction;
 const THEME_UNITS = { plains: ['ecav', 'esword', 'earcher'], mountain: ['esword', 'eshield', 'earcher'], riverside: ['earcher', 'esword', 'eshield'], fortress: ['eshield', 'earcher', 'esword'] };
 const ROUT_CHANCE = { 초급: 0.09, 중급: 0.075, 상급: 0.055, 최상: 0.035 };
-const EARLY_SUPPORT = { guandu: 10, langya: 10, xuchang: 6, xiapi: 6 };
-const EXPEDITION_PER_CITY = 1;   // 도시당 기본 원정 군단 수 (v0.1.126: 2 → 1, 절반)
-const garrisonTarget = stage => stage.garrison || 0;
-const tripleEnemyUnits = (units, pool, offset = 0) => units.concat(Array.from({ length: Math.min(Sim.ARMY_MAX, units.length * 3) - units.length }, (_, n) => pool[(offset + n) % pool.length]));
 function enemyGrowth(key, level) { const st = Sim.levelStats(key, 'enemy', level); return { ...st, xp: 0 }; }   // 레벨업 규칙(명세 21)과 같은 가산 성장
-function ensureEnemyLeader(key, name) { if (!Sim.U[key]) Sim.U[key] = { ...Sim.U.ecap, name, synthetic: true }; return key; }   // synthetic: 역사 인물이 아닌 가상 지휘관 (전투 중 군단장일 때만 이름 표기)
-function expeditionLeader(stage, wave) { return ensureEnemyLeader(`exp_${stage.id}_${wave}`, `${stage.faction}군 ${stage.name} 원정 지휘관 ${wave}차`); }
 function setEnemyRole(force, stage, role, level = stage.level) {
-  const fac = force.fac || stage.faction;   // 도시 소속이 바뀌어도 군단 이름은 군단의 소속을 따른다 (불러올 때 이름이 바뀌던 문제)
-  const unit = Sim.U[force.army.leader], n = force.wave || String(force.army.leader).match(/_(\d+)$/)?.[1], label = role === 'garrison' ? '수비' : '원정';
+  const fac = force.fac || stage.faction, unit = Sim.U[force.army.leader];   // 도시 소속이 바뀌어도 군단 이름은 군단의 소속을 따른다
   force.role = role; force.home = force.home || stage.id; force.level = level; force.army.role = role;
-  if (unit && unit.synthetic) { unit.name = force.wave ? `${fac}군 ${stage.name} 원정 지휘관 ${n}차` : `${fac}군 ${stage.name} ${label}대장${n ? ' ' + n : ''}`; force.leaderName = unit.name; }
-  force.army.name = unit && !unit.synthetic ? `${fac}군 · ${unit.name} 부대` : `${fac}군 · ${label}군${n ? ' ' + n : ''}`;
+  force.army.name = unit ? `${fac}군 · ${unit.name} 부대` : `${fac}군 · ${role === 'garrison' ? '수비' : '원정'}군`;
   force.army.growth = force.army.units.map(key => enemyGrowth(key, level)); return force;
 }
 const enemyForces = [];
-function addEnemyRoleForce(stage, role, n, at, offset = 0) {
-  const label = role === 'garrison' ? '수비' : '원정', leader = ensureEnemyLeader(`role_${stage.id}_${role}_${n}`, `${stage.faction}군 ${stage.name} ${label}대장 ${n}`), pool = THEME_UNITS[stage.theme], units = tripleEnemyUnits([leader, ...pool, ...pool], pool, offset);
-  const force = setEnemyRole({ id: Math.max(-1, ...enemyForces.map(f => f.id)) + 1, at: stage.id, active: true, leaderName: Sim.U[leader].name, army: { team: 'enemy', name: '', at, leader, reserve: true, reserveAt: role === 'garrison' ? 8 : 12, leaderRear: stage.garrison >= 6, formation: stage.garrison >= 6 ? 'guard' : 'block', units, trig: { near: 12, t: 60 } } }, stage, role);
-  enemyForces.push(force);
+function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 슬롯 0·6·12 는 이름 있는 장수(분대장), 나머지는 도시 지형의 병사
+  const perCity = {};
+  FACTION_CORPS[faction].forEach(([lead, s6, s12, extra, kind, at], n) => {
+    const stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length]);
+    units[0] = lead; units[6] = s6; units[12] = s12; if (extra) units[1] = extra;
+    enemyForces.push(setEnemyRole({ id: enemyForces.length, fac: faction, corpsNo: n + 1, at, home: at, active: true, army: { team: 'enemy', name: '', at: [45, 18 + 7 * k], leader: lead, squadLeaders: [s6, s12], units, reserve: k > 0, reserveAt: 12, leaderRear: n === 0, formation: n === 0 ? 'guard' : 'block', trig: { near: 12, t: 60 } } }, stage, kind === 'g' ? 'garrison' : 'expedition'));
+  });
 }
-for (let i = 0; i < STAGE_LEADERS.length; i++) {
-  const stage = STAGES[i + 1], pool = THEME_UNITS[stage.theme], leaderKey = STAGE_LEADERS[i], found = BASE_ENEMIES.find(a => a.leader === leaderKey), army = found || { team: 'enemy', name: '', at: [45, 20], leader: leaderKey, units: [leaderKey, ...pool, ...pool], trig: { near: 14, t: 60 } }, add = stage.reinforce, protect = stage.garrison >= 6;
-  const units = army.units.concat(Array.from({ length: add }, (_, n) => pool[(i + n) % pool.length]));
-  enemyForces.push(setEnemyRole({ id: enemyForces.length, at: stage.id, active: true, army: { ...army, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(units, pool, i) } }, stage, 'garrison'));
-  const leader = RESERVE_LEADERS[i] || ensureEnemyLeader(`reserve_${stage.id}`, `${stage.faction}군 ${stage.name} 원정대장`), size = Math.min(8, 3 + stage.garrison);
-  const reserveUnits = [leader, ...Array.from({ length: size - 1 }, (_, n) => pool[(i + n + 1) % pool.length])];
-  if (DEFAULT_RELATIONS[stage.faction]?.status === 'war') enemyForces.push(setEnemyRole({ id: enemyForces.length, at: stage.id, active: true, army: { team: 'enemy', name: '', at: army.at, leader, reserve: true, reserveAt: EARLY_SUPPORT[stage.id] ?? 20, leaderRear: protect, formation: protect ? 'guard' : 'block', units: tripleEnemyUnits(reserveUnits, pool, i + 1), trig: { near: 12, t: 60 } } }, stage, 'expedition'));
-  for (let n = 2; n <= garrisonTarget(stage); n++) addEnemyRoleForce(stage, 'garrison', n, army.at, i + n);
-  if (DEFAULT_RELATIONS[stage.faction]?.status === 'war') for (let n = 2; n <= EXPEDITION_PER_CITY; n++) addEnemyRoleForce(stage, 'expedition', n, army.at, i + n + 7);
-}
-function ensureEnemyHeirs() {   // 연의 기준 혈연 후계자를 각 세력 수도 수비군에 배치한다
-  for (const [faction, ruler] of Object.entries(INITIAL_RULERS)) {
-    if (faction === '여포') continue; const heir = (SUCCESSORS[ruler] || [])[0]; if (!heir || enemyForces.some(f => f.army.units.includes(heir))) continue;
-    const force = enemyForces.find(f => f.home === CAPITALS[faction] && f.role === 'garrison'); if (!force) continue;
-    force.army.units.splice(1, 0, heir); force.army.units = force.army.units.slice(0, Sim.ARMY_MAX); setEnemyRole(force, stageById(force.home), force.role, force.level);
-  }
-}
-ensureEnemyHeirs();
-function ensureEnemyFactionHeroes(source = NEW_FACTION_HEROES) {
-  for (const [faction, heroes] of Object.entries(source)) {
-    if (faction === '여포') continue;
-    const forces = enemyForces.filter(f => f.active && (f.fac || stageById(f.home)?.faction) === faction), touched = new Set();
-    for (const key of heroes) {
-      if (enemyForces.some(f => f.army.units.includes(key))) continue;
-      const force = forces.find(f => f.army.units.findIndex((u, i) => i > 0 && Sim.U[u]?.generic) >= 0);
-      if (force) { force.army.units[force.army.units.findIndex((u, i) => i > 0 && Sim.U[u]?.generic)] = key; touched.add(force); }
-    }
-    for (const force of touched) setEnemyRole(force, stageById(force.home), force.role, force.level);
-  }
-}
-ensureEnemyFactionHeroes(FACTION_HEROES);
-function fillEnemyRoleRatio() {
-  for (const stage of STAGES.slice(1).filter(s => s.owner === 'enemy')) for (const [role, target] of [['garrison', garrisonTarget(stage)], ['expedition', relationOf(stage.faction).status === 'war' ? EXPEDITION_PER_CITY : 0]]) {
-    let count = enemyForces.filter(f => f.active && f.home === stage.id && f.role === role).length;
-    let n = 1;
-    while (count < target) { while (enemyForces.some(f => f.army.leader === `role_${stage.id}_${role}_${n}`)) n++; addEnemyRoleForce(stage, role, n, BASE_ENEMIES[stage.stage - 2]?.at || [45, 20], stage.stage + ++count); }   // 전멸한 군단의 장수 키와 겹치지 않는 번호를 쓴다
-  }
-}
-function applyGarrisonCurve() { for (const stage of STAGES.slice(1)) enemyForces.filter(f => f.active && f.home === stage.id && f.role === 'garrison').slice(garrisonTarget(stage)).forEach(f => f.active = false); fillEnemyRoleRatio(); }
 const stageEnemyCount = stage => enemyForces.filter(f => f.active && f.at === stage.id).reduce((n, f) => n + f.army.units.length, 0);
 const campaign = { playerFaction: '여포', at: START_STAGE, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: JSON.parse(JSON.stringify(DEFAULT_RELATIONS)), aiRelations: JSON.parse(JSON.stringify(DEFAULT_AI_RELATIONS)), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', difficulty: 'normal', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: '진류에서 중립 지역을 지나 허창과 하비를 공략한다.' };
 const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS[faction] || { status: 'war', truceUntil: 0 };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
-const roster = [
-  { id: 1, name: '신규 군단 1', at: START_STAGE, target: null, units: Sim.ARMIES.filter(a => a.team === 'player').flatMap(a => a.units), growth: [{ item: 'sky_halberd' }, ...Array(17).fill(null)] },
-  { id: 2, name: '신규 군단 2', at: START_STAGE, target: null, units: ['gao', 'sword', 'shield', 'sword', 'shield', 'spear', 'chengong', 'mage', 'mage', 'shield', 'sword', 'spear', 'lulingqi', 'cav', 'cav', 'cav', 'archer', 'archer'], growth: Array(18).fill(null) },
-];
-function ensurePlayerFactionHeroes(source = NEW_FACTION_HEROES) {
-  for (const key of source['여포']) {
-    if (roster.some(c => c.units.includes(key))) continue;
-    let corps = roster.find(c => c.units.findIndex((u, i) => i > 0 && !u) >= 0);
-    if (!corps) { const id = Math.max(0, ...roster.map(c => c.id)) + 1; corps = { id, name: `신규 군단 ${id}`, at: START_STAGE, target: null, units: Array(18).fill(null), growth: Array(18).fill(null) }; corps.units[0] = key; roster.push(corps); continue; }
-    corps.units[corps.units.findIndex((u, i) => i > 0 && !u)] = key;
-  }
-}
-ensurePlayerFactionHeroes(FACTION_HEROES);
-{ const missing = Object.entries(FACTION_HEROES).flatMap(([faction, heroes]) => heroes.filter(key => faction === '여포' ? !roster.some(c => c.units.includes(key)) : !enemyForces.some(f => (f.fac || stageById(f.home)?.faction) === faction && f.army.units.includes(key)))); if (missing.length) throw new Error(`새 게임 장수 미배치: ${missing.join(', ')}`); }
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 5, SAVE_SLOTS = 3,   // v5: 중립 세력·수도 외교·13개 도시 — 이전 저장은 호환되지 않는다
-  INITIAL_CAMPAIGN = JSON.stringify({ owners: STAGES.map(s => s.owner), factions: STAGES.map(s => s.faction), enemyForces, roster });
+const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0·6·12 가 1·2·3분대장
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 6, SAVE_SLOTS = 3;   // v6: 도시 65개·군단 28개(분대장 3명) — 이전 저장은 호환되지 않는다
 let activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function initialPlayerRelations(faction) {
@@ -164,37 +162,26 @@ function initialPlayerRelations(faction) {
   for (const other of FACTIONS) if (other !== faction) out[other] = JSON.parse(JSON.stringify(faction === '여포' ? DEFAULT_RELATIONS[other] || { status: 'neutral', truceUntil: 0 } : other === '여포' ? DEFAULT_RELATIONS[faction] : DEFAULT_AI_RELATIONS[[faction, other].sort().join('|')] || { status: 'neutral', truceUntil: 0 }));
   return out;
 }
-function buildPlayerRoster(faction, at) {
-  const heroes = [...FACTION_HEROES[faction]], troops = ['sword', 'shield', 'archer', 'cav', 'sword', 'shield', 'mage'];
+function buildPlayerRoster(faction, at) {   // 플레이어 세력의 군단 전부 (수도에서 시작): 슬롯 0·6·12 는 이름 있는 장수
+  const troops = ['sword', 'shield', 'archer', 'cav', 'sword', 'shield', 'mage'];
   roster.length = 0;
-  for (let n = 0; heroes.length; n++) {
-    const units = heroes.splice(0, 18); while (units.length < 18) units.push(troops[(units.length + n) % troops.length]);
+  FACTION_CORPS[faction].forEach(([lead, s6, s12, extra], n) => {
+    const units = Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length]);
+    units[0] = lead; units[6] = s6; units[12] = s12; if (extra) units[1] = extra;
     const growth = units.map(key => Sim.levelStats(key, 'player', 1));
     for (let i = 0; i < units.length; i++) { const item = Object.entries(Sim.ITEMS).find(([, v]) => v.unique && v.owner === units[i]); if (item) { growth[i].item = item[0]; campaign.items[item[0]] = 0; } }
     roster.push({ id: n + 1, name: `신규 군단 ${n + 1}`, at, target: null, units, growth });
-  }
+  });
 }
 function distributePlayerInfantry() {
   let n = 0;
   for (const corps of roster) for (let i = 0; i < corps.units.length; i++) if (corps.units[i] === 'sword' || corps.units[i] === 'shield') { if (n++ % 2) corps.units[i] = 'spear'; }
 }
-function addEnemyFactionAt(faction, at) {
-  const stage = stageById(at), heroes = [...FACTION_HEROES[faction]], pool = THEME_UNITS[stage.theme];
-  for (let n = 0; heroes.length; n++) {
-    const units = heroes.splice(0, 18); while (units.length < 18) units.push(pool[(units.length + n) % pool.length]);
-    const force = { id: Math.max(-1, ...enemyForces.map(f => f.id)) + 1, fac: faction, at, home: at, active: true, army: { team: 'enemy', name: '', at: [45, 16 + n * 7], leader: units[0], units, reserve: n > 0, reserveAt: 12, formation: n ? 'block' : 'guard', trig: { near: 12, t: 60 } } };
-    enemyForces.push(setEnemyRole(force, stage, n ? 'expedition' : 'garrison', stage.level));
-  }
-}
 function resetCampaignData(faction = '여포') {
-  const data = JSON.parse(INITIAL_CAMPAIGN); STAGES.forEach((s, i) => { s.owner = data.owners[i]; s.faction = data.factions[i]; }); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
+  STAGES.forEach((s, i) => { s.faction = INITIAL_FACTIONS[i]; s.owner = s.faction === faction ? 'player' : 'enemy'; }); enemyForces.length = 0;
   const at = CAPITALS[faction];
   Object.assign(campaign, { playerFaction: faction, at, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: initialPlayerRelations(faction), aiRelations: JSON.parse(JSON.stringify(DEFAULT_AI_RELATIONS)), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', difficulty: 'normal', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: `${faction}군의 수도 ${stageById(at).name}에서 원정을 시작한다.` });
-  if (faction !== '여포') {
-    STAGES.forEach(s => s.owner = s.faction === faction ? 'player' : 'enemy');
-    for (let i = enemyForces.length - 1; i >= 0; i--) if (forceFaction(enemyForces[i]) === faction) enemyForces.splice(i, 1);
-    buildPlayerRoster(faction, at); addEnemyFactionAt('여포', START_STAGE);
-  }
+  buildPlayerRoster(faction, at); for (const f of FACTIONS) if (f !== faction) addEnemyFaction(f);
   distributePlayerInfantry();
 }
 function canManualSave() { return state === 'map' && !campaign.pendingEncounter && !campaign.movement.length && !allyChoice && !warnMove && !diplomacyResult && !diplomacyView && !scoutView && !heroView && !campaign.battle; }   // 전략 화면에서 이동·교전 처리가 끝난 시점에만 저장할 수 있다
@@ -210,42 +197,10 @@ function hasCampaign(slot = null) { try { return slot ? !!readCampaign(slot) : A
 function restoreCampaign(data) {
   if (!data || !Array.isArray(data.owners) || data.owners.length !== STAGES.length || !Array.isArray(data.enemyForces) || !Array.isArray(data.roster) || !data.roster.length || !data.campaign || data.roster.some(c => !stageById(c.at) || !Array.isArray(c.units)) || data.enemyForces.some(f => !stageById(f.at) || !f.army)) return false;
   const battle = data.campaign.battle && stageById(data.campaign.battle), pendingStage = data.campaign.pendingEncounter && stageById(data.campaign.pendingEncounter.stage); if (data.campaign.battle && !battle || data.campaign.pendingEncounter && !pendingStage) return false;
-  STAGES.forEach((s, i) => { s.owner = data.owners[i]; if (data.factions && data.factions[i]) s.faction = data.factions[i]; else s.faction = JSON.parse(INITIAL_CAMPAIGN).factions[i]; }); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
-  for (const force of enemyForces) if (force.leaderName) ensureEnemyLeader(force.army.leader, force.leaderName); else if (force.wave) expeditionLeader(stageById(force.home) || stageById(force.at), force.wave);
-  if (!data.campaign.frontlineHp50) { const frontline = ['sword', 'spear', 'shield', 'esword', 'eshield']; for (const corps of roster) (corps.growth || []).forEach((g, i) => { if (g && frontline.includes(corps.units[i])) g.maxHp = Math.round(g.maxHp * 0.5); }); data.campaign.frontlineHp50 = true; }
-  if (!data.campaign.hp30v1) { for (const group of [...roster.map(c => c.growth), ...enemyForces.map(f => f.army.growth)]) for (const g of group || []) if (g && Number.isFinite(g.maxHp)) g.maxHp = Math.max(1, Math.round(g.maxHp * 0.3)); data.campaign.hp30v1 = true; }
-  if (!data.campaign.hp50v2) { for (const group of [...roster.map(c => c.growth), ...enemyForces.map(f => f.army.growth)]) for (const g of group || []) if (g && Number.isFinite(g.maxHp)) g.maxHp = Math.max(1, Math.round(g.maxHp * 5 / 3)); data.campaign.hp50v2 = true; }
-  if (!data.campaign.enemyRolesLv1) { for (const force of enemyForces) setEnemyRole(force, STAGES[Math.floor(force.id / 2) + 1] || stageById(force.at), force.id % 2 ? 'expedition' : 'garrison'); data.campaign.enemyRolesLv1 = true; }
-  if (!data.campaign.enemyWavesLv2) { for (const force of enemyForces) { const stage = stageById(force.home) || STAGES[Math.floor(force.id / 2) + 1] || stageById(force.at); setEnemyRole(force, stage, force.role || (force.id % 2 ? 'expedition' : 'garrison')); } data.campaign.enemyWavesLv2 = true; data.campaign.expeditionWaves = {}; }
-  if (!data.campaign.enemyRatioLv3) { fillEnemyRoleRatio(); data.campaign.enemyRatioLv3 = true; }
-  if (!data.campaign.enemyRatioLv4) { for (const stage of STAGES.slice(1)) enemyForces.filter(f => f.active && !f.wave && f.home === stage.id && f.role === 'expedition').slice(EXPEDITION_PER_CITY).forEach(f => f.active = false); data.campaign.enemyRatioLv4 = true; }
-  if (!data.campaign.enemyCurveV1) { applyGarrisonCurve(); data.campaign.enemyCurveV1 = true; }
+  STAGES.forEach((s, i) => { s.owner = data.owners[i]; s.faction = data.factions && data.factions[i] || INITIAL_FACTIONS[i]; }); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
   for (const force of enemyForces) setEnemyRole(force, stageById(force.home) || stageById(force.at), force.role || 'garrison', force.level);
-  if (!data.campaign.heirsV1) { ensureEnemyHeirs(); data.campaign.heirsV1 = true; }
-  if (!data.campaign.heroRosterV1) { ensureEnemyFactionHeroes(); ensurePlayerFactionHeroes(); data.campaign.heroRosterV1 = true; }
-  if (!data.campaign.heroRosterV2) { ensureEnemyFactionHeroes(NEW_FACTION_HEROES_V2); ensurePlayerFactionHeroes(NEW_FACTION_HEROES_V2); data.campaign.heroRosterV2 = true; }
-  if (!data.campaign.heroGradeV1) {
-    for (const corps of roster) corps.units.forEach((key, i) => { const old = corps.growth[i]; if (!key || !Sim.GRADE[key] || !old) return; const next = Sim.levelStats(key, 'player', old.lv || 1); corps.growth[i] = { ...next, xp: old.xp || 0, item: old.item }; });
-    data.campaign.heroGradeV1 = true;
-  }
-  if (!data.campaign.heroGradeV2) {
-    for (const group of [...roster.map(c => [c.units, c.growth, 'player']), ...enemyForces.map(f => [f.army.units, f.army.growth, 'enemy'])]) group[0].forEach((key, i) => { if (!['yuan', 'liubei'].includes(key)) return; const old = group[1][i]; const next = Sim.levelStats(key, group[2], old?.lv || 1); group[1][i] = { ...next, xp: old?.xp || 0, item: old?.item }; });
-    data.campaign.heroGradeV2 = true;
-  }
-  if (!data.campaign.heroGradeV3) {
-    const changed = new Set(['lubu', 'guan', 'cao', 'kong', 'jang', 'zhao', 'zhangfei', 'sima', 'xun', 'guo', 'pangtong', 'machao', 'huang', 'weiyan', 'xiahouyuan', 'xuhuang', 'yan', 'wen']);
-    for (const group of [...roster.map(c => [c.units, c.growth, 'player']), ...enemyForces.map(f => [f.army.units, f.army.growth, 'enemy'])]) group[0].forEach((key, i) => { if (!changed.has(key)) return; const old = group[1][i], next = Sim.levelStats(key, group[2], old?.lv || 1); group[1][i] = { ...next, xp: old?.xp || 0, item: old?.item }; });
-    data.campaign.heroGradeV3 = true;
-  }
   data.campaign.items ||= {};
   for (const key of Object.keys(Sim.ITEMS)) if (!Number.isFinite(data.campaign.items[key])) data.campaign.items[key] = 0;
-  if (!data.campaign.uniqueItemsV1) {
-    const equipped = new Set(roster.flatMap(c => (c.growth || []).map(g => g && g.item).filter(Boolean)));
-    for (const [itemKey, item] of Object.entries(Sim.ITEMS).filter(([, item]) => item.unique)) if (!equipped.has(itemKey)) {
-      const corps = roster.find(c => c.units.includes(item.owner)), slot = corps && corps.units.indexOf(item.owner); if (corps) { corps.growth ||= Array(18).fill(null); const g = corps.growth[slot] || (corps.growth[slot] = {}); if (!g.item) g.item = itemKey; else data.campaign.items[itemKey]++; } else data.campaign.items[itemKey]++;
-    }
-    data.campaign.uniqueItemsV1 = true;
-  }
   Object.assign(campaign, data.campaign); campaign.playerFaction ||= '여포'; campaign.corps = Math.max(0, Math.min(roster.length - 1, campaign.corps || 0)); campaign.battle = battle; if (campaign.pendingEncounter) { campaign.pendingEncounter.stage = pendingStage; campaign.pendingEncounter.responders = (campaign.pendingEncounter.responders || []).filter(i => combatReadyCorps(roster[i])); campaign.pendingEncounter.unopposed = !campaign.pendingEncounter.responders.length; }
   campaign.rulers ||= { ...INITIAL_RULERS };
   campaign.relations ||= JSON.parse(JSON.stringify(DEFAULT_RELATIONS)); campaign.aiRelations ||= JSON.parse(JSON.stringify(DEFAULT_AI_RELATIONS)); campaign.aiBattles ||= []; campaign.capitals ||= { ...CAPITALS }; campaign.dead ||= {}; campaign.digest ||= []; campaign.newsLog ||= []; campaign.newsMode ||= 'important'; campaign.difficulty ||= 'normal'; campaign.aiLast ||= {};
@@ -279,6 +234,7 @@ function rosterError() {
   }
   return '';
 }
+resetCampaignData('여포');   // 모듈 시작 때 한 번 편성해 두고(시험·타이틀 화면용), 새 게임은 다시 편성한다
 { const error = rosterError(); if (error) throw new Error(error); }
 function rosterArmies() {
   const active = roster[campaign.corps] || roster[0];
@@ -347,7 +303,7 @@ function resolveAiGuests(stage) {   // C: AI 동맹 군단이 전투력 비교�
   return { join, notes };
 }
 function stageArmies(stage, helpIds = [], joinIds = []) {
-  const enemies = enemyForces.filter(f => f.active && f.at === stage.id && (relationOf(forceFaction(f)).status === 'war' || joinIds.includes(f.id))).map(f => ({ ...f.army, units: [...f.army.units], forceId: f.id }));   // 적 능력치는 동일 기준, 난이도는 수량·레벨·AI로 조정
+  const enemies = enemyForces.filter(f => f.active && f.at === stage.id && (relationOf(forceFaction(f)).status === 'war' || joinIds.includes(f.id))).map((f, k) => ({ ...f.army, at: [45, 18 + 7 * (k % 3)], reserve: k > 0, reserveAt: 12, units: [...f.army.units], forceId: f.id }));   // 적 능력치는 동일 기준, 난이도는 수량·레벨·AI로 조정
   const helpers = enemyForces.filter(f => f.active && f.at === stage.id && helpIds.includes(f.id)).map((f, k) => ({ ...f.army, units: [...f.army.units], team: 'player', ally: true, corps: 'ally:' + f.id, forceId: undefined, name: `${forceFaction(f)}군 동맹군`, at: [9, 10 + k * 6], reserve: false, trig: null, support: false, commander: false, squadIndex: undefined }));
   return rosterArmies().concat(enemies, helpers);
 }
@@ -396,7 +352,7 @@ function startBattle(stage, explore = false) {
   return true;
 }
 function startCampaign() {
-  state = 'map'; S = null; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; diplomacyView = null; heroView = null; moveMode = 'corps'; campaign.notice = campaign.completed ? `${victoryCapitals().map(id => stageById(id).name).join('·')} 함락 승리 기록입니다.` : '이동 버튼에서 군단과 이동할 도시를 선택하세요.';
+  state = 'map'; S = null; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; diplomacyView = null; heroView = null; moveMode = 'corps'; centerMap(); campaign.notice = campaign.completed ? `${victoryCapitals().map(id => stageById(id).name).join('·')} 함락 승리 기록입니다.` : '이동 버튼에서 군단과 이동할 도시를 선택하세요.';
 }
 function resetTransientUi() {   // 남아 있던 팝업·선택 상태가 새 게임·불러오기 뒤 입력을 막지 않게 한다
   allyChoice = null; allyHelpIds = null; lastHelpIds = []; warnMove = null; diplomacyResult = null; diplomacyQueue = []; diplomacyView = null; scoutView = null; heroView = null; mapTool = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps'; saveSlotMode = null; startFactionSelect = false; popupSink = null; aiEntries = null; rosterPick = null; selectMode = false; selTarget = null; menuOpen = false;
@@ -457,6 +413,11 @@ function aiPickTarget(faction, here) {   // 이 세력이 전쟁 중인 상대�
   for (const goal of goals) { const path = routeVia(here.id, goal.id, s => aiPassable(faction, s)); if (path.length > 1 && (!best || path.length < best.path.length || path.length === best.path.length && goal.kind === 'player')) best = { path, kind: goal.kind }; }
   return best;
 }
+function aiPressure(key, ratio) {   // 같은 목표 앞에서 집결만 하며 교착한 턴 수가 늘면 요구 전력비를 낮춘다 (턴당 -0.08, 최저 ×0.7) — 호각인 두 수도가 영원히 마주 보는 교착 방지
+  const st = campaign.aiStall || (campaign.aiStall = {}), e = st[key];
+  if (!e || e.last < campaign.turn - 1) st[key] = { since: campaign.turn, last: campaign.turn }; else e.last = campaign.turn;
+  return ratio * Math.max(0.7, 1 - 0.08 * (campaign.turn - st[key].since));
+}
 function enemyDecision(force) {
   const here = stageById(force.at), own = enemyPowerAt(here), threat = playerPowerNear(here), mine = forcePow(force), faction = forceFaction(force), relation = relationOf(faction), base = { own, threat, mine, from: here.id, to: null };
   if (factionDead(faction)) return { ...base, act: 'hold', mode: '멸망', reason: '세력 소멸' };
@@ -475,9 +436,9 @@ function enemyDecision(force) {
   if (next.owner === 'enemy' && next.faction && next.faction !== faction && !alliedFactions(faction, next.faction)) {   // 전쟁 상대(AI)의 도시
     const key = next.id + '|' + pairKey(faction, next.faction), last = campaign.aiLast && campaign.aiLast[key];
     if (last != null && campaign.turn - last <= 3) return { ...base, act: 'hold', mode: '재정비', reason: `최근 ${campaign.turn - last}턴 전 같은 도시 교전` };
-    const def = enemyPowerAt(next);
-    if (def === 0 || own >= def * aiP().attack) return { ...base, act: 'advance', mode: '침공', def, reason: def ? `집결 ${own} ≥ 수비 ${def}×${aiP().attack}` : '무방비 도시' };
-    return { ...base, act: 'hold', mode: '집결', def, reason: `집결 ${own} < 수비 ${def}×${aiP().attack}` };
+    const def = enemyPowerAt(next), ratio = aiPressure(key, aiP().attack);
+    if (def === 0 || own >= def * ratio) return { ...base, act: 'advance', mode: '침공', def, reason: def ? `집결 ${own} ≥ 수비 ${def}×${ratio.toFixed(2)}` : '무방비 도시' };
+    return { ...base, act: 'hold', mode: '집결', def, reason: `집결 ${own} < 수비 ${def}×${ratio.toFixed(2)}` };
   }
   return { ...base, act: 'advance', mode: '진군', reason: '자국·동맹 영토 이동' };
 }function route(from, to) {
@@ -508,14 +469,14 @@ function advanceEnemyForces() {
   });
   const entries = aiEntries; aiEntries = null; aiResolveEntries(entries);
 }
-function spawnExpeditions() {
-  if (campaign.turn % aiP().expedition) return;
-  for (const stage of STAGES.filter(s => s.owner === 'enemy' && relationOf(s.faction).status === 'war')) {
-    const wave = (campaign.expeditionWaves[stage.id] || 0) + 1, leader = expeditionLeader(stage, wave), pool = THEME_UNITS[stage.theme], units = tripleEnemyUnits([leader, ...pool, ...pool], pool, wave);
-    campaign.expeditionWaves[stage.id] = wave;
-    const force = setEnemyRole({ id: Math.max(-1, ...enemyForces.map(f => f.id)) + 1, at: stage.id, active: true, wave, army: { team: 'enemy', name: '', at: BASE_ENEMIES[stage.stage - 2]?.at || [45, 20], leader, reserve: true, reserveAt: 12, formation: stage.garrison >= 6 ? 'guard' : 'block', units, trig: { near: 12, t: 60 } } }, stage, 'expedition', stage.level + wave);
-    enemyForces.push(force); campaign.intel.push({ text: `적 ${force.army.name} 생성 · Lv${force.level}`, mode: '증원', force: force.army.name, power: forcePow(force), from: stage.id, to: stage.id });
+function reinforceEnemies() {   // 원정 주기마다 자기 세력 도시에 있는 적 군단이 일반 병사를 3명씩 보충한다 (최대 18명, 장수·가상 지휘관은 만들지 않는다)
+  if (campaign.turn % aiP().expedition) return; let n = 0;
+  for (const force of enemyForces) {
+    const stage = stageById(force.at), add = Math.min(3, Sim.ARMY_MAX - force.army.units.length); if (!force.active || !stage || stage.owner !== 'enemy' || stage.faction !== forceFaction(force) || add <= 0) continue;
+    const pool = THEME_UNITS[stage.theme]; for (let i = 0; i < add; i++) force.army.units.push(pool[(force.army.units.length + force.id) % pool.length]);
+    setEnemyRole(force, stageById(force.home) || stage, force.role, force.level); n++;
   }
+  if (n) campaign.intel.push({ text: `적 ${n}개 군단이 병사를 보충했다.`, mode: '보충', force: '', power: 0, from: '', to: '' });
 }
 const intelSummary = () => { const n = {}; for (const i of campaign.intel || []) n[i.mode] = (n[i.mode] || 0) + 1; const t = Object.entries(n).map(([k, v]) => `${k} ${v}`).join('·'); return t ? ` 적 동향: ${t}` : ''; };
 function movementEncounter(move) {
@@ -551,7 +512,7 @@ function finishMovementStep() {
 }
 function continueCampaignTurn() {
   const encounter = campaign.pendingEncounter; campaign.pendingEncounter = null;
-  if (!encounter) { campaign.at = roster[campaign.corps].at; campaign.destination = roster[campaign.corps].target; campaign.notice = `${campaign.turn}턴 이동을 완료했다.${intelSummary()}`; saveCampaign(); return; }
+  if (!encounter) { centerMap(); campaign.at = roster[campaign.corps].at; campaign.destination = roster[campaign.corps].target; campaign.notice = `${campaign.turn}턴 이동을 완료했다.${intelSummary()}`; saveCampaign(); return; }
   if (encounter.invasion) { campaign.pendingEncounter = encounter; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
   campaign.corps = encounter.index; campaign.at = encounter.stage.id; campaign.from = encounter.from; campaign.destination = roster[encounter.index].target; campaign.invasion = false; campaign.notice = `${encounter.stage.name}에 적이 주둔 중이다. 전투를 시작한다.`; startBattle(encounter.stage);
 }
@@ -763,7 +724,7 @@ function endCampaignTurn() {
   }));
   flushMovePopups();   // 아군 군단의 이동 때문에 생긴 팝업(첫 이동)은 AI 쪽 사건보다 먼저 띄운다
   for (const f of enemyForces) if (f.rest > 0) f.rest--;
-  relocateCapitals(); aiDiplomacyStep(); aiBattleStep(); advanceEnemyForces(); spawnExpeditions(); relocateCapitals(); flushDigest(); saveCampaign();
+  relocateCapitals(); aiDiplomacyStep(); aiBattleStep(); advanceEnemyForces(); reinforceEnemies(); relocateCapitals(); flushDigest(); saveCampaign();
   if (!campaign.movement.length) continueCampaignTurn(); else flushMovePopups();
 }
 function exploreCampaign(index) {
@@ -783,7 +744,7 @@ function applyBattleResults() {
   }
   for (const u of S.units.filter(x => x.army && x.army.ally && x.dead)) { const force = enemyForces.find(f => 'ally:' + f.id === String(u.army.corps)), slot = force ? force.army.units.indexOf(u.key) : -1; if (slot > 0) force.army.units.splice(slot, 1); }   // 동맹군(아군 편 AI 군단)의 손실도 전략맵 병력에 반영 (군단장 칸은 남긴다)
   for (const u of S.units.filter(x => x.originTeam === 'enemy' && (x.dead || x.team === 'player'))) { const force = enemyForces.find(f => f.id === u.forceId); if (!force) continue; const slot = force.army.units.indexOf(u.key); if (slot >= 0) force.army.units.splice(slot, 1); }
-  for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) force.active = false;
+  for (const force of enemyForces) if (force.active && !force.army.units.includes(force.army.leader)) { const next = (force.army.squadLeaders || []).find(key => force.army.units.includes(key)); if (next) { force.army.leader = next; setEnemyRole(force, stageById(force.home) || stageById(force.at), force.role || 'garrison', force.level); } else force.active = false; }   // 군단장이 쓰러지면 2분대장 → 3분대장 순으로 이어받는다
   for (const u of S.units.filter(x => !x.dead && x.originTeam === 'enemy' && x.team === 'player')) {
     let corps = roster.find(c => c.units.some((x, i) => !x && i > 0)), slot = corps ? corps.units.findIndex((x, i) => !x && i > 0) : -1;
     if (!corps && roster.length < ROSTER_MAX) {
@@ -841,11 +802,10 @@ function setDiplomacy(faction, status, silent = false) {   // silent: 호출한 
   const relation = campaign.relations[faction] || (campaign.relations[faction] = { status: 'war', truceUntil: 0 });
   const wasAlly = relation.status === 'ally';
   relation.status = status; relation.truceUntil = status === 'truce' ? campaign.turn + 20 : 0;
-  if (status === 'war') fillEnemyRoleRatio();
   const evicted = []; if (wasAlly && status !== 'ally') for (const corps of roster) { const st = stageById(corps.at); if (corps.units.some(Boolean) && st && st.owner === 'enemy' && st.faction === faction) { const back = alliedBack(corps, st); if (back) { corps.at = back.id; corps.target = null; evicted.push(`${corpsName(corps)} → ${back.name}`); } } }   // 동맹이 깨졌으니 그 도시에 머무를 수 없다
   const roster0 = roster[campaign.corps]; if (evicted.length && roster0) campaign.at = roster0.at;
   campaign.notice = `${faction}군과 ${status === 'truce' ? '20턴 휴전' : RELATION_NAME[status]} 상태가 되었다.`; diplomacyView = null; saveCampaign();
-  if (!silent) showDiplomacyResult(`${faction}군과의 외교: ${status === 'war' ? '전쟁 선포' : status === 'truce' ? '휴전 성립' : '동맹 성립'}`, [`관계: ${before} → ${relationText(faction)}`, status === 'war' ? '즉시 서로 공격할 수 있고, 적 도시에 수비·원정 군단이 다시 채워집니다.' : status === 'truce' ? `20턴 동안(${campaign.turn + 20}턴까지) 서로 침공하지 않습니다.` : '동맹이 되었습니다.' + (FACTION_ALLIES[faction] ? ` ${FACTION_ALLIES[faction]}군과는 상호 동맹 관계입니다.` : ''), ...evicted.map(e => `주둔 군단 철수: ${e}`)], status !== 'war');
+  if (!silent) showDiplomacyResult(`${faction}군과의 외교: ${status === 'war' ? '전쟁 선포' : status === 'truce' ? '휴전 성립' : '동맹 성립'}`, [`관계: ${before} → ${relationText(faction)}`, status === 'war' ? '즉시 서로 공격할 수 있습니다.' : status === 'truce' ? `20턴 동안(${campaign.turn + 20}턴까지) 서로 침공하지 않습니다.` : '동맹이 되었습니다.' + (FACTION_ALLIES[faction] ? ` ${FACTION_ALLIES[faction]}군과는 상호 동맹 관계입니다.` : ''), ...evicted.map(e => `주둔 군단 철수: ${e}`)], status !== 'war');
 }
 function finishBattle() {
   const turnEncounter = campaign.pendingEncounter; applyBattleResults(); const active = roster[campaign.corps], lostHome = S && S.over !== 'win' && campaign.invasion && campaign.battle && campaign.battle.id === playerCapital();
@@ -864,7 +824,7 @@ function finishBattle() {
   else if (campaign.explore) campaign.notice = `${campaign.battle.name} 탐색을 마쳤다.`;
   else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.invasion && campaign.battle) enemyTakesCity(campaign.battle); if (campaign.from) active.at = campaign.from; }
   if (lostHome) { defeatCampaign('진류 방어에 실패하여 원정에 패배했습니다.'); return; }
-  campaign.at = active.at; campaign.destination = active.target; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false;
+  campaign.at = active.at; campaign.destination = active.target; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false; centerMap();
   if (completeCampaignIfWon()) return;
   if (turnEncounter) finishMovementStep(); else saveCampaign();
 }
@@ -1205,7 +1165,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.216', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.218', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1247,13 +1207,32 @@ function drawRelationPanel() {
     label(a + '↔' + b, cx + 22, cy, 12, COLORS.silver); if (factionDead(a) || factionDead(b)) { label('멸망', cx + 160, cy, 12, '#8a8a8a', 'right'); return; } label((player ? relationText(player) : st.status === 'truce' ? '휴전 ' + Math.max(0, st.truceUntil - campaign.turn) + '턴' : RELATION_NAME[st.status]), cx + 160, cy, 12, col, 'right');
   });
 }
+// ---- 지도 카메라 (명세 43 1-4): 월드 1700×1200 중 왼쪽 1000×720 만 보인다. 빈 곳 드래그·방향키·휠·Home·미니맵으로 옮긴다 ----
+const MAP_VW = 1000, MAP_MINI = { x: 10, y: 10, w: 170, h: 120 };
+let mcam = { x: 0, y: 0 }, mapSel = null, mapDrag = null;   // mapSel: 오른쪽 패널에 보여 줄 선택 도시 id (없으면 현재 군단 도시)
+const mapKeys = new Set();
+const clampMcam = () => { mcam.x = Math.max(0, Math.min(WORLD_W - MAP_VW, mcam.x)); mcam.y = Math.max(0, Math.min(WORLD_H - VH, mcam.y)); };
+function centerMap(id) { const s = stageById(id || (roster[campaign.corps] && roster[campaign.corps].at)); mapSel = null; if (s) { mcam.x = s.x - MAP_VW / 2; mcam.y = s.y - VH / 2; } clampMcam(); }
+const mapFree = () => state === 'map' && !(saveSlotMode || campaign.pendingEncounter || warnMove || allyChoice || diplomacyResult || diplomacyView || heroView || scoutView || exploreSelectOpen || moveSelectOpen || campaign.movement.length);   // 팝업이 없을 때만 카메라 입력을 받는다
+const inMapMini = p => p.x >= MAP_MINI.x && p.x < MAP_MINI.x + MAP_MINI.w && p.y >= MAP_MINI.y && p.y < MAP_MINI.y + MAP_MINI.h;
+function miniJump(p) { mcam.x = (p.x - MAP_MINI.x) * (WORLD_W / MAP_MINI.w) - MAP_VW / 2; mcam.y = (p.y - MAP_MINI.y) * (WORLD_H / MAP_MINI.h) - VH / 2; clampMcam(); }
+function drawMapMini() {
+  const m = MAP_MINI, k = m.w / WORLD_W;
+  panel(m.x, m.y, m.w, m.h, 'rgba(255,255,255,.55)', 1, 'rgba(8,20,25,.72)');
+  for (const s of STAGES) { ctx.fillStyle = FACTION_STYLE[stageFaction(s)].main; ctx.fillRect(m.x + s.x * k - 1.5, m.y + s.y * k - 1.5, 3, 3); }
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(m.x + mcam.x * k, m.y + mcam.y * k, MAP_VW * k, VH * k);
+}
 function drawStageMap() {
   const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#345d55'); g.addColorStop(0.55, '#66834c'); g.addColorStop(1, '#9a8150'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
-  ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(120, 0); ctx.bezierCurveTo(80, 160, 165, 255, 105, 405); ctx.bezierCurveTo(60, 520, 125, 630, 40, VH); ctx.lineTo(0, VH); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(206,231,224,.6)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(250, 30); ctx.bezierCurveTo(330, 180, 270, 330, 430, 475); ctx.bezierCurveTo(570, 590, 750, 470, 990, 680); ctx.stroke();
-  ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 170; x < 980; x += 90) for (let y = 75; y < 690; y += 75) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
-  const corps = roster[campaign.corps], here = stageById(corps.at);
-  for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
+  const corps = roster[campaign.corps], here = stageById(corps.at), sel = stageById(mapSel) || here, ox = mcam.x, oy = mcam.y;
+  const vis = (x, y, m = 70) => x >= ox - m && x <= ox + MAP_VW + m && y >= oy - m && y <= oy + VH + m;
+  const stationedAt = s => roster.map((c, i) => ({ c, i })).filter(({ c }) => c.units.some(Boolean) && c.at === s.id);   // 이 도시에 주둔 중인 아군 군단
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, MAP_VW, VH); ctx.clip(); ctx.translate(-ox, -oy);
+  ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(WORLD_W, 0); ctx.lineTo(1665, 0); ctx.bezierCurveTo(1640, 300, 1690, 500, 1660, 700); ctx.bezierCurveTo(1630, 900, 1680, 1050, 1650, WORLD_H); ctx.lineTo(WORLD_W, WORLD_H); ctx.closePath(); ctx.fill();   // 동쪽 바다
+  ctx.strokeStyle = 'rgba(206,231,224,.6)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, 260); ctx.bezierCurveTo(260, 330, 420, 470, 520, 590); ctx.bezierCurveTo(640, 700, 880, 560, 1180, 520); ctx.bezierCurveTo(1400, 490, 1560, 430, 1665, 400); ctx.stroke();   // 황하 (대략)
+  ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(0, 1165); ctx.bezierCurveTo(500, 1130, 1100, 1190, 1650, 1085); ctx.stroke();   // 장강 (대략)
+  ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 60; x < WORLD_W; x += 90) for (let y = 75; y < WORLD_H; y += 75) if (vis(x, y, 40)) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
+  for (const s of STAGES) for (const id of s.links) { const t = stageById(id); if (s.id < t.id && Math.max(s.x, t.x) >= ox - 20 && Math.min(s.x, t.x) <= ox + MAP_VW + 20 && Math.max(s.y, t.y) >= oy - 20 && Math.min(s.y, t.y) <= oy + VH + 20) { ctx.strokeStyle = 'rgba(29,25,20,.82)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = '#d9c98a'; ctx.lineWidth = 2; ctx.stroke(); } }
   const targetRows = {};
   for (const [corpsIndex, c] of roster.entries()) if (c.target) {
     const path = route(c.at, c.target).map(stageById), goal = path[path.length - 1], row = targetRows[c.target] || 0; targetRows[c.target] = row + 1; if (path.length < 2) continue;
@@ -1263,39 +1242,45 @@ function drawStageMap() {
     label('이동 예정', goal.x, goal.y - 42 - row * 16, 13, '#bcecff', 'center');
   }
   campaign.movement.forEach((m, i) => { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) return; const faction = m.team === 'player' ? playerFaction() : m.faction || a.faction, style = FACTION_STYLE[faction], highlight = i === campaign.movementPage; ctx.strokeStyle = style.light; ctx.lineWidth = highlight ? 11 : 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); const fx = (a.x + b.x) / 2, fy = (a.y + b.y) / 2; drawMapFlag(fx, fy, faction, String(m.team === 'player' ? (m.corpsIndex || 0) + 1 : (m.forceId ?? i) + 1), highlight); label(m.commander, fx + 20, fy + 32, 12, style.light, 'center'); });
+  const cityBtns = [];
   for (const s of STAGES) {
-    const on = s === here, faction = stageFaction(s), style = FACTION_STYLE[faction], targeted = s.id === (campaign.destination || corps.target);
-    ctx.fillStyle = style.main; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 22 : 16, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? COLORS.gold : style.dark; ctx.lineWidth = on ? 5 : 3; ctx.stroke();
-    drawMapFlag(s.x + 10, s.y - 3, faction, faction[0], on);
-    label(`${isCapital(s) ? '★ ' : ''}${s.stage}. ${s.name}`, s.x, s.y + 38, 18, on ? COLORS.goldSel : '#f3eed8', 'center');
-    label(`${THEME_NAME[s.theme]} · ${s.difficulty}`, s.x, s.y + 61, 14, s.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'center');
-    const stationed = roster.map((c, i) => ({ c, i })).filter(({ c }) => c.units.some(Boolean) && c.at === s.id);   // 이 도시에 주둔 중인 아군 군단
-    if (stationed.length) {
-      const sel = stationed.some(({ i }) => i === campaign.corps), lead = c => c.units[0] ? Sim.U[c.units[0]].name : corpsName(c), text = stationed.length === 1 ? `${lead(stationed[0].c)} 군단` : `${lead(stationed[0].c)} 군단 외 ${stationed.length - 1}`, bw = Math.max(70, text.length * 13 + 36), by = s.y + 70;
-      ctx.save(); ctx.fillStyle = 'rgba(14,52,92,.92)'; ctx.strokeStyle = sel ? COLORS.gold : '#79bfff'; ctx.lineWidth = sel ? 3 : 2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(s.x - bw / 2, by, bw, 24, 6) : ctx.rect(s.x - bw / 2, by, bw, 24); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = sel ? COLORS.gold : '#79bfff'; ctx.beginPath(); ctx.moveTo(s.x - bw / 2 + 9, by + 18); ctx.lineTo(s.x - bw / 2 + 9, by + 5); ctx.lineTo(s.x - bw / 2 + 21, by + 9); ctx.lineTo(s.x - bw / 2 + 9, by + 13); ctx.closePath(); ctx.fill(); ctx.restore();   // 깃발 아이콘
-      label(text, s.x + 9, by + 12, 14, sel ? COLORS.goldSel : '#e9f4ff', 'center');
-    }
-    if (targeted) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 28, 0, TAU); ctx.stroke(); }
+    if (!vis(s.x, s.y)) continue;   // 화면 밖 도시는 그리지 않고 버튼도 만들지 않는다
+    const on = s === here, faction = stageFaction(s), style = FACTION_STYLE[faction], targeted = s.id === (campaign.destination || corps.target), stationed = stationedAt(s);
+    ctx.fillStyle = style.main; ctx.beginPath(); ctx.arc(s.x, s.y, on ? 20 : 14, 0, TAU); ctx.fill(); ctx.strokeStyle = on ? COLORS.gold : style.dark; ctx.lineWidth = on ? 5 : 3; ctx.stroke();
+    if (s === sel && !on) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y, 19, 0, TAU); ctx.stroke(); }
+    label(`${isCapital(s) ? '★ ' : ''}${s.name}`, s.x, s.y + (on ? 32 : 26), 15, on ? COLORS.goldSel : '#f3eed8', 'center');
+    if (stationed.length) drawMapFlag(s.x + 12, s.y - 6, playerFaction(), String(stationed.length), stationed.some(({ i }) => i === campaign.corps));   // 주둔 아군: 깃발 + 군단 수
+    if (targeted) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 27, 0, TAU); ctx.stroke(); }
     if (mapTool === 'diplomacy') {   // 외교 도구: 외교 가능한 수도만 강조하고 나머지는 어둡게 눌러 선택할 수 없게 한다
       if (diplomable(s)) { const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 220); ctx.save(); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4 + pulse * 3; ctx.beginPath(); ctx.arc(s.x, s.y, 32 + pulse * 4, 0, TAU); ctx.stroke(); ctx.restore(); label('외교 가능', s.x, s.y - 40, 14, COLORS.goldSel, 'center'); }
-      else { ctx.save(); ctx.fillStyle = 'rgba(8,12,18,.62)'; ctx.beginPath(); ctx.arc(s.x, s.y, 34, 0, TAU); ctx.fill(); ctx.fillRect(s.x - 62, s.y + 24, 124, 46); ctx.restore(); continue; }
+      else { ctx.save(); ctx.fillStyle = 'rgba(8,12,18,.62)'; ctx.beginPath(); ctx.arc(s.x, s.y, 24, 0, TAU); ctx.fill(); ctx.restore(); continue; }
     }
-    btns.push({ id: 'stage:' + s.id, x: s.x - 32, y: s.y - 36, w: 72, h: 84 });
+    const x0 = Math.max(0, s.x - 36 - ox), x1 = Math.min(MAP_VW, s.x + 36 - ox), y0 = Math.max(0, s.y - 28 - oy), y1 = Math.min(VH, s.y + 42 - oy);
+    if (x1 > x0 && y1 > y0) cityBtns.push({ id: 'stage:' + s.id, x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
   }
+  ctx.restore();
+  btns.push(...cityBtns);
+  drawMapMini();
   drawRelationPanel();
   panel(1005, 20, 250, 680, COLORS.gold, 3, 'rgba(8,20,25,.88)');
-  label('전략', 1130, 52, 27, COLORS.gold, 'center');
-  label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1025, 96, 15, COLORS.silver);
-  label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 130, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
-  ['여포', '원소', '조조', '유비'].forEach((faction, i) => { ctx.fillStyle = FACTION_STYLE[faction].main; ctx.fillRect(1025 + i * 53, 151, 10, 10); label(faction, 1039 + i * 53, 160, 10, FACTION_STYLE[faction].light); });
-  label(`목표: ${victoryCapitals().map(id => `${stageById(id).name} ${stageById(id).owner === 'player' ? '함락' : '미점령'}`).join(' · ')}`, 1025, 179, 13, COLORS.gold);
-  label(`군주 ${FACTIONS.map(f => rulerName(f)).join('·')}`, 1025, 197, 10, '#ffd0b8');
-  label(FACTIONS.filter(f => f !== playerFaction()).map(f => `${f} ${relationText(f)}`).join(' · '), 1025, 214, 10, COLORS.silver2);
-  STAGES.forEach((s, i) => {
-    const faction = stageFaction(s), y = 230 + i * 13; label(`${s.stage}.${s.name}${isCapital(s) ? '·수도' : ''} ${faction} Lv${s.level}`, 1025, y, 10, s === here ? COLORS.goldSel : FACTION_STYLE[faction].light);
-    label(s.stage === 1 && !stageEnemyCount(s) ? '정비' : `${enemyRolesAt(s)} ${stageEnemyCount(s)}명`, 1233, y, 9, s.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'right');
+  label('전략', 1130, 46, 27, COLORS.gold, 'center');
+  label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1025, 78, 15, COLORS.silver);
+  label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 100, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
+  label(`목표: ${victoryCapitals().map(id => `${stageById(id).name} ${stageById(id).owner === 'player' ? '함락' : '미점령'}`).join(' · ')}`, 1025, 120, 13, COLORS.gold);
+  label(`군주 ${FACTIONS.map(f => rulerName(f)).join('·')}`, 1025, 138, 10, '#ffd0b8');
+  label(FACTIONS.filter(f => f !== playerFaction()).map(f => `${f} ${relationText(f)}`).join(' · '), 1025, 154, 10, COLORS.silver2);
+  FACTIONS.forEach((f, i) => {   // 세력 요약: 도시 수 · 군단 수
+    const mine = f === playerFaction(), cities = mine ? STAGES.filter(s => s.owner === 'player').length : factionStages(f).length, n = mine ? roster.length : enemyForces.filter(x => x.active && forceFaction(x) === f).length, y = 176 + i * 15;
+    ctx.fillStyle = FACTION_STYLE[f].main; ctx.fillRect(1025, y - 5, 9, 9); label(`${f}${mine ? '(나)' : ''} 도시 ${cities} · 군단 ${n}${factionDead(f) ? ' · 멸망' : ''}`, 1040, y, 11, FACTION_STYLE[f].light);
   });
+  { const f = stageFaction(sel), st = stationedAt(sel), foes = enemyForces.filter(x => x.active && x.at === sel.id), lead = c => c.units[0] ? Sim.U[c.units[0]].name : corpsName(c);   // 선택한 도시 정보
+    label(`${isCapital(sel) ? '★' : ''}${sel.name} · ${f} · ${THEME_NAME[sel.theme]}`, 1025, 248, 13, COLORS.goldSel);
+    label(`Lv${sel.level} ${sel.difficulty} · ${enemyRolesAt(sel)} ${stageEnemyCount(sel)}명`, 1025, 264, 11, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2);
+    label(st.length ? (st.length === 1 ? `${lead(st[0].c)} 군단` : `${lead(st[0].c)} 군단 외 ${st.length - 1}`) : foes.length ? `${Sim.U[foes[0].army.leader]?.name || foes[0].army.name} 부대${foes.length > 1 ? ' 외 ' + (foes.length - 1) : ''}` : '주둔 군단 없음', 1025, 279, 11, COLORS.silver);
+  }
+  label('내 군단', 1025, 300, 11, COLORS.gold);
+  roster.slice(0, 7).forEach((c, i) => label(`${i + 1}. ${c.units[0] ? Sim.U[c.units[0]].name : '—'} · ${stageById(c.at).name}${c.target ? ' → ' + stageById(c.target).name : ''}`, 1025, 314 + i * 14, 10, i === campaign.corps ? COLORS.goldSel : COLORS.silver));
+  if (roster.length > 7) label(`외 ${roster.length - 7}개 군단`, 1025, 314 + 7 * 14, 10, COLORS.silver2);
   button('campaign:scout', 1025, 418, 100, 34, '정찰', mapTool === 'scout', 15); button('campaign:diplomacy', 1135, 418, 100, 34, '외교', mapTool === 'diplomacy', 15);
   ctx.save(); ctx.strokeStyle = COLORS.gold; ctx.fillStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(1043, 433, 6, 0, TAU); ctx.moveTo(1047.5, 437.5); ctx.lineTo(1054, 444); ctx.stroke();   // 정찰: 돋보기
   ctx.beginPath(); ctx.moveTo(1153, 444); ctx.lineTo(1153, 427); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1153, 427); ctx.lineTo(1166, 431); ctx.lineTo(1153, 436); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();   // 외교: 백기
@@ -1384,10 +1369,10 @@ function drawScoutView() {
 }
 function heroInfo(faction, key) {
   const own = roster.find(c => c.units.includes(key));
-  if (own) { const slot = own.units.indexOf(key), lv = own.growth[slot]?.lv || 1; return { lv, status: faction === playerFaction() ? `${stageById(own.at).name} · ${corpsName(own)}` : `${playerFaction()}군 투항 · ${corpsName(own)}` }; }
+  if (own) { const slot = own.units.indexOf(key), lv = own.growth[slot]?.lv || 1; return { lv, status: faction === playerFaction() ? `${stageById(own.at).name} · ${roster.indexOf(own) + 1}군단 ${corpsName(own)}` : `${playerFaction()}군 투항 · ${corpsName(own)}` }; }
   const force = enemyForces.find(f => f.army.units.includes(key));
   if (!force) return { lv: 1, status: '전사·이탈' };
-  return { lv: force.army.growth[force.army.units.indexOf(key)]?.lv || force.level || 1, status: force.active ? `${stageById(force.at).name} · ${force.role === 'garrison' ? '수비' : '원정'}` : '후퇴·비활성' };
+  return { lv: force.army.growth[force.army.units.indexOf(key)]?.lv || force.level || 1, status: force.active ? `${stageById(force.at).name} · ${force.corpsNo ? force.corpsNo + '군단 ' : ''}${force.role === 'garrison' ? '수비' : '원정'}` : '후퇴·비활성' };
 }
 function drawFactionHeroes() {
   const faction = heroView.faction, list = FACTION_HEROES[faction], per = 12, pages = Math.max(1, Math.ceil(list.length / per)), page = Math.min(heroView.page, pages - 1), x = 170, y = 45, w = 940, h = 630;
@@ -1535,7 +1520,7 @@ function drawRoster() {
         label(squadStart ? `${slot / 6 + 1}분대` : '', x + 55, ry + 12, 13, COLORS.gold);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
         if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`HP${stats.maxHp} AT${stats.atk} DF${stats.df} AD${stats.ad} MD${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
-        label(commander ? '군단장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right');
+        label(commander ? '군단장' : slot === 6 || slot === 12 ? (namedRosterUnit(key) ? '분대장' : '분대장 없음') : '', x + 570, ry + 12, 13, commander || namedRosterUnit(key) ? COLORS.gold : COLORS.danger, 'right');
         btns.push({ id: `roster:unit:${side}:${slot}`, x: x + 10, y: ry, w: 580, h: 24 });
       });
     };
@@ -1643,7 +1628,7 @@ function uiClick(id) {
   if (/^campaign:heroes:faction:/.test(id)) { heroView = { faction: id.split(':').pop(), page: 0 }; return; }
   if (id === 'campaign:heroes:prev' || id === 'campaign:heroes:next') { const pages = Math.max(1, Math.ceil(FACTION_HEROES[heroView.faction].length / 12)), d = id.endsWith('next') ? 1 : -1; heroView.page = (heroView.page + d + pages) % pages; return; }
   if (id === 'campaign:intel:continue') { const encounter = campaign.pendingEncounter; if (!encounter) return; if (encounter.unopposed) { enemyTakesCity(encounter.stage); if (encounter.stage.id === playerCapital()) { defeatCampaign(`${encounter.stage.name}이 함락되어 원정에 패배했습니다.`); return; } campaign.notice = `${encounter.stage.name}이 무방비로 함락되었습니다.`; finishMovementStep(); return; } encounter.intelSeen = true; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
-  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${prize ? ' 점령 보상: ' + prize + '.' : ''}`; if (!completeCampaignIfWon()) finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
+  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; relocateCapitals(); const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${prize ? ' 점령 보상: ' + prize + '.' : ''}`; if (!completeCampaignIfWon()) finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
   if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / RESP_PAGE), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
   if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; if (encounter.invasion) { enemyTakesCity(encounter.stage); if (encounter.stage.id === playerCapital()) { defeatCampaign(`${encounter.stage.name} 방어를 포기하여 원정에 패배했습니다.`); return; } const moved = retreatAll(encounter.stage); campaign.notice = `${encounter.stage.name} 방어를 포기했다.${moved.length ? ' ' + moved.map(m => `${corpsName(m.c)} → ${m.back.name}`).join(', ') + ' 퇴각.' : ''}`; } else { const mover = roster[encounter.moverIndex]; if (mover) mover.at = encounter.from; campaign.notice = `${encounter.stage.name} 공격을 포기하고 철수했다.`; } finishMovementStep(); return; }
   if (/^campaign:response:\d+$/.test(id)) {
@@ -1700,6 +1685,7 @@ function uiClick(id) {
   }
   if (id === 'roster:page:prev' || id === 'roster:page:next') { const pages = Math.max(1, Math.ceil((roster.length - 1) / 10)), d = id.endsWith('next') ? 1 : -1; rosterPage = (rosterPage + d + pages) % pages; return; }
   if (id.startsWith('roster:unit:')) { const [, , side, slot] = id.split(':'); pickRosterUnit(side, +slot); return; }
+  if (id.startsWith('stage:')) mapSel = id.slice(6);
   if (id.startsWith('stage:') && mapTool) { useMapTool(stageById(id.slice(6))); return; }
   if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); if (!warnMove) { moveMode = 'corps'; moveSelectOpen = false; } } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
@@ -1761,6 +1747,7 @@ cv.addEventListener('pointerdown', e => {
   const p = pos(e), b = hitBtn(p.x, p.y); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
   if (state === 'title') { if (mobile) goFullscreen(); if (startFactionSelect) { if (b && b.id.startsWith('start-faction:')) uiClick(b.id); } else if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); } else if (b && b.id === 'title:new') startNewFromTitle(); else if (b && b.id === 'title:load') saveSlotMode = 'load'; return; }
+  if (state === 'map' && mapFree()) { if (inMapMini(p)) { mapDrag = { id: e.pointerId, mini: true }; miniJump(p); return; } if (!b && p.x < MAP_VW) { mapDrag = { id: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; return; } }   // 지도: 미니맵을 누르면 그 위치로, 빈 곳을 끌면 지도가 움직인다 (도시 버튼은 pointerdown 한 번에 동작)
   if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && b.id.startsWith('campaign:diplomacy:') : heroView ? b && b.id.startsWith('campaign:heroes:') : scoutView ? b && b.id === 'campaign:scout:close' : exploreSelectOpen ? b && b.id.startsWith('campaign:explore:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { S.events.shift(); return; }
@@ -1785,6 +1772,7 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
+  if (mapDrag && mapDrag.id === e.pointerId) { if (mapDrag.mini) miniJump(p); else { mcam.x = mapDrag.cx - (p.x - mapDrag.x); mcam.y = mapDrag.cy - (p.y - mapDrag.y); clampMcam(); } return; }
   if (miniPtr === e.pointerId) { if (mini) lookAt({ x: Math.max(mini.x, Math.min(mini.x + mini.w, p.x)), y: Math.max(mini.y, Math.min(mini.y + mini.h, p.y)) }); return; }
   if (stick && stick.id === e.pointerId) { stickMove(p.x, p.y); refreshPad(); return; }
   if (padPtrs.has(e.pointerId)) { const b = hitBtn(p.x, p.y); if (b && b.id.startsWith('pad:')) { const [dx, dy] = padOf(b.id); if (dx || dy) padPtrs.set(e.pointerId, [dx, dy]); else padPtrs.delete(e.pointerId); } else padPtrs.delete(e.pointerId); refreshPad(); }   // 패드 위에서 손가락을 미끄러뜨리면 방향 전환
@@ -1795,6 +1783,7 @@ function tapInfo(x, y) {   // 가상패드 영역을 끌지 않고 짧게 터치
   selectMode = true;
 }
 const endPtr = (e, cancel) => {
+  if (mapDrag && mapDrag.id === e.pointerId) mapDrag = null;
   if (miniPtr === e.pointerId) miniPtr = -1;
   padPtrs.delete(e.pointerId);
   if (stick && stick.id === e.pointerId) { const t = stick; stick = null; if (!cancel && !t.moved && T - t.t0 < 0.4 && state === 'play' && !menuOpen && !S.over && !S.events.length && tutorialStep < 0) tapInfo(t.ox, t.oy); }
@@ -1805,6 +1794,7 @@ addEventListener('keydown', e => {
   if (e.repeat) return;
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
   if (state === 'title') { if (startFactionSelect) { if (e.key === 'Escape') startFactionSelect = false; else if (/^[1-3]$/.test(e.key)) uiClick('start-faction:' + PLAYABLE_FACTIONS[+e.key - 1]); } else if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Enter' || e.key.toLowerCase() === 'n') startNewFromTitle(); else if (e.key.toLowerCase() === 'l') saveSlotMode = 'load'; return; }
+  if (state === 'map') { if (e.key.startsWith('Arrow')) mapKeys.add(e.key); else if (e.key === 'Home' && mapFree()) centerMap(); }
   if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { moveSelectOpen = false; exploreSelectOpen = false; heroView = null; } return; }
   if (state === 'roster') { if (e.code === 'Escape') uiClick('roster:back'); return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') finishTutorial(); else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 3 ? finishTutorial() : tutorialStep++; return; }
@@ -1827,8 +1817,9 @@ addEventListener('keydown', e => {
   else if (k === 't') useCommand('auto'); else if (k === 'p') paused = !paused;
   else if (k >= '1' && k <= '5') { const u = ctrlOf(); if (u) Sim.selectSpell(u, +k - 1); }
 });
-addEventListener('keyup', e => { dirStack = dirStack.filter(c => c !== e.code); keys[e.key] = false; });
-addEventListener('blur', () => { keys = {}; dirStack = []; padPtrs.clear(); stick = null; padDir = null; });
+cv.addEventListener('wheel', e => { if (!mapFree()) return; e.preventDefault(); if (e.shiftKey) mcam.x += e.deltaY || e.deltaX; else { mcam.y += e.deltaY; mcam.x += e.deltaX; } clampMcam(); }, { passive: false });   // 지도 휠: 세로 이동, Shift+휠: 가로 이동
+addEventListener('keyup', e => { mapKeys.delete(e.key); dirStack = dirStack.filter(c => c !== e.code); keys[e.key] = false; });
+addEventListener('blur', () => { mapKeys.clear(); mapDrag = null; keys = {}; dirStack = []; padPtrs.clear(); stick = null; padDir = null; });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play' && !S.over) { paused = true; keys = {}; padPtrs.clear(); stick = null; padDir = null; } });   // 앱 전환·화면 꺼짐 시 자동 일시정지
 if (/[?&]m=1\b/.test(location.search) || (window.matchMedia && matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 900)) setMobile(true);
 
@@ -1836,6 +1827,7 @@ if (/[?&]m=1\b/.test(location.search) || (window.matchMedia && matchMedia('(poin
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now; T += dt;
+  if (state === 'map' && mapKeys.size && mapFree()) { const v = 650 * dt; if (mapKeys.has('ArrowLeft')) mcam.x -= v; if (mapKeys.has('ArrowRight')) mcam.x += v; if (mapKeys.has('ArrowUp')) mcam.y -= v; if (mapKeys.has('ArrowDown')) mcam.y += v; clampMcam(); }   // 방향키를 누르고 있는 동안 지도 이동
   if (state === 'play') {
     for (const m of marks) m.t -= dt; marks = marks.filter(m => m.t > 0);
     if (!paused && !menuOpen && !supportOpen && tutorialStep < 0 && !S.over && !selectMode && !S.events.length) {
