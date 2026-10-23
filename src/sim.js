@@ -27,16 +27,16 @@ const U = {
   kong: { name: '제갈량', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   spear: { name: '보병(창)', cls: 'warrior', hp: 120, atk: 21, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
-  shield: { name: '방패병', cls: 'shield', hp: 120, atk: 15, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
-  archer: { name: '궁병', cls: 'archer', hp: 80, atk: 30, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'ally_archer', generic: true },
-  cav: { name: '기마병', cls: 'cavalry', hp: 160, atk: 27, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'ally_cav', generic: true },
+  shield: { name: '방패병', cls: 'shield', hp: 120, atk: 18, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
+  archer: { name: '궁병', cls: 'archer', hp: 128, atk: 30, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'ally_archer', generic: true },
+  cav: { name: '기마병', cls: 'cavalry', hp: 144, atk: 21, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 1.0, r: 13, style: 'ally_cav', generic: true },
   mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fireball', 'ice'], generic: true },
   lubu: { name: '여포', cls: 'cavalry', aa: 14, hr: 12, sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 24, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
   ecap: { name: '적 장수', cls: 'warrior', aa: 12, hr: 10, sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 20, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
   esword: { name: '적 보병', cls: 'warrior', hp: 120, atk: 20, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
-  eshield: { name: '적 방패', cls: 'shield', hp: 120, atk: 14, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
-  earcher: { name: '적 궁병', cls: 'archer', hp: 80, atk: 29, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'archer', generic: true },
-  ecav: { name: '적 기마', cls: 'cavalry', hp: 160, atk: 26, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 0.9, r: 13, style: 'cav', generic: true },
+  eshield: { name: '적 방패', cls: 'shield', hp: 120, atk: 17, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
+  earcher: { name: '적 궁병', cls: 'archer', hp: 128, atk: 29, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'archer', generic: true },
+  ecav: { name: '적 기마', cls: 'cavalry', hp: 144, atk: 20, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 1.0, r: 13, style: 'cav', generic: true },
   hua: { name: '화웅', cls: 'warrior', sp: 173, cd: 1.0, r: 14, aa: 10, hr: 10, style: 'hua', special: 'spin', fanatic: true },
   jang: { name: '장료', cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 14, hr: 10, style: 'jang', special: 'dash' },
   xun: { name: '순욱', cls: 'mage', mp: 999, sp: 166, cd: 1.4, range: 200, r: 12, aa: 18, hr: 8, style: 'xun', spells: ['bolt', 'phoenix', 'fireball', 'thunder'], fanatic: true },
@@ -105,7 +105,7 @@ const UNIT_CATEGORY = { guan: 'spear', wen: 'spear', hua: 'spear', yan: 'spear',
 const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', caopi: '세자', liushan: '후주', yuantan: '장자', fazheng: '기모', xiahouyuan: '신속', caoren: '천인', mizhu: '자중', lady_mi: '현덕부인', haomeng: '건장', yujin: '의중', yuejin: '선등', caohong: '복장', caozhen: '대사마', caoxiu: '천리구', yanyan: '노장', zangba: '태산', gaolan: '용건', quyi: '선등장', jushou: '충렬', tianfeng: '강직', shenpei: '정렬', caoxing: '명사', yuanxi: '중자', chenglian: '효기', songxian: '건위', weixu: '친장', houcheng: '마도', chunyuqiong: '오소', hanmeng: '맹진', jiangyiqu: '독장', guotu: '참모', fengji: '권모', mifang: '남군', zhangmiao: '진류후', zhangchao: '광릉장', zhangyang: '하내장', xuelan: '연주장', lifeng_lu: '성렴장', wangkai: '종사', yinli: '태산장', xusi: '설객', yuanshang: '삼공자', gaogan: '병주목', xinping: '별가', chenlin: '격문가', lvweihuang: '기주장', lvkuang: '여씨장형', lvxiang: '여씨장제', mayan: '하북장', zhangyi_yuan: '하북효장', jiaochu: '유주장', lvyang: '여씨도독', guoyuan: '하동장', lidian: '유아장', chengyu: '중덕', xunyou: '모주공달', manchong: '강직태수', liuye: '좌세', lvqian: '위장', guanping: '소관장', zhoucang: '충용', sunqian: '사신', jianyong: '설객헌화', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(검)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
 const RANK_ONLY_KEYS = ['caopi', 'liushan', 'yuantan', 'fazheng', 'xiahouyuan', 'caoren', 'mizhu', 'lady_mi', 'haomeng', 'yujin', 'yuejin', 'caohong', 'caozhen', 'caoxiu', 'yanyan', 'zangba', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'caoxing', 'yuanxi', 'chenglian', 'songxian', 'weixu', 'houcheng', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'mifang', 'zhangmiao', 'zhangchao', 'zhangyang', 'xuelan', 'lifeng_lu', 'wangkai', 'yinli', 'xusi', 'yuanshang', 'gaogan', 'xinping', 'chenlin', 'lvweihuang', 'lvkuang', 'lvxiang', 'mayan', 'zhangyi_yuan', 'jiaochu', 'lvyang', 'guoyuan', 'lidian', 'chengyu', 'xunyou', 'manchong', 'liuye', 'lvqian', 'guanping', 'zhoucang', 'sunqian', 'jianyong'];
 // 표에 적힌 공격 병과별 최종 피해 배율.
-const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1.2, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 0.8 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
+const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 1 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
 // CLASS_DAMAGE 가 최종 피해 배율이다. 별도 우세 보너스를 겹치지 않는다.
 const MATCHUP_BONUS = 1;
 const DASH_BASE = 1, DASH_EXTRA = 0.5;   // 돌진 충격 피해 = 기본 1배 + 추가분(1 + 밀친 칸×0.5) × 0.5 — 추가 피해 효율 50% 감소 (이전: 2 + 밀친 칸×0.5)
@@ -141,8 +141,10 @@ const SPELL = {
   heal: { name: '치유', kind: 'heal', mp: 6, range: 130, cd: 1.2 },
 };
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
-const MAGIC = 1;   // 장풍은 물리 피해 조정 후 일반 궁병 실효 DPS의 약 3~5배 범위, 광역 주문은 다중 타격으로 효율을 얻는다
-const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
+const MAGIC = 1;
+const SOLDIER_SPELL = 0.35, SPELL_GRADE = 1;   // 일반 병사 법사 주문 위력 / 장수 군사 주문 위력 = 1 + SPELL_GRADE × (등급 배율 − 1) (명세 42, 설계값)
+const spellPower = u => !u ? 1 : u.generic ? SOLDIER_SPELL : 1 + SPELL_GRADE * ((GRADE_MUL[GRADE[u.key]] || 1) - 1);   // 장풍은 물리 피해 조정 후 일반 궁병 실효 DPS의 약 3~5배 범위, 광역 주문은 다중 타격으로 효율을 얻는다
+const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? spellPower(from) * combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
 const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
 const TRAIT_TIME = 5, AURA_RANGE = 150;
 const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: 'AT', df: 'DF', ad: 'AD', md: 'MD', aa: 'AA', hr: 'HR', sp: 'SP', ar: 'AR', dr: 'DR' };
@@ -532,7 +534,7 @@ function castSpell(S, u, key, x, y) {
   if (sp.kind === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    const heal = Math.round((70 + u.lv * 5) * HP_MUL * (1 + skillPct(u, 'heal') / 100)); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
+    const heal = Math.round((70 + u.lv * 5) * HP_MUL * (1 + 0.5 * (spellPower(u.generic ? null : u) - 1)) * (1 + skillPct(u, 'heal') / 100)); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
   } else if (sp.kind === 'homing') {   // 장풍: 가까운 적을 쫓아간다 (조준한 곳 가까이에 적이 없으면 직진)
     let tgt = null, bd = 80; for (const e of S.units) if (live(e) && e.team !== u.team) { const dd = Math.hypot(e.x - x, e.y - y); if (dd < bd) { bd = dd; tgt = e; } }
     shot({ kind: 'homing', vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420, left: sp.range * 1.5, tgt });
@@ -1046,6 +1048,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
