@@ -934,6 +934,10 @@ function commanderDialogue(S) {
 }
 function checkEnd(S) {
   const mine = S.units.filter(u => u.team === 'player' && !u.dead && !u.army.ally);   // 동맹 AI 군단은 제외
+  if (mine.length && !mine.some(u => !u.out && !u.retreated)) {   // 전장에 나온 아군이 없는데 미출진 지원만 남았으면 자동 출진시킨다 (그러지 않으면 전투가 끝나지 않는다)
+    for (const A of S.armies) if (A.team === 'player' && !A.ally && A.units.some(u => u.out && !u.dead)) deployArmy(S, A, A.ctrl, true);
+    if (!S.units.some(u => u.team === 'player' && !u.army.ally && !u.dead && !u.out && !u.retreated) ) { S.over = 'lose'; if (S.units.some(u => u.team === 'player' && !u.army.ally && u.retreated)) S.overWhy = 'retreat'; return; }
+  }
   if (!mine.length) S.over = 'lose';   // 군단장·군주 전사만으로 즉시 패배하지 않고 생존 병력이 전투를 계속한다
   else if (mine.every(u => u.retreated)) { S.over = 'lose'; S.overWhy = 'retreat'; }   // 살아남은 병력이 모두 후퇴한 군단(후퇴한 분대·장수·병사만 남음)은 패배 처리
   else if (!S.explore && !S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
