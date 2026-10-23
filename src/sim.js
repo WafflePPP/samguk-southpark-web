@@ -650,12 +650,12 @@ function pickTarget(S, u) {   // 대상 점수 = −거리(칸) + 8(사거리 6�
 }
 function engage(S, u, t, canMove) {
   if (!t || !live(t) || t.team === u.team) return;
-  if (u.cls === 'cavalry' && canMove && !handCtl(S, u)) {   // 기병은 항상 적의 후면(등 뒤)에서 공격한다: 앞쪽에서 닿더라도 후면 칸으로 돌아가며, 3초 넘게 못 돌아가면 그냥 공격
-    if (u.flankTgt !== t) { u.flankTgt = t; u.flankSince = null; }
-    if ((u.x - t.x) * Math.cos(t.face) + (u.y - t.y) * Math.sin(t.face) < 0) u.flankSince = null;
+  if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
+  if (u.cls === 'cavalry' && canMove && !handCtl(S, u)) {   // 접근 중에는 후면을 노리되 이미 인접했다면 위에서 즉시 공격한다
+    const changed = u.flankTgt !== t; if (changed || S.t >= (u.flankFaceUntil || 0)) { u.flankTgt = t; u.flankFace = t.face; u.flankFaceUntil = S.t + 1.5; if (changed) u.flankSince = null; }
+    if ((u.x - t.x) * Math.cos(u.flankFace) + (u.y - t.y) * Math.sin(u.flankFace) < 0) u.flankSince = null;
     else { u.flankSince ??= S.t; if (S.t - u.flankSince < 3) { const k = freeAdj(S, u, t); if (k >= 0 && k !== ti(u.tx, u.ty)) { stepToward(S, u, k % MW, k / MW | 0); return; } } }
   }
-  if (inReach(u, t)) { u.claim = -1; u.face = Math.atan2(t.y - u.y, t.x - u.x); if (u.cdT <= 0) attack(S, u, t); return; }
   if (!canMove) return;
   if (u.range > 0) { stepToward(S, u, t.tx, t.ty); return; }
   const k = freeAdj(S, u, t);   // 근접: 적에게 인접한 빈 칸을 목표로 (다른 유닛이 잡은 칸 제외)
@@ -667,10 +667,10 @@ function engage(S, u, t, canMove) {
 function freeAdj(S, u, t) {
   const ok = k => { const x = k % MW, y = k / MW | 0; return cheb({ tx: x, ty: y }, t) === 1 && okTile(S, x, y) && (!S.occ[k] || S.occ[k] === u.id) && !S.units.some(v => v !== u && v.claim === k && v.claimT > S.t - 1 && live(v)); };
   if (u.claim >= 0 && ok(u.claim)) { u.claimT = S.t; return u.claim; }
-  let best = -1, bd = 1e9;
+  const face = u.cls === 'cavalry' && u.flankTgt === t && u.flankFaceUntil > S.t ? u.flankFace : t.face; let best = -1, bd = 1e9;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     if (!dx && !dy) continue; const x = t.tx + dx, y = t.ty + dy; if (!inMap(x, y)) continue;
-    let d = Math.hypot(x - u.tx, y - u.ty); if (u.cls === 'cavalry' && !handCtl(S, u)) d += 3 * (1 + (dx * Math.cos(t.face) + dy * Math.sin(t.face)) / Math.hypot(dx, dy));   // 기병: 적이 바라보는 쪽(앞)은 멀리, 등 뒤(후면)는 가깝게 쳐서 후면을 노린다
+    let d = Math.hypot(x - u.tx, y - u.ty); if (u.cls === 'cavalry' && !handCtl(S, u)) d += 3 * (1 + (dx * Math.cos(face) + dy * Math.sin(face)) / Math.hypot(dx, dy));   // 기병: 목표 방향은 잠시 고정해 후면 칸이 매 틱 뒤집히지 않게 한다
     const k = ti(x, y); if (d < bd && ok(k)) { bd = d; best = k; }
   }
   u.claimT = S.t; return u.claim = best;
@@ -823,7 +823,7 @@ function updateUnit(S, u, dt) {
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
-    if (S.tactics >= 2 && !handCtl(S, u)) { const engaged = !stale && inReach(u, o.tgt); if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 1.5)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 공격 가능한 대상은 끝까지 상대하고, 이동 중일 때만 점수 대상 재선정
+    if (S.tactics >= 2 && !handCtl(S, u)) { const engaged = !stale && inReach(u, o.tgt); if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 3)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 공격 가능한 대상은 끝까지 상대하고, 이동 중에도 목표를 최소 3초 유지한다
     else if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }
