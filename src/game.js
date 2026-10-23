@@ -870,12 +870,12 @@ function drawToolbar() {
   button('armyT', 954, 18, 120, 34, '군단 전환', false);
   button('cmd:menu', 1084, 18, 190, 34, '시스템', false);
 }
-// 능력치 실시간 표기: 기본값(아이템 포함) → 현재값(버프·오라·피로 반영). 달라지면 "기본→현재" 로 쓰고 올랐으면 초록, 내렸으면 주황으로 칠한다.
+// 능력치 실시간 표기: 버프·오라·피로가 반영된 현재값 하나만 쓰고, 기본값보다 오르면 초록·내리면 주황으로 칠한다.
 class StatText extends String { constructor(t, col) { super(t); this.col = col; } }
 const FATIGUE_KEYS = ['atk', 'df', 'ad', 'md', 'sp'];
 function statShow(u, key) {
   const base = Math.round(u[key]), live = Math.round(combatStat(u, key) * (FATIGUE_KEYS.includes(key) ? Sim.fatigueMultiplier(u) : 1)), sfx = key === 'aa' ? '%' : '';
-  return live === base ? new StatText(base + sfx, null) : new StatText(`${base}→${live}${sfx}`, live > base ? '#7dff9a' : '#ff9a7d');
+  return new StatText(live + sfx, live === base ? null : live > base ? '#7dff9a' : '#ff9a7d');
 }
 const combatStat = (u, key) => Sim.combatStat(S, u, key);
 function drawLeftPanel() {
@@ -968,9 +968,9 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
 function drawActionsMobile() {   // 오른쪽 행동 영역: 행동·보조·마법
   const u = ctrlOf(); if (!u) return;
   const primary = actionInfo(u), alt = actionInfo(u, true), sp = u.spells.length ? SPELL[u.spells[u.spellSel]] : null;
-  roundBtn('m:act', 1196, 548, 74, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
-  if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 1112, 650, 46, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
-  if (u.spells.length > 1) roundBtn('m:spell', 1000, 540, 46, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
+  roundBtn('m:act', 1196, 526, 68, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
+  if (u.spells.length ? u.special : u.special && u.range > 0) roundBtn('m:alt', 1080, 550, 44, '보조', cooldownText(alt), alt.ready ? COLORS.gold : COLORS.silver2, alt.ready);
+  if (u.spells.length > 1) roundBtn('m:spell', 984, 550, 44, S.lock.player > 0 ? '잠금' : sp.name, S.lock.player > 0 ? Math.ceil(S.lock.player) + '초' : sp.mp + 'MP', S.lock.player > 0 ? COLORS.danger : COLORS.silver2, false);
 }
 function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 중인 장수 정보를 표시한다
   if (!SHOW.status) return;
@@ -999,7 +999,7 @@ function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치
   const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, v && v.col ? v.col : COLORS.silver); };
   label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, hpCol(u.hp / u.maxHp, col)); label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
   const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = itemName(u);
-  label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(statShow(u, 'hr')), x + 8 + 2 * c + fs * 2.2, y + top, fs, COLORS.silver);
+  const hr = statShow(u, 'hr'); label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, hr.col || COLORS.silver);
   cell('AT', statShow(u, 'atk'), 0, 1); cell('DF', statShow(u, 'df'), 1, 1); cell('AA', statShow(u, 'aa'), 2, 1);
   cell('AR', statShow(u, 'ar'), 0, 2); cell('DR', statShow(u, 'dr'), 1, 2); cell('AD', statShow(u, 'ad'), 2, 2);
   cell('MD', statShow(u, 'md'), 0, 3); cell('FT', Math.round(Sim.effectiveFt(u)), 1, 3); cell('SP', statShow(u, 'sp'), 2, 3);
@@ -1009,16 +1009,18 @@ function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치
 }
 function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 창 + 확정 버튼, 전투는 멈춰 있다 (적을 눌렀으면 그 적의 정보)
   const u = selTarget && alive(selTarget) ? selTarget : ctrlOf(); if (!u) return; const foe = u.team === 'enemy';
-  label(foe ? '적 정보 — 전투 일시정지' : '캐릭터 선택 중 — 전투 일시정지', LEFT_W + VPW / 2, TB_H + 22, 20, foe ? COLORS.danger : COLORS.gold, 'center');
-  const z = Z(), sx = LEFT_W + (u.x - cam.x) * z, sy = TB_H + (u.y - cam.y) * z, w = mobile ? 380 : 300, h = mobile ? 260 : 232, col = foe ? COLORS.danger : COLORS.gold;
+  const col = foe ? COLORS.danger : COLORS.gold, title = foe ? '적 정보 · 전투 일시정지' : '캐릭터 선택 · 전투 일시정지';
+  if (mobile) { panel(VW / 2 - 230, 8, 460, 40, col, 2, 'rgba(10,12,20,.92)'); label(title, VW / 2, 28, 20, col, 'center'); }
+  else label(title, LEFT_W + VPW / 2, TB_H + 22, 20, col, 'center');
+  const z = Z(), sx = LEFT_W + (u.x - cam.x) * z, sy = TB_H + (u.y - cam.y) * z, w = mobile ? 380 : 300, h = mobile ? 260 : 232;
   if (foe) { ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 3; ctx.strokeRect(sx - 20 * z, sy - 36 * z, 40 * z, 44 * z); }   // 가리킨 적 표시
-  const x = Math.max(LEFT_W + 6, Math.min(LEFT_W + VPW - w - 6, sx + 36)), y = Math.max(TB_H + 40, Math.min(TB_H + vh - h - 90, sy - h / 2));
+  const actionY = mobile ? VH - 84 : TB_H + vh - 70, x = Math.max(LEFT_W + 6, Math.min(LEFT_W + VPW - w - 6, sx + 36)), y = Math.max(mobile ? 58 : TB_H + 40, Math.min(mobile ? actionY - h - 12 : TB_H + vh - h - 90, sy - h / 2));
   panel(x, y, w, h, col, 3, 'rgba(10,12,20,.95)');
   const gh = drawStatGrid(u, x, y, w, mobile ? 20 : 16, col);
   if (u.range > 0) label('사거리 ' + Math.round(u.range / TILE) + '칸', x + 8, y + gh + 12, 15, COLORS.silver2);
   if (u.spells && u.spells.length) label(u.spells.map(k => SPELL[k].name).join('·'), x + w - 8, y + gh + 12, 14, COLORS.silver2, 'right');
-  button('sel:ok', LEFT_W + VPW / 2 - 110, TB_H + vh - (mobile ? 92 : 70), 220, mobile ? 64 : 44, foe ? (mobile ? '확정 (집중 공격)' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
-  if (!foe) { const solo = !!(u.order && u.order.solo); button('sel:solo', LEFT_W + VPW / 2 + 120, TB_H + vh - (mobile ? 92 : 70), mobile ? 170 : 150, mobile ? 64 : 44, solo ? '후퇴 취소' : '개인 후퇴', solo, 18); }   // 선택한 이 장수 한 명만 후퇴 (앞에 대상이 있어도 이동)
+  button('sel:ok', mobile ? VW / 2 - (foe ? 150 : 220) : LEFT_W + VPW / 2 - 110, actionY, mobile ? (foe ? 300 : 210) : 220, mobile ? 60 : 44, foe ? (mobile ? '확정 · 집중 공격' : '확정: 집중 공격 (Enter)') : (mobile ? '확정' : '확정 (Enter)'), true, 18);
+  if (!foe) { const solo = !!(u.order && u.order.solo); button('sel:solo', mobile ? VW / 2 + 10 : LEFT_W + VPW / 2 + 120, actionY, mobile ? 210 : 150, mobile ? 60 : 44, solo ? '후퇴 취소' : '개인 후퇴', solo, 18); }   // 선택한 이 장수 한 명만 후퇴 (앞에 대상이 있어도 이동)
 }
 function drawMenu() {   // 시스템: PC·모바일 공통 기능을 용도별 두 영역으로 구분한다
   const display = [['m:pausesel', `캐릭터 선택 일시정지: ${SHOW.pauseSel ? 'ON' : 'OFF'}`, SHOW.pauseSel], ['m:dmg', `피해량 표시: ${SHOW.dmg ? 'ON' : 'OFF'}`, SHOW.dmg]];
@@ -1077,7 +1079,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.192', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.193', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1398,15 +1400,15 @@ function draw() {
   if (state === 'title') { drawTitle(); return; }
   if (state === 'map') { drawStageMap(); return; }
   if (state === 'roster') { drawRoster(); return; }
-  layout(); clampCam();
+  layout(); clampCam(); const mobileSelect = mobile && selectMode && !menuOpen && !S.over;
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
   if (mobile) {
-    drawToolbarMobile(); drawMobileStatus(); drawMobileSide(); drawStick(); drawActionsMobile();
+    if (!mobileSelect) { drawToolbarMobile(); drawMobileStatus(); drawMobileSide(); drawStick(); drawActionsMobile(); }
   } else { drawToolbar(); drawLeftPanel(); drawSpellPanel(); drawPad(); drawTable(); }
-  drawMinimap();
-  if (S.auto) label('자동 전투', VW - 10, (mini ? mini.y + mini.h : TB_H) + 20, 18, COLORS.gold, 'right');
-  if (S.t < 14 && !S.over) label(mobile ? '왼쪽 화면을 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 112 : 16), 16, COLORS.silver2, 'center');
+  if (!mobileSelect) drawMinimap();
+  if (S.auto && !mobileSelect) label('자동 전투', VW - 10, (mini ? mini.y + mini.h : TB_H) + 20, 18, COLORS.gold, 'right');
+  if (S.t < 14 && !S.over && !mobileSelect) label(mobile ? '왼쪽 화면을 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 112 : 16), 16, COLORS.silver2, 'center');
   if (tutorialStep >= 0) { drawTutorial(); return; }
   if (S.events.length) { drawEvent(S.events[0]); return; }
   if (selectMode && !menuOpen && !S.over) drawSelectUI();
