@@ -850,8 +850,8 @@ function updateUnit(S, u, dt) {
   const ctrl = u === u.army.ctrl && u.team === 'player';
   if (ctrl && (!S.auto || u.manual) && u.ctrlIn && S.t - u.ctrlIn.t < 0.12) { directMove(S, u, u.ctrlIn.dx, u.ctrlIn.dy); return; }   // 직접 조작 중에는 돌진이 자동으로 나가지 않는다 (특수기 버튼으로만)
   if (ctrl && S.auto && !u.manual && o.type === 'stop') o = u.order = { type: 'idle' };   // 자동 전투 중에는 조작 캐릭터도 AI 가 움직인다
-  if (o.type === 'charge' && u.autoCharge && !S.auto) o = u.order = { type: ctrl ? 'stop' : 'idle' };   // 자동전투를 끄면 자동으로 돌격 중이던 유닛은 평상시로
-  if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance')) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player'; }
+  if (o.type === 'charge' && u.autoCharge && !S.auto && !u.army.ally) o = u.order = { type: ctrl ? 'stop' : 'idle' };   // 자동전투를 끄면 자동으로 돌격 중이던 유닛은 평상시로
+  if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance' || u.army.ally)) { o = u.order = { type: 'charge' }; u.autoCharge = u.team === 'player' && !u.army.ally; }   // 동맹군은 자동 전투와 무관하게 늘 AI 로 돌격
   const aggressive = u.team === 'enemy' || (S.auto && !u.manual) || o.type === 'charge';
   if (autoAbilities(S, u, aggressive)) return;
   if (isHealer(u) && !(u === u.army.ctrl && u.team === 'player' && (u.manual || !S.auto))) { healerFollow(S, u); return; }   // 치유 장수: 항상 분대 추종 (직접 조작 중일 때만 예외)
