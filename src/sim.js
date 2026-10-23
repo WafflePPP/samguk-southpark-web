@@ -78,6 +78,12 @@ for (const u of Object.values(U)) if (u.generic) for (const f of [...STAT5, 'aa'
 // named: 이름 있는 장수(관우·여포·화웅 …)는 필드에 항상 이름을 표기 (적 장수·적 군사 같은 직함·병사는 제외)
 const CLS_NAME = { warrior: '전사', cavalry: '기마', archer: '궁병', shield: '방패', mage: '법사', cleric: '성직' };
 const CATEGORY_NAME = { cavalry: '기병', sword: '검병', spear: '창병', archer: '궁병', military: '군사' };
+const TARGET_PRIORITY = {
+  spear: { spear: 4, cavalry: 3, archer: 2, military: 2, sword: 1 },
+  sword: { sword: 4, spear: 3, archer: 2, military: 2, cavalry: 1 },
+  archer: { archer: 2, spear: 2, sword: 2, cavalry: 1, military: 1 },
+  cavalry: { cavalry: 3, archer: 2, military: 2, sword: 2, spear: 1 }
+};
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 const UNIT_CATEGORY = { guan: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', yan: 'sword', wen: 'spear', spear: 'spear', esword: 'spear', eshield: 'spear' };
 const SUBCLASS = { guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', sword: '보병(검)', shield: '방패병(검)', mage: '법사', emage: '법사', esage: '법사', spear: '보병(창)', esword: '보병(창)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
@@ -638,15 +644,15 @@ function nearestEnemy(S, u, maxD) {
   return leader || best;
 }
 function inReach(u, t) { return u.range > 0 ? Math.hypot((u.tx - t.tx) * TILE, (u.ty - t.ty) * TILE) <= u.range : cheb(u, t) <= 1; }   // 근접 = 인접한 8칸
-function pickTarget(S, u) {   // 대상 점수 = −거리(칸) + 8(사거리 6칸 안의 후열) + 5(체력 30% 미만) + 3(같은 대상을 노리는 아군 ≤ 2, 3명 초과면 −3) + 3(이름 있는 장수가 지휘관) (명세 36 AI-B-01)
+function pickTarget(S, u, maxTiles = 14, fallback = true) {   // 병종 우선 등급을 먼저 비교하고, 같은 등급 안에서 거리·후열·체력·집중도·지휘관 점수로 고른다
   const aim = new Map(); for (const m of S.units) if (live(m) && m.team === u.team && m.order && m.order.tgt && live(m.order.tgt)) aim.set(m.order.tgt, (aim.get(m.order.tgt) || 0) + 1);
-  let best = null, bs = -1e9;
+  const priority = TARGET_PRIORITY[u.category] || {}; let best = null, bp = -1, bs = -1e9;
   for (const e of S.units) {
-    if (!live(e) || e.team === u.team) continue; const d = Math.hypot(e.x - u.x, e.y - u.y) / TILE; if (d > 14) continue;
-    let sc = -d; if (isBack(e) && d <= 6) sc += 8; if (e.hp < e.maxHp * 0.3) sc += 5; sc += (aim.get(e) || 0) <= 2 ? 3 : -3; if (u.named && e.isLeader) sc += 3;
-    if (sc > bs) { bs = sc; best = e; }
+    if (!live(e) || e.team === u.team) continue; const d = Math.hypot(e.x - u.x, e.y - u.y) / TILE; if (d > maxTiles) continue;
+    const p = priority[e.category] || 0; let sc = -d; if (isBack(e) && d <= 6) sc += 8; if (e.hp < e.maxHp * 0.3) sc += 5; sc += (aim.get(e) || 0) <= 2 ? 3 : -3; if (u.named && e.isLeader) sc += 3;
+    if (p > bp || p === bp && sc > bs) { bp = p; bs = sc; best = e; }
   }
-  return best || nearestEnemy(S, u, 1e9);
+  return best || (fallback ? nearestEnemy(S, u, 1e9) : null);
 }
 function engage(S, u, t, canMove) {
   if (!t || !live(t) || t.team === u.team) return;
@@ -715,7 +721,7 @@ function formation(S, u, t) {   // 시야 안 적은 슬롯 7칸 이내일 때�
   if (h && cheb(u, h) > 1) stepToward(S, u, h.tx, h.ty);
 }
 function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지는 슬롯 (대장은 구성원 60% 가 4칸 안일 때만)
-  const t = nearestEnemy(S, u, Math.max(SIGHT, u.range));
+  const t = pickTarget(S, u, Math.max(SIGHT, u.range) / TILE, false);
   if (u !== anchorOf(u.army)) return formation(S, u, t);
   if (t) return engage(S, u, t, true);
   const m = u.army.units.filter(live); if (m.filter(v => cheb(v, u) <= 4).length < m.length * GATHER) return;
@@ -823,12 +829,12 @@ function updateUnit(S, u, dt) {
   if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
   if (o.type === 'charge') {
     const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
-    if (S.tactics >= 2 && !handCtl(S, u)) { const engaged = !stale && inReach(u, o.tgt); if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 3)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 공격 가능한 대상은 끝까지 상대하고, 이동 중에도 목표를 최소 3초 유지한다
+    if (!handCtl(S, u)) { const engaged = !stale && inReach(u, o.tgt); if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 3)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 난이도와 관계없이 병종 우선순위를 적용하고 목표를 최소 3초 유지한다
     else if (stale || u.thinkT <= 0) { const n = nearestEnemy(S, u, 1e9); if (stale || (n && dist(u, n) < dist(u, o.tgt) * 0.7)) o.tgt = n; u.thinkT = 0.5; }
     if (o.tgt) engage(S, u, o.tgt, true); return;
   }
-  if (o.type === 'stop') { const t = nearestEnemy(S, u, u.range > 0 ? u.range : TILE * 1.5); if (t) engage(S, u, t, false); return; }   // 제자리에서 사거리 안의 적만 친다
-  formation(S, u, nearestEnemy(S, u, Math.max(SIGHT, u.range)));   // idle: 시야 안의 적과 싸우고, 적이 없거나 너무 멀어지면 대형 복귀
+  if (o.type === 'stop') { const t = pickTarget(S, u, u.range > 0 ? u.range / TILE : 1.5, false); if (t) engage(S, u, t, false); return; }   // 정지 중에도 사거리 안에서는 병종 우선순위대로 공격한다
+  formation(S, u, pickTarget(S, u, Math.max(SIGHT, u.range) / TILE, false));   // idle: 시야 안에서는 병종 우선순위대로 싸우고, 적이 없거나 너무 멀어지면 대형 복귀
 }
 
 // ---------- 투사체 ----------
