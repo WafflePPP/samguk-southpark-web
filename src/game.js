@@ -1153,7 +1153,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.227', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.228', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1382,7 +1382,7 @@ function drawFactionHeroes() {
   heroView.page = page; ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, FACTION_STYLE[faction].main, 4, 'rgba(8,20,25,.99)');
   label('세력 장수 정보', x + w / 2, y + 36, 26, COLORS.gold, 'center');
   FACTIONS.forEach((name, i) => button(`campaign:heroes:faction:${name}`, x + 25 + i * 225, y + 55, 210, 38, `${name}군 · ${FACTION_HEROES[name].length}명`, name === faction, 16));
-  label('이름 / 등급', x + 35, y + 122, 14, COLORS.silver2); label('주병종 · 칭호', x + 220, y + 122, 14, COLORS.silver2); label('기본 능력치', x + 465, y + 122, 14, COLORS.silver2); label('현재 상태', x + 690, y + 122, 14, COLORS.silver2);
+  label('이름 / 등급', x + 35, y + 122, 14, COLORS.silver2); label('병종 · 칭호', x + 220, y + 122, 14, COLORS.silver2); label('기본 능력치', x + 465, y + 122, 14, COLORS.silver2); label('현재 상태', x + 690, y + 122, 14, COLORS.silver2);
   list.slice(page * per, page * per + per).forEach((key, i) => {
     const u = Sim.U[key], info = heroInfo(faction, key), st = Sim.levelStats(key, faction === playerFaction() ? 'player' : 'enemy', info.lv), ry = y + 151 + i * 34, ruler = rulerKey(faction) === key ? ' ★군주' : '';
     if (i % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.035)'; ctx.fillRect(x + 24, ry - 15, w - 48, 30); }
