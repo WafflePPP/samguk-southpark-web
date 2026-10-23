@@ -21,8 +21,8 @@ let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false
 const STAGE_ROWS = [
   [1, 'chenliu', '진류', '연주', '조조', 6, 8, 'p', 2, '초', 'suanzao guandu xuchang'],
   [2, 'suanzao', '산조', '연주', '조조', 6, 7, 'p', 3, '초', 'dingtao puyang'],
-  [3, 'dingtao', '정도', '연주', '유비', 8, 7, 'w', 5, '초', 'xiaopei juye'],
-  [4, 'ye', '업', '화북', '원소', 6, 5, 'f', 7, '중', 'puyang liyang handan shangdang'],
+  [3, 'dingtao', '정도', '연주', '유비', 8, 7, 'w', 5, '초', 'xiaopei juye xiao'],
+  [4, 'ye', '업', '화북', '원소', 6, 5, 'f', 7, '중', 'puyang liyang handan shangdang quliang'],
   [5, 'puyang', '복양', '연주', '조조', 7, 6, 'p', 8, '초', 'yanjin donge liyang'],
   [6, 'yanjin', '연진', '연주', '조조', 5, 7, 'w', 12, '중', 'guandu luoyang'],
   [7, 'xiaopei', '소패', '서주', '유비', 10, 7, 'p', 8, '초', 'pengcheng donghai'],
@@ -32,19 +32,19 @@ const STAGE_ROWS = [
   [11, 'langya', '낭야', '서주', '여포', 12, 6, 'm', 26, '상', 'kaiyang ju dongguan'],
   [12, 'xiapi', '하비', '서주', '여포', 11, 8, 'f', 32, '최', 'xiaxiang donghai'],
   [13, 'liyang', '여양', '화북', '원소', 6, 6, 'r', 8, '초', ''],
-  [14, 'handan', '한단', '화북', '원소', 6, 4, 'p', 8, '초', 'julu shangdang'],
-  [15, 'julu', '거록', '화북', '원소', 7, 4, 'p', 9, '초', 'xindu zhongshan'],
-  [16, 'shangdang', '상당', '화북', '원소', 4, 5, 'm', 9, '초', 'jinyang'],
-  [17, 'xindu', '신도', '화북', '원소', 8, 3, 'p', 10, '중', 'nanpi pingyuan'],
-  [18, 'zhongshan', '중산', '화북', '원소', 7, 2, 'p', 11, '중', 'hejian'],
-  [19, 'jinyang', '진양', '화북', '원소', 4, 3, 'm', 11, '중', ''],
-  [20, 'hejian', '하간', '화북', '원소', 9, 2, 'p', 12, '중', 'nanpi ji'],
-  [21, 'nanpi', '남피', '화북', '원소', 9, 3, 'r', 12, '중', 'pingyuan'],
-  [22, 'pingyuan', '평원', '화북', '원소', 9, 4, 'p', 12, '중', 'donge linzi'],
-  [23, 'ji', '계', '화북', '원소', 9, 0, 'f', 14, '중', 'beiping'],
-  [24, 'beiping', '북평', '화북', '원소', 11, 0, 'm', 15, '중', 'xiangping'],
+  [14, 'handan', '한단', '화북', '원소', 6, 4, 'p', 8, '초', 'julu gaoyi zhongqiu'],
+  [15, 'julu', '거록', '화북', '원소', 7, 4, 'p', 9, '초', 'yingtao quliang'],
+  [16, 'shangdang', '상당', '화북', '원소', 4, 5, 'm', 9, '초', 'jinyang jiexiu gaoyi henei'],
+  [17, 'xindu', '신도', '화북', '원소', 8, 3, 'p', 10, '중', 'pingyuan yingtao gaotang'],
+  [18, 'zhongshan', '중산', '화북', '원소', 7, 2, 'p', 11, '중', 'hejian dai changshan yingtao'],
+  [19, 'jinyang', '진양', '화북', '원소', 4, 3, 'm', 11, '중', 'yanmen fangzi jiexiu'],
+  [20, 'hejian', '하간', '화북', '원소', 9, 2, 'p', 12, '중', 'ji gaotang'],
+  [21, 'nanpi', '남피', '화북', '원소', 10, 3, 'r', 12, '중', 'gaotang linyi'],
+  [22, 'pingyuan', '평원', '화북', '원소', 9, 4, 'p', 12, '중', 'donge gaotang linyi'],
+  [23, 'ji', '계', '화북', '원소', 9, 0, 'f', 14, '중', 'yuyang'],
+  [24, 'beiping', '북평', '화북', '원소', 11, 0, 'm', 15, '중', 'yuyang changli'],
   [25, 'donge', '동아', '연주', '조조', 8, 5, 'p', 10, '중', 'juye'],
-  [26, 'juye', '거야', '연주', '조조', 9, 6, 'p', 11, '중', 'xiao'],
+  [26, 'juye', '거야', '연주', '조조', 9, 6, 'p', 11, '중', ''],
   [27, 'henei', '하내', '사예', '조조', 4, 6, 'f', 15, '중', 'luoyang'],
   [28, 'luoyang', '낙양', '사예', '조조', 3, 7, 'f', 17, '중', 'hongnong'],
   [29, 'hongnong', '홍농', '사예', '조조', 1, 7, 'm', 20, '상', 'changan'],
@@ -59,19 +59,34 @@ const STAGE_ROWS = [
   [38, 'ju', '거', '서주', '여포', 13, 6, 'm', 24, '상', 'dongguan gaomi'],
   [39, 'dongguan', '동완', '서주', '여포', 12, 5, 'm', 25, '상', 'gaomi beihai'],
   [40, 'beihai', '북해', '화북', '원소', 12, 4, 'p', 26, '상', 'linzi gaomi'],
-  [41, 'linzi', '임치', '화북', '원소', 11, 4, 'f', 24, '상', ''],
+  [41, 'linzi', '임치', '화북', '원소', 11, 4, 'f', 24, '상', 'linyi'],
   [42, 'gaomi', '고밀', '화북', '원소', 13, 5, 'p', 28, '상', 'jimo'],
   [43, 'jimo', '즉묵', '화북', '원소', 14, 5, 'p', 28, '상', 'donglai'],
-  [44, 'donglai', '동래', '화북', '원소', 14, 3, 'm', 29, '상', ''],
+  [44, 'donglai', '동래', '화북', '원소', 14, 4, 'm', 29, '상', ''],
   [45, 'changan', '장안', '사예', '조조', 0, 6, 'f', 20, '상', ''],
-  [46, 'xiangping', '양평', '화북', '원소', 13, 0, 'f', 15, '중', ''],
+  [46, 'xiangping', '양평', '화북', '원소', 13, 0, 'f', 15, '중', 'changli'],
   [47, 'xuchang', '허창', '예주', '조조', 5, 9, 'f', 32, '최', ''],
+  [48, 'yunzhong', '운중', '화북', '원소', 3, 1, 'm', 11, '중', 'yanmen'],
+  [49, 'yanmen', '안문', '화북', '원소', 4, 1, 'm', 11, '중', 'dai'],
+  [50, 'dai', '대', '화북', '원소', 6, 1, 'm', 12, '중', 'changshan'],
+  [51, 'changshan', '상산', '화북', '원소', 6, 2, 'p', 10, '중', 'fangzi zhongqiu'],
+  [52, 'fangzi', '방자', '화북', '원소', 5, 3, 'p', 9, '중', 'zhongqiu gaoyi'],
+  [53, 'yingtao', '영도', '화북', '원소', 7, 3, 'p', 9, '중', 'zhongqiu'],
+  [54, 'quliang', '곡량', '화북', '원소', 7, 5, 'p', 8, '중', ''],
+  [55, 'jiexiu', '계휴', '화북', '원소', 3, 4, 'm', 9, '중', 'xihe'],
+  [56, 'gaotang', '고당', '화북', '원소', 9, 3, 'p', 11, '중', ''],
+  [57, 'linyi', '임읍', '화북', '원소', 10, 4, 'r', 11, '중', ''],
+  [58, 'yuyang', '어양', '화북', '원소', 10, 0, 'p', 14, '중', ''],
+  [59, 'changli', '창려', '화북', '원소', 12, 0, 'p', 14, '중', ''],
+  [60, 'gaoyi', '고읍', '화북', '원소', 5, 4, 'p', 8, '중', ''],
+  [61, 'zhongqiu', '중구', '화북', '원소', 6, 3, 'p', 9, '중', ''],
+  [62, 'xihe', '서하', '화북', '원소', 2, 4, 'm', 10, '중', ''],
 ];
 const WORLD_W = 1700, WORLD_H = 1200;   // 지도 월드 크기 (카메라로 1000×720 만 보인다)
 // 참조 지도의 상대 위치를 현재 도시 격자에 맞춘 개략 지형이다.
-const YELLOW_RIVER = [[0, 505], [150, 535], [300, 600], [410, 675], [525, 690], [625, 675], [690, 660], [800, 580], [950, 490], [1100, 475], [1320, 470], [1490, 395], [1665, 365]];
+const YELLOW_RIVER = [[0, 550], [150, 600], [270, 690], [410, 690], [525, 710], [625, 705], [690, 680], [755, 615], [820, 590], [860, 585], [930, 490], [1100, 475], [1180, 390], [1320, 335]];
 const MAP_MOUNTAINS = [
-  { name: '태행산맥', x: 575, y: 200, n: 8, dx: 0, dy: 44, h: 54, lx: 600, ly: 425 },
+  { name: '태행산맥', x: 575, y: 200, n: 8, dx: 0, dy: 44, h: 54, lx: 605, ly: 200 },
   { name: '연산산맥', x: 820, y: 35, n: 8, dx: 95, dy: 0, h: 32, lx: 1190, ly: 135 },
   { name: '진령산맥', x: 40, y: 875, n: 7, dx: 46, dy: 2, h: 44, lx: 170, ly: 930 },
   { name: '화산', x: 155, y: 790, n: 2, dx: 27, dy: 4, h: 58, lx: 170, ly: 830 },
@@ -142,7 +157,7 @@ const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 10, SAVE_SLOTS = 3;   // v10: 장수·군단 100개(원소40·조조30·여포20·유비10) — 이전 저장은 보존하되 불러오지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 11, SAVE_SLOTS = 3;   // v11: 황하 양안 재검토·화북 세분화 — 이전 저장은 보존하되 불러오지 않는다
 let activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function initialPlayerRelations(faction) {
@@ -1153,7 +1168,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.228', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.229', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1204,9 +1219,21 @@ function centerMap(id) { const s = stageById(id || (roster[campaign.corps] && ro
 const mapFree = () => state === 'map' && !(saveSlotMode || campaign.pendingEncounter || warnMove || allyChoice || diplomacyResult || diplomacyView || heroView || scoutView || exploreSelectOpen || moveSelectOpen || campaign.movement.length);   // 팝업이 없을 때만 카메라 입력을 받는다
 const inMapMini = p => p.x >= MAP_MINI.x && p.x < MAP_MINI.x + MAP_MINI.w && p.y >= MAP_MINI.y && p.y < MAP_MINI.y + MAP_MINI.h;
 function miniJump(p) { mcam.x = (p.x - MAP_MINI.x) * (WORLD_W / MAP_MINI.w) - MAP_VW / 2; mcam.y = (p.y - MAP_MINI.y) * (WORLD_H / MAP_MINI.h) - VH / 2; clampMcam(); }
+function drawMapSea() {
+  ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(WORLD_W, 0); ctx.lineTo(1665, 0);
+  ctx.bezierCurveTo(1655, 60, 1660, 110, 1620, 140);
+  ctx.bezierCurveTo(1500, 155, 1320, 140, 1250, 205);
+  ctx.bezierCurveTo(1190, 255, 1230, 320, 1360, 350);
+  ctx.bezierCurveTo(1450, 380, 1560, 350, 1635, 390);
+  ctx.bezierCurveTo(1640, 500, 1680, 1050, 1650, WORLD_H);
+  ctx.lineTo(WORLD_W, WORLD_H); ctx.closePath(); ctx.fill();
+}
 function drawMapMini() {
   const m = MAP_MINI, k = m.w / WORLD_W;
   panel(m.x, m.y, m.w, m.h, 'rgba(255,255,255,.55)', 1, 'rgba(8,20,25,.72)');
+  ctx.save(); ctx.translate(m.x, m.y); ctx.scale(k, k); drawMapSea(); ctx.restore();
+  ctx.strokeStyle = '#78b8c6'; ctx.lineWidth = 1.5; ctx.beginPath();
+  YELLOW_RIVER.forEach(([x, y], i) => { if (i) ctx.lineTo(m.x + x * k, m.y + y * k); else ctx.moveTo(m.x + x * k, m.y + y * k); }); ctx.stroke();
   for (const s of STAGES) { ctx.fillStyle = FACTION_STYLE[stageFaction(s)].main; ctx.fillRect(m.x + s.x * k - 1.5, m.y + s.y * k - 1.5, 3, 3); }
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(m.x + mcam.x * k, m.y + mcam.y * k, MAP_VW * k, VH * k);
 }
@@ -1216,8 +1243,9 @@ function drawStageMap() {
   const vis = (x, y, m = 70) => x >= ox - m && x <= ox + MAP_VW + m && y >= oy - m && y <= oy + VH + m;
   const stationedAt = s => roster.map((c, i) => ({ c, i })).filter(({ c }) => c.units.some(Boolean) && c.at === s.id);   // 이 도시에 주둔 중인 아군 군단
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, MAP_VW, VH); ctx.clip(); ctx.translate(-ox, -oy);
-  ctx.fillStyle = '#1f6677'; ctx.beginPath(); ctx.moveTo(WORLD_W, 0); ctx.lineTo(1665, 0); ctx.bezierCurveTo(1640, 300, 1690, 500, 1660, 700); ctx.bezierCurveTo(1630, 900, 1680, 1050, 1650, WORLD_H); ctx.lineTo(WORLD_W, WORLD_H); ctx.closePath(); ctx.fill();   // 동쪽 바다
   ctx.fillStyle = 'rgba(25,55,30,.25)'; for (let x = 60; x < WORLD_W; x += 90) for (let y = 75; y < WORLD_H; y += 75) if (vis(x, y, 40)) { ctx.beginPath(); ctx.arc(x + (y % 35), y, 30, 0, TAU); ctx.fill(); }
+  drawMapSea();
+  if (vis(1460, 245)) label('발해', 1460, 245, 27, '#b6d5da', 'center');
   for (const m of MAP_MOUNTAINS) {
     for (let i = 0; i < m.n; i++) {
       const x = m.x + i * m.dx, y = m.y + i * m.dy, h = m.h + (i % 3) * 7;
