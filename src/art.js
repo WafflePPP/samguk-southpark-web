@@ -50,6 +50,20 @@ const STYLES = {
   xun: { body: '#4a2a5a', trim: '#ffd34d', skin: '#d9a77e', hairCap: true, crown: true, beard: true, beardColor: '#cfd3e6', sleeves: '#7a4a8a', weapon: 'fan', weaponScale: 0.5 },
   emage: { body: '#4a2a5a', trim: '#c9302c', skin: '#d9a77e', hairCap: true, sleeves: '#7a4a8a', weapon: 'fan', weaponScale: 0.5 },
 };
+// 세력 고유 병종(명세 53 §3.5): 몸통·장식 위주로 구별한다. 아군/적 팀색(body·trim·horse)은 game.js styleOf 가 base 로 바꿔 끼운다.
+const FACTION_UNIT_STYLES = {
+  f_xian: { base: 'shield', armorPlate: '#54515a', helmColor: '#163b70', plumeColor: '#cce8ff', bulk: 1.1 },
+  f_bing: { base: 'cav', feathers: true, plumeColor: '#c9302c', weapon: 'lance', fixedWeapon: true },
+  f_nu: { base: 'archer', helmColor: '#4a5a66', plumeColor: '#dce8c6', weaponScale: 1.15 },
+  f_ji: { base: 'sword', weapon: 'halberd', fixedWeapon: true, pauldrons: true, plumeColor: '#d1a537' },
+  f_qing: { base: 'sword', wrap: true, wrapColor: '#e0c040', helm: false },
+  f_hubao: { base: 'cav', plume: 1.8, plumeColor: '#b84338', armorPlate: '#54515a', weapon: 'lance', fixedWeapon: true },
+  f_bai: { base: 'sword', helmColor: '#f0ece0', plume: 1.4, plumeColor: '#ffffff', weapon: 'spear' },
+  f_dan: { base: 'sword', helm: false, hairCap: true },
+};
+const ENEMY_BASE_STYLE = { sword: 'soldier', shield: 'shield', archer: 'archer', cav: 'cav' };
+const ALLY_BASE_STYLE = { sword: 'ally_sword', shield: 'ally_shield', archer: 'ally_archer', cav: 'ally_cav' };
+for (const [k, v] of Object.entries(FACTION_UNIT_STYLES)) { STYLES[k] = { ...STYLES[ALLY_BASE_STYLE[v.base]], ...v }; delete STYLES[k].base; STYLES[k].teamBase = v.base; }
 
 function circle(g, x, y, r) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
 

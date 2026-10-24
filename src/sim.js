@@ -45,9 +45,21 @@ const U = {
 };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 // 이름 있는 검병 51명 중 장병기 성격의 26명을 창병으로 분배한다. 전위는 사용자 지정대로 검병을 유지한다.
-const UNIT_CATEGORY = { zhangnan_yuan: 'spear', wenpin: 'spear', guan: 'spear', wen: 'spear', hua: 'spear', yan: 'spear', gao: 'spear', zhanghe: 'spear', xuhuang: 'spear', lijue: 'spear', zhangfei: 'spear', yuantan: 'spear', weiyan: 'spear', yujin: 'spear', yuejin: 'spear', zangba: 'spear', gaolan: 'spear', songxian: 'spear', weixu: 'spear', hanmeng: 'spear', jiangyiqu: 'spear', zhangchao: 'spear', xuelan: 'spear', lifeng_lu: 'spear', lvweihuang: 'spear', mayan: 'spear', zhangyi_yuan: 'spear', jiaochu: 'spear', guanping: 'spear', zhoucang: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', spear: 'spear', esword: 'sword', eshield: 'spear' };
+const UNIT_CATEGORY = { zhangnan_yuan: 'spear', wenpin: 'spear', guan: 'spear', wen: 'spear', hua: 'spear', yan: 'spear', gao: 'spear', zhanghe: 'spear', xuhuang: 'spear', lijue: 'spear', zhangfei: 'spear', yuantan: 'spear', weiyan: 'spear', yujin: 'spear', yuejin: 'spear', zangba: 'spear', gaolan: 'spear', songxian: 'spear', weixu: 'spear', hanmeng: 'spear', jiangyiqu: 'spear', zhangchao: 'spear', xuelan: 'spear', lifeng_lu: 'spear', lvweihuang: 'spear', mayan: 'spear', zhangyi_yuan: 'spear', jiaochu: 'spear', guanping: 'spear', zhoucang: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', spear: 'spear', esword: 'sword', eshield: 'spear', f_xian: 'spear', f_bai: 'spear' };
 const unitCategory = key => UNIT_CATEGORY[key] || CATEGORY[U[key].cls];
 // 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 이름 있는 장수는 같은 병종 일반 대장 × SS~D 등급 배율.
+// 세력 고유 병종 8종(명세 53 §3): 일반 병사, 팀 무관 한 키. 특수기 없음 — 능력치·속도·사거리만 다르다.
+const FU = { generic: true, hr: 5, md: 4 };
+Object.assign(U, {
+  f_xian: { ...FU, name: '함진병', cls: 'shield', hp: 126, atk: 16, df: 15, ad: 14, md: 5, aa: 6, sp: 153, cd: 1.1, r: 12, style: 'f_xian', shield: true },
+  f_bing: { ...FU, name: '병주 기병', cls: 'cavalry', hp: 132, atk: 23, df: 8, ad: 4, aa: 4, sp: 285, cd: 1.0, r: 13, style: 'f_bing' },
+  f_nu: { ...FU, name: '선등강노병', cls: 'archer', hp: 128, atk: 33, df: 4, ad: 3, aa: 16, sp: 166, cd: 1.1, range: 265, r: 11, style: 'f_nu' },
+  f_ji: { ...FU, name: '대극사', cls: 'warrior', hp: 114, atk: 22, df: 8, ad: 5, aa: 12, sp: 166, cd: 1.0, r: 11, style: 'f_ji' },
+  f_qing: { ...FU, name: '청주병', cls: 'warrior', hp: 132, atk: 19, df: 8, ad: 5, aa: 12, sp: 180, cd: 1.0, r: 11, style: 'f_qing' },
+  f_hubao: { ...FU, name: '호표기', cls: 'cavalry', hp: 144, atk: 21, df: 9, ad: 4, aa: 4, sp: 245, cd: 1.0, r: 13, style: 'f_hubao' },
+  f_bai: { ...FU, name: '백이병', cls: 'warrior', hp: 126, atk: 20, df: 9, ad: 5, aa: 12, sp: 173, cd: 1.0, r: 11, style: 'f_bai' },
+  f_dan: { ...FU, name: '단양병', cls: 'warrior', hp: 114, atk: 22, df: 8, ad: 5, aa: 12, sp: 188, cd: 1.0, r: 11, style: 'f_dan' },
+});
 U.healer = { ...U.mage, name: '회복병', cls: 'cleric', range: 0, spells: ['heal'] };
 // 병종 역할(명세 51): 능력치·성장·보조 능력치를 역할 한 곳에서 만든다. 기준 ROLE_REF(검) × 가중치 ROLE_W = 장수 기준값 [hp, atk, df, ad, md].
 const ROLE_REF = [400, 64, 40, 24, 20];
@@ -96,8 +108,9 @@ for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhang
 for (const k of ['xiahouyuan', 'xuhuang', 'yan', 'wen', 'gong']) Object.assign(U[k], { cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 8, special: 'dash', range: 0 });   // 참조 디자인에서 말에 탑승한 장수는 기병
 for (const k of ['xiahouyuan', 'gong']) Object.assign(U[k], { range: 270, movingShot: true });   // 기마궁병은 이동 중에도 원거리 공격
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = ROLE_CAPTAIN[roleOf(k)][i]; });
-// 조조는 SS 칭호·등급을 유지하고 다섯 기본 능력치만 A급으로 계산한다.
-for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(ROLE_CAPTAIN[roleOf(k)][i] * (k === 'cao' ? GRADE_MUL.A : x)); });
+// 조조는 SS 칭호·등급을 유지하되 다섯 기본 능력치 배율은 A(3)와 S(4) 사이 3.8 (명세 52: A 배율이면 S·A 검병장보다 약했고, 3.9 이상이면 SS 창병장을 완파).
+const CAO_MUL = 3.8;
+for (const [k, x] of Object.entries(ELITE)) STAT5.forEach((f, i) => { U[k][f] = Math.round(ROLE_CAPTAIN[roleOf(k)][i] * (k === 'cao' ? CAO_MUL : x)); });
 const ROLE_AUX = {   // 보조 능력치는 등급과 무관한 역할 고정값(명세 17·51). 장수 개별 값이 없을 때만 쓴다
   '검': { aa: 12, hr: 10, sp: 173, cd: 1, r: 14, mp: 0, range: 0 }, '기병': { aa: 8, hr: 10, sp: 252, cd: 0.8, r: 15, mp: 0, range: 0 },
   '궁병': { aa: 20, hr: 8, sp: 166, cd: 0.9, r: 13, mp: 0, range: 270 }, '군사': { aa: 18, hr: 8, sp: 166, cd: 1.4, r: 12, mp: 999, range: 200 },
@@ -121,7 +134,7 @@ const TARGET_PRIORITY = {
   archer: { archer: 2, spear: 2, sword: 2, cavalry: 1, military: 1 },
   cavalry: { cavalry: 3, archer: 2, military: 2, sword: 2, spear: 1 }
 };
-const SUBCLASS = { xuyou: '자원', xunchen: '우약', xinpi: '좌치', chenzhen: '효기참모', gaorou: '문혜', qianzhao: '자경', hanjuzi: '오소기도', suiyuanjin: '오소독장', zhaorui: '오소수장', zhangnan_yuan: '하북장남', lifu: '숙달', yinkui: '원씨사신', shenrong: '업성동문', jiaxu: '독사', caoang: '자수', caozhi: '자건', simalang: '백달', haozhao: '백도', wenpin: '중업', guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', caopi: '세자', liushan: '후주', yuantan: '장자', fazheng: '기모', xiahouyuan: '신속', caoren: '천인', mizhu: '자중', lady_mi: '현덕부인', haomeng: '건장', yujin: '의중', yuejin: '선등', caohong: '복장', caozhen: '대사마', caoxiu: '천리구', yanyan: '노장', zangba: '태산', gaolan: '용건', quyi: '선등장', jushou: '충렬', tianfeng: '강직', shenpei: '정렬', caoxing: '명사', yuanxi: '중자', chenglian: '효기', songxian: '건위', weixu: '친장', houcheng: '마도', chunyuqiong: '오소', hanmeng: '맹진', jiangyiqu: '독장', guotu: '참모', fengji: '권모', mifang: '남군', zhangmiao: '진류후', zhangchao: '광릉장', zhangyang: '하내장', xuelan: '연주장', lifeng_lu: '성렴장', wangkai: '종사', yinli: '태산장', xusi: '설객', yuanshang: '삼공자', gaogan: '병주목', xinping: '별가', chenlin: '격문가', lvweihuang: '기주장', lvkuang: '여씨장형', lvxiang: '여씨장제', mayan: '하북장', zhangyi_yuan: '하북효장', jiaochu: '유주장', lvyang: '여씨도독', guoyuan: '하동장', lidian: '유아장', chengyu: '중덕', xunyou: '모주공달', manchong: '강직태수', liuye: '좌세', lvqian: '위장', guanping: '소관장', zhoucang: '충용', sunqian: '사신', jianyong: '설객헌화', sword: '보병(검)', shield: '방패병(검)', mage: '공격', emage: '공격', healer: '회복', esage: '법사', spear: '보병(창)', esword: '보병(검)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
+const SUBCLASS = { xuyou: '자원', xunchen: '우약', xinpi: '좌치', chenzhen: '효기참모', gaorou: '문혜', qianzhao: '자경', hanjuzi: '오소기도', suiyuanjin: '오소독장', zhaorui: '오소수장', zhangnan_yuan: '하북장남', lifu: '숙달', yinkui: '원씨사신', shenrong: '업성동문', jiaxu: '독사', caoang: '자수', caozhi: '자건', simalang: '백달', haozhao: '백도', wenpin: '중업', guan: '무신', dian: '철벽', cao: '간웅', lubu: '비장', zhao: '상승', jang: '전신', huang: '신궁', zhangfei: '만인적', machao: '금마초', hua: '효장', kong: '와룡', pangtong: '봉추', xun: '왕좌', chengong: '모주', diao: '경국', xia: '맹장', xuchu: '호치', liubei: '인덕', weiyan: '반골', jiangwei: '지용', lulingqi: '소비장', yan: '상장', wen: '용장', dong: '폭군', guo: '귀재', sima: '총호', yuan: '맹주', gao: '함진', zhanghe: '교변', xuhuang: '주아부', gong: '백마', lijue: '횡포', caopi: '세자', liushan: '후주', yuantan: '장자', fazheng: '기모', xiahouyuan: '신속', caoren: '천인', mizhu: '자중', lady_mi: '현덕부인', haomeng: '건장', yujin: '의중', yuejin: '선등', caohong: '복장', caozhen: '대사마', caoxiu: '천리구', yanyan: '노장', zangba: '태산', gaolan: '용건', quyi: '선등장', jushou: '충렬', tianfeng: '강직', shenpei: '정렬', caoxing: '명사', yuanxi: '중자', chenglian: '효기', songxian: '건위', weixu: '친장', houcheng: '마도', chunyuqiong: '오소', hanmeng: '맹진', jiangyiqu: '독장', guotu: '참모', fengji: '권모', mifang: '남군', zhangmiao: '진류후', zhangchao: '광릉장', zhangyang: '하내장', xuelan: '연주장', lifeng_lu: '성렴장', wangkai: '종사', yinli: '태산장', xusi: '설객', yuanshang: '삼공자', gaogan: '병주목', xinping: '별가', chenlin: '격문가', lvweihuang: '기주장', lvkuang: '여씨장형', lvxiang: '여씨장제', mayan: '하북장', zhangyi_yuan: '하북효장', jiaochu: '유주장', lvyang: '여씨도독', guoyuan: '하동장', lidian: '유아장', chengyu: '중덕', xunyou: '모주공달', manchong: '강직태수', liuye: '좌세', lvqian: '위장', guanping: '소관장', zhoucang: '충용', sunqian: '사신', jianyong: '설객헌화', sword: '보병(검)', shield: '방패병(검)', mage: '공격', emage: '공격', healer: '회복', esage: '법사', spear: '보병(창)', esword: '보병(검)', eshield: '방패병(창)', archer: '궁병', earcher: '궁병', cav: '기병', ecav: '기병', f_xian: '함진병', f_bing: '병주기병', f_nu: '선등강노', f_ji: '대극사', f_qing: '청주병', f_hubao: '호표기', f_bai: '백이병', f_dan: '단양병' };   // 칭호(명세 26). 이름 있는 장수는 TITLE_EFFECT 에 효과가 있다
 const RANK_ONLY_KEYS = ['xuyou', 'xunchen', 'xinpi', 'chenzhen', 'gaorou', 'qianzhao', 'hanjuzi', 'suiyuanjin', 'zhaorui', 'zhangnan_yuan', 'lifu', 'yinkui', 'shenrong', 'jiaxu', 'caoang', 'caozhi', 'simalang', 'haozhao', 'wenpin', 'caopi', 'liushan', 'yuantan', 'fazheng', 'xiahouyuan', 'caoren', 'mizhu', 'lady_mi', 'haomeng', 'yujin', 'yuejin', 'caohong', 'caozhen', 'caoxiu', 'yanyan', 'zangba', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'caoxing', 'yuanxi', 'chenglian', 'songxian', 'weixu', 'houcheng', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'mifang', 'zhangmiao', 'zhangchao', 'zhangyang', 'xuelan', 'lifeng_lu', 'wangkai', 'yinli', 'xusi', 'yuanshang', 'gaogan', 'xinping', 'chenlin', 'lvweihuang', 'lvkuang', 'lvxiang', 'mayan', 'zhangyi_yuan', 'jiaochu', 'lvyang', 'guoyuan', 'lidian', 'chengyu', 'xunyou', 'manchong', 'liuye', 'lvqian', 'guanping', 'zhoucang', 'sunqian', 'jianyong'];
 // 표에 적힌 공격 병과별 최종 피해 배율.
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 1 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
@@ -220,22 +233,36 @@ const ARMIES = [
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // 모든 장수·군단장급 유닛은 등급 HP를 보존하되 같은 병종 일반 병사보다 최소 50% 높다.
 function baseMaxHp(key, team) {
-  const T = U[key], frontline = ['sword', 'spear', 'shield', 'esword', 'eshield'].includes(key), ownHp = Math.round(T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1));
+  const T = U[key], frontline = T.generic && (T.cls === 'warrior' || T.cls === 'shield'), ownHp = Math.round(T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1));
   if (T.generic) return ownHp;
   const peerKey = (team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey];
   const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP));
   return !peer ? ownHp : Math.max(ownHp, Math.round(peerHp * 1.5));
 }
 
+// ---------- 병사 등급 B·C·D·F (명세 53 §4: 모집 품질, 장수 등급과 별개 축. C = 현행 1.0) ----------
+const SOLDIER_GRADE = { B: { name: '정예', hp: 1.12, st: 1.14 }, C: { name: '정규', hp: 1, st: 1 }, D: { name: '신병', hp: 0.87, st: 0.9 }, F: { name: '징집병', hp: 0.77, st: 0.82 } };
+const SOLDIER_GRADE_COLOR = { B: '#9fdcff', C: '#cfd3e6', D: '#c9a56a', F: '#8a90a6' };
+const GRADE_PATTERN = { low: 'FFDDDDCCCC', mid: 'FDDCCCCCBB', high: 'DCCCCCCBBB' };   // 인덱스 % 10
+const soldierTier = level => level >= 5 ? 'high' : level >= 3 ? 'mid' : 'low';
+// 군단 안 슬롯 번호(index)와 도시·군단 레벨로 병사 등급을 정한다(결정적). 수도는 한 단계 위.
+function soldierGradeAt(level, index, capital = false) { const t = soldierTier(level), tier = capital ? (t === 'low' ? 'mid' : 'high') : t; return GRADE_PATTERN[tier][index % 10]; }
+const validGrade = sg => SOLDIER_GRADE[sg] ? sg : 'C';
 // ---------- 전투력 ----------
 // 한 유닛의 능력치를 가중합해 하나의 수로 환산한다 (체력 100당 1, 공격·방어·명중 계열은 반영, 이동 속도는 약하게). 군단 전투력은 소속 유닛 전투력의 합.
 // 장수는 일반 병사의 약 3~10배가 되도록 능력치가 설계돼 있으므로 환산값도 그 비율을 따른다.
 const POWER_W = { maxHp: 0.01, atk: 1, df: 1, ad: 0.5, md: 1.5, aa: 0.5, hr: 1, sp: 0.1 };
-const statPower = s => Math.round(Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0) + ((s.ar ?? 100) - 100 + (s.dr ?? 100) - 100) * 0.25);
+// 군사/치유 보정(명세 52 §7): 이름 있는 군사는 주문 위력(spellPower)이 등급으로 크게 오르는데 능력치 합으로는 안 보이므로 A급(3배) 초과분에 비례해 더하고, 치유는 단독 전투력이 약해 절반으로 본다.
+const SPELL_POWER_W = 300, HEALER_POWER = 0.5;
+const statPower = s => {
+  let p = Object.entries(POWER_W).reduce((n, [k, w]) => n + (Number(s[k]) || 0) * w, 0) + ((s.ar ?? 100) - 100 + (s.dr ?? 100) - 100) * 0.25;
+  const T = s.key && U[s.key]; if (T && !T.generic) { if (T.cls === 'mage') p += SPELL_POWER_W * Math.max(0, spellPower({ key: s.key }) - 3); else if (T.cls === 'cleric') p *= HEALER_POWER; }
+  return Math.round(p);
+};
 // 전투 전(원정 지도)에도 쓰도록 병종 키와 저장된 성장치(growth)만으로 능력치를 만든다.
-function unitStats(key, team = 'player', growth = null) {
-  const T = U[key], G = growth || {};
-  const s = { maxHp: G.maxHp ?? baseMaxHp(key, team), atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, sp: G.sp ?? T.sp, ar: G.ar ?? 100, dr: G.dr ?? 100 };
+function unitStats(key, team = 'player', growth = null, sg = 'C') {   // sg: 병사 등급 — growth 에 값이 없을 때만 적용(저장된 growth 는 이미 곱해져 있다)
+  const T = U[key], G = growth || {}, gm = T.generic ? SOLDIER_GRADE[validGrade(sg)] : SOLDIER_GRADE.C, st = v => gm.st === 1 ? v : Math.round(v * gm.st * 10) / 10;
+  const s = { key, maxHp: G.maxHp ?? Math.round(baseMaxHp(key, team) * gm.hp), atk: G.atk ?? st(T.atk), df: G.df ?? st(T.df), ad: G.ad ?? st(T.ad), md: G.md ?? st(T.md), aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, sp: G.sp ?? T.sp, ar: G.ar ?? 100, dr: G.dr ?? 100 };
   const item = itemOf(G.item); if (!T.generic && (!item.owner || item.owner === key)) for (const k of ITEM_STATS) s[k] += item[k] || 0;
   return s;
 }
@@ -348,9 +375,9 @@ function createBattle(seed = 1, opts = {}) {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const baseHp = baseMaxHp(key, d.team);
-      const u = { id: S.nextId++, key, name: T.name + (T.generic ? String.fromCharCode(64 + cnt[key]) : ''), cls: T.cls, category: unitCategory(key), subclass: unitSubclass(key), team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
+      const u = { id: S.nextId++, key, name: T.name + (T.generic ? cnt[key] : ''), cls: T.cls, category: unitCategory(key), subclass: unitSubclass(key), team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
-        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
+        aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, sg: T.generic ? validGrade(G.sg) : null, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, attackT: -1e9, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
@@ -426,9 +453,9 @@ function applyLevelUp(st, key, team, lv, hpRate) {   // st: 능력치 객체(max
   return st;
 }
 // 레벨 L 시점의 평균 능력치(HP 5%): 적 지역 레벨표(명세 15)가 같은 규칙을 쓰도록 공유
-function levelStats(key, team, level) {
+function levelStats(key, team, level, sg = 'C') {
   level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level) || 1));
-  const st = unitStats(key, team); st.maxMp = U[key].mp || 0;
+  const st = unitStats(key, team, null, sg); st.maxMp = U[key].mp || 0; if (U[key].generic) st.sg = validGrade(sg);
   for (let lv = 1; lv < level; lv++) applyLevelUp(st, key, team, lv, 0.05);
   st.maxHp = Math.round(st.maxHp); st.lv = level; return st;
 }
@@ -1086,6 +1113,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
