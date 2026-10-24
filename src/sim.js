@@ -584,7 +584,7 @@ function shoot(S, u, tx, ty, mul = 1, spread = 0) {
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
   if (u.cls === 'mage') { if (!castSpell(S, u, u.spells[0], t.x, t.y)) u.cdT = 0.5; return; }   // 법사의 평타 = 장풍 (MP 소모)
-  u.cdT = u.cd; u.attackT = S.t; u.anim = 0.28; tire(u, 'hit');
+  u.cdT = u.cd; u.attackT = S.t; u.anim = 0.28; u.actionKind = 'attack'; tire(u, 'hit');
   if (u.range > 0) shoot(S, u, t.x, t.y); else hurt(S, u, t, phys(u, t));
 }
 
@@ -614,7 +614,7 @@ function castSpell(S, u, key, x, y) {
     aoe(S, u, px, py, sp.r, e => { e.root = sp.root; e.path = null; text(S, e.x, e.y - e.r * 4, '속박', '#e8e8e8', 'buff'); }, sp.col);
   }
   if (sp.lock) S.lock[u.team] = sp.lock;   // 전체 쿨 마법
-  u.mp -= sp.mp; u.cdT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.face = ang; tire(u, 'spell');
+  u.mp -= sp.mp; u.cdT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = sp.kind === 'heal' ? 'heal' : 'cast'; u.face = ang; tire(u, 'spell');
   return true;
 }
 function useSpecial(S, u, x, y) {
@@ -632,7 +632,7 @@ function useSpecial(S, u, x, y) {
   else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   const OS = ((TITLE_EFFECT[u.subclass] || {}).onSpecial || {})[u.special];
   if (OS) { if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d'); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt); }
-  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.face = ang; tire(u, 'special');
+  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = u.special; u.face = ang; tire(u, 'special');
   return true;
 }
 
@@ -1045,7 +1045,7 @@ function directMove(S, u, dx, dy) {
   let eid = inMap(nx, ny) ? S.occ[ti(nx, ny)] : 0;
   if (eid && u.passT > 0) while (eid && okTile(S, nx + dx, ny + dy) && diagOk(S, nx, ny, dx, dy)) { nx += dx; ny += dy; eid = S.occ[ti(nx, ny)]; }
   const e = eid && S.units.find(x => x.id === eid);
-  if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
+  if (e && e.team !== u.team) { if (u.cdT <= 0 && diagOk(S, u.tx, u.ty, dx, dy)) { cur = S; u.cdT = u.cd; u.anim = 0.28; u.actionKind = 'melee'; tire(u, 'hit'); hurt(S, u, e, phys(u, e, u.range > 0 ? 0.5 : 1)); } return; }   // 밀어붙이기 = 공격 (원거리 병종은 약하게)
   if (e && e.team === u.team) { if (canSwap(S, u, { tx: nx, ty: ny })) beginSwap(S, u, e); return; }   // 아군은 자리를 맞바꿔 지나간다
   if (okTile(S, nx, ny) && !eid && diagOk(S, u.tx, u.ty, dx, dy)) beginStep(S, u, nx, ny, u.passT > 0 ? stepDur(S, u, nx, ny) * cheb(u, { tx: nx, ty: ny }) : undefined);
 }
@@ -1060,7 +1060,7 @@ function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(�
   if (sp === 'heal') { let t = null, bd = 1; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; } return t ? castSpell(S, u, 'heal', t.x, t.y) : false; }
   if (sp) { const [x, y] = aimAt(S, u, SPELL[sp].range); return castSpell(S, u, sp, x, y); }
   if (u.special && (!alt || u.spells.length)) { const [x, y] = aimAt(S, u, u.special === 'volley' ? u.range : u.special === 'dash' ? 1e9 : 150); return useSpecial(S, u, x, y); }
-  if (u.range > 0 && u.cdT <= 0 && u.cls !== 'mage') { const [x, y] = aimAt(S, u, u.range); u.face = Math.atan2(y - u.y, x - u.x); u.cdT = u.cd; u.anim = 0.28; tire(u, 'hit'); shoot(S, u, x, y); return true; }
+  if (u.range > 0 && u.cdT <= 0 && u.cls !== 'mage') { const [x, y] = aimAt(S, u, u.range); u.face = Math.atan2(y - u.y, x - u.x); u.cdT = u.cd; u.anim = 0.28; u.actionKind = 'attack'; tire(u, 'hit'); shoot(S, u, x, y); return true; }
   return false;
 }
 function selectSpell(u, i) { if (u.spells[i]) u.spellSel = i; }
