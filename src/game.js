@@ -141,6 +141,11 @@ const CITY_SIZES = { small: { name: '소형', units: 12, level: 1 }, medium: { n
 const LARGE_CITIES = ['changan', 'luoyang', 'xuchang', 'chenliu', 'puyang', 'ye', 'jinyang', 'nanpi', 'pingyuan', 'ji', 'beiping', 'xiangping', 'beihai', 'xiaopei', 'xiapi', 'guangling'];
 const MEDIUM_CITIES = ['suanzao', 'dingtao', 'yanjin', 'guandu', 'liyang', 'handan', 'julu', 'shangdang', 'xindu', 'zhongshan', 'hejian', 'donge', 'juye', 'henei', 'hongnong', 'pengcheng', 'donghai', 'kaiyang', 'xiaxiang', 'huaiyin', 'langya', 'linzi', 'gaomi', 'donglai'];
 const citySize = s => LARGE_CITIES.includes(s.id) ? 'large' : MEDIUM_CITIES.includes(s.id) ? 'medium' : 'small';
+function withHealers(units) {
+  const count = Math.ceil(units.length * 0.1);
+  for (let i = 0; i < count; i++) units[Math.floor((i + 1) * units.length / count) - 1] = 'healer';
+  return units;
+}
 const CITY_TROOPS = { plains: ['spear', 'sword', 'archer'], mountain: ['shield', 'spear', 'archer'], riverside: ['archer', 'spear', 'shield'], fortress: ['shield', 'archer', 'spear'] };
 const cityGuards = [];
 const guardsAt = s => cityGuards.filter(f => f.home === s.id && f.active && f.army.units.length);
@@ -150,13 +155,13 @@ function resetCityGuards(stage, ratio = 1) {
   for (let i = cityGuards.length - 1; i >= 0; i--) if (cityGuards[i].home === stage.id) cityGuards.splice(i, 1);
   const spec = CITY_SIZES[citySize(stage)], pool = CITY_TROOPS[stage.theme]; let left = Math.ceil(spec.units * ratio);
   for (let i = 0; i < Math.ceil(spec.units / Sim.ARMY_MAX); i++) {
-    const maxUnits = Math.min(Sim.ARMY_MAX, spec.units - i * Sim.ARMY_MAX), n = Math.min(maxUnits, left), units = Array.from({ length: n }, (_, j) => pool[(i + j) % pool.length]); left -= n;
+    const maxUnits = Math.min(Sim.ARMY_MAX, spec.units - i * Sim.ARMY_MAX), n = Math.min(maxUnits, left), units = withHealers(Array.from({ length: n }, (_, j) => pool[(i + j) % pool.length])); left -= n;
     cityGuards.push({ id: 'guard:' + stage.id + ':' + i, role: 'garrison', home: stage.id, at: stage.id, fac: stageFaction(stage), active: n > 0, maxUnits, level: spec.level, army: { team: 'enemy', name: stage.name + ' 도시수비군 ' + (i + 1) + '대', leader: null, detachment: true, commander: true, units, growth: units.map(k => enemyGrowth(k, spec.level)), formation: 'guard' } });
   }
 }
 function reinforceCityGuards() {
   if (campaign.turn % 5) return;
-  for (const s of STAGES) { let left = 3; for (const f of cityGuards.filter(g => g.home === s.id)) { const pool = CITY_TROOPS[s.theme], n = Math.min(left, f.maxUnits - f.army.units.length); for (let i = 0; i < n; i++) { const k = pool[f.army.units.length % pool.length]; f.army.units.push(k); f.army.growth.push(enemyGrowth(k, f.level)); } f.active = f.army.units.length > 0; left -= n; } }
+  for (const s of STAGES) { let left = 3; for (const f of cityGuards.filter(g => g.home === s.id)) { const pool = CITY_TROOPS[s.theme], n = Math.min(left, f.maxUnits - f.army.units.length); for (let i = 0; i < n; i++) { const k = f.army.units.filter(k => k === 'healer').length < Math.ceil(f.maxUnits * 0.1) ? 'healer' : pool[f.army.units.length % pool.length]; f.army.units.push(k); f.army.growth.push(enemyGrowth(k, f.level)); } f.active = f.army.units.length > 0; left -= n; } }
 }
 function enemyGrowth(key, level) { const st = Sim.levelStats(key, 'enemy', level); return { ...st, xp: 0 }; }   // 레벨업 규칙(명세 21)과 같은 가산 성장
 function setEnemyRole(force, stage, role, level = stage.level) {
@@ -170,7 +175,7 @@ const enemyForces = [];
 function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 군단장(슬롯 0)만 이름 있는 장수, 나머지는 도시 지형의 병사. 자기 도시에 분산 배치
   const perCity = {};
   FACTION_CORPS[faction].forEach((lead, n) => {
-    const at = startCity(faction, n), stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length]); units[0] = lead;
+    const at = startCity(faction, n), stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = withHealers(Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length])); units[0] = lead;
     enemyForces.push(setEnemyRole({ id: enemyForces.length, fac: faction, corpsNo: n + 1, at, home: at, active: true, army: { team: 'enemy', name: '', at: [45, 18 + 7 * k], leader: lead, units, reserve: k > 0, reserveAt: 12, leaderRear: n === 0, formation: n === 0 ? 'guard' : 'block', trig: { near: 12, t: 60 } } }, stage, 'expedition'));
   });
 }
@@ -180,7 +185,7 @@ const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 15, SAVE_SLOTS = 3;   // v15: 최대 레벨99 — 이전 저장은 보존하되 불러오지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 16, SAVE_SLOTS = 3;   // v16: 회복병 편성·조조5능력치 A급·오라195px — 이전 저장은 보존하되 불러오지 않는다
 let activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function initialPlayerRelations(faction) {
@@ -192,7 +197,7 @@ function buildPlayerRoster(faction) {   // 플레이어 세력의 군단 전부:
   const troops = ['sword', 'shield', 'archer', 'cav', 'sword', 'shield', 'mage'];
   roster.length = 0;
   FACTION_CORPS[faction].forEach((lead, n) => {
-    const units = Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length]); units[0] = lead;
+    const units = withHealers(Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length])); units[0] = lead;
     const growth = units.map(key => Sim.levelStats(key, 'player', 1));
     for (let i = 0; i < units.length; i++) { const item = Object.entries(Sim.ITEMS).find(([, v]) => v.unique && v.owner === units[i]); if (item) { growth[i].item = item[0]; campaign.items[item[0]] = 0; } }
     roster.push({ id: n + 1, name: `신규 군단 ${n + 1}`, at: startCity(faction, n), target: null, units, growth });
@@ -507,7 +512,7 @@ function reinforceEnemies() {   // 원정 주기마다 자기 세력 도시에 �
   if (campaign.turn % aiP().expedition) return; let n = 0;
   for (const force of enemyForces) {
     const stage = stageById(force.at), add = Math.min(3, Sim.ARMY_MAX - force.army.units.length); if (!force.active || !stage || stage.owner !== 'enemy' || stage.faction !== forceFaction(force) || add <= 0) continue;
-    const pool = THEME_UNITS[stage.theme]; for (let i = 0; i < add; i++) force.army.units.push(pool[(force.army.units.length + force.id) % pool.length]);
+    const pool = THEME_UNITS[stage.theme]; for (let i = 0; i < add; i++) force.army.units.push(force.army.units.filter(k => k === 'healer').length < Math.ceil(Sim.ARMY_MAX * 0.1) ? 'healer' : pool[(force.army.units.length + force.id) % pool.length]);
     setEnemyRole(force, stageById(force.home) || stage, force.role, force.level); n++;
   }
   if (n) campaign.intel.push({ text: `적 ${n}개 군단이 병사를 보충했다.`, mode: '보충', force: '', power: 0, from: '', to: '' });
@@ -1217,7 +1222,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.233', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.234', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
