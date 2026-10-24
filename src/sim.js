@@ -452,26 +452,36 @@ function tryHpRetreat(S, A) {
   A.nextHpRetreatCheck = S.t + 12;
   const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78) * S.retreatScale; if (S.rnd() >= chance) return false;
   const why = leaderLow ? '군단장 생명력 ' + Math.round(RETREAT_HP * 100) + '% 이하' : '군단 생명력 ' + Math.round(RETREAT_CORPS_HP * 100) + '% 이하', info = ` · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`;
-  if (leaderLow && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
+  if (leaderLow && !L.named && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
   startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
 }
 function orphanRetreat(S, units, team, label) {   // 군단장이 전사하면 같은 군단 병사들이 후퇴할 수 있다 (확률 = 퇴각 사기 판정, 광신자 제외)
   const list = units.filter(m => live(m) && !retreating(m) && !m.fanatic); if (!list.length) return false;
   if (S.rnd() >= S.routChance) { notice(S, team, `${label} 지휘관 전사 — 병사들은 후퇴할 수 있습니다.`); return false; }
   for (const m of list) { m.surrenderChecked = false; m.order = { type: 'flee' }; m.path = null; m.autoCharge = false; }
-  notice(S, team, `${label} 지휘관 전사 — 병사들이 후퇴합니다.`); return true;
+  notice(S, team, `${label} 지휘관 이탈 — 병사들이 후퇴합니다.`); return true;
 }
 function die(S, u, killer) {
+  if (u.dead) return;
+  if (u.named && !U[u.key].synthetic) {
+    const captor = killer && killer.team !== u.team ? killer : S.units.find(x => live(x) && x.team !== u.team);
+    u.captured = !!captor && S.rnd() < 0.5;
+    if (u.captured) u.captor = { corps: captor.army.corps, forceId: captor.forceId, team: captor.team };
+    const line = (u.team === 'player' ? '아군 ' : '적군 ') + u.name + (u.captured ? '이(가) 포박되었습니다.' : '이(가) 전사했습니다.');
+    let event = S.events.find(e => e.type === 'casualties');
+    if (!event) { event = { type: 'casualties', team: 'player', lines: [] }; S.events.push(event); }
+    event.lines.push(line);
+  }
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
-  if (u.team === 'player') dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
+  if (u.team === 'player' && !u.named) dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
   const corpsLead = u.team === 'player' && u.isLeader && u.army === S.armies.find(B => B.team === 'player' && B.corps === u.army.corps);   // 아군 군단장(군단 첫 분대의 지휘관)
   if (corpsLead) { for (const B of S.armies) if (B.team === 'player' && B.corps === u.army.corps) orphanRetreat(S, B.units, 'player', B.name); }
   if (u.isLeader && !u.army.routed) {
-    u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + ' 지휘관 전사!', '#ff5a4a');
-    if (u.team === 'enemy') dialogue(S, u, '내가 여기서 쓰러지다니…');
+    u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + (u.captured ? ' 지휘관 포박!' : ' 지휘관 전사!'), '#ff5a4a');
+    if (u.team === 'enemy' && !u.named) dialogue(S, u, '내가 여기서 쓰러지다니…');
     if (u.team === 'enemy') {
       const fleeing = tryRout(S, u.army);
       notice(S, 'enemy', fleeing ? '적 ' + u.army.name + '가 후퇴합니다.' : '적 ' + u.army.name + '가 지휘관 없이 전투를 계속합니다.');
@@ -479,6 +489,7 @@ function die(S, u, killer) {
   }
 }
 function surrender(S, u) {
+  if (u.named) return false;
   let A = S.armies.find(a => a.team === 'player' && !a.ally && a.units.filter(x => !x.dead).length < 6);
   if (!A) {
     const groups = [...new Set(S.armies.filter(a => a.team === 'player' && !a.ally && a.corps !== 'surrender').map(a => a.corps))].map(corps => S.armies.filter(a => a.team === 'player' && !a.ally && a.corps === corps));
@@ -513,7 +524,7 @@ function hurt(S, from, t, dmg) {
   S.fx.push({ kind: tier > 0 ? 'guard' : 'spark', x: t.x, y: t.y - t.r * 1.6, ang: t.hitAng, col: tier < 0 ? '#ff654d' : tier > 0 ? '#75d8ff' : '#fff3c0', count: tier < 0 ? 10 : 6, t: 0.24, max: 0.24 });
   if (tier) text(S, t.x, t.y - t.r * 4, tier > 0 ? '상성 방어' : '상성 불리', tier > 0 ? '#75d8ff' : '#ff654d', 'buff');
   if (t.isLeader || dmg >= 18) text(S, t.x, t.y - t.r * 4, Math.round(dmg), tier < 0 ? '#ff9a32' : tier > 0 ? '#999999' : '#ffffff', 'dmg');
-  if (t.team === 'enemy' && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= SURRENDER_HP[+!!t.army.fleeing]) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < SURRENDER_CHANCE[+!!t.army.fleeing]) surrender(S, t); }
+  if (t.team === 'enemy' && !t.named && !t.surrenderChecked && t.hp > 0 && t.hp / t.maxHp <= SURRENDER_HP[+!!t.army.fleeing]) { t.surrenderChecked = true; if (S.surrenderSlots > 0 && S.rnd() < SURRENDER_CHANCE[+!!t.army.fleeing]) surrender(S, t); }
   if (t.hp <= 0) die(S, t, from);
 }
 function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시전자를 뺀 같은 편도 맞는다 (번개)
