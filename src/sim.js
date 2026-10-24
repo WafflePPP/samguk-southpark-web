@@ -615,7 +615,7 @@ function castSpell(S, u, key, x, y) {
     aoe(S, u, px, py, sp.r, e => { e.root = sp.root; e.path = null; text(S, e.x, e.y - e.r * 4, '속박', '#e8e8e8', 'buff'); }, sp.col);
   }
   if (sp.lock) S.lock[u.team] = sp.lock;   // 전체 쿨 마법
-  u.mp -= sp.mp; u.cdT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = sp.kind === 'heal' ? 'heal' : 'cast'; u.face = ang; tire(u, 'spell');
+  u.mp -= sp.mp; u.cdT = sp.cd * (u.key === 'healer' && sp.kind === 'heal' ? 2 : 1) * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = sp.kind === 'heal' ? 'heal' : 'cast'; u.face = ang; tire(u, 'spell');
   return true;
 }
 function useSpecial(S, u, x, y) {
