@@ -268,7 +268,7 @@ let lastHelpIds = [];   // 이번 전투에 데려온 동맹 군단 id — 전�
 let allyChoice = null, allyHelpIds = null;   // 동맹군과 같은 도시에서 전투 직전의 선택 {stage, explore, ids} / 도우기로 정한 동맹 군단 id
 let warnMove = null, diplomacyQueue = [];   // warnMove: 중립 도시 진입 경고 팝업 {id, stage} / diplomacyQueue: 한 번에 여러 외교 결과가 생길 때 순서대로 보여 줄 팝업
 let mapTool = null, scoutView = null, heroView = null, diplomacyView = null, diplomacyResult = null;   // heroView: 전략 화면 세력별 전체 장수 정보
-let rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0, exploreSelectOpen = false, explorePage = 0;
+let rosterDetailCorps = 0, rosterDetailPage = 0, rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0, exploreSelectOpen = false, explorePage = 0;
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '화살 5발 연속 사격', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
 const STAT_DESC = { HP: '생명력', MP: '주문 자원', FT: '피로도', AT: '물리 공격', DF: '물리 방어', AD: '화살 방어', MD: '마법 방어', AA: '화살 회피', HR: '체력 회복', SP: '이동 속도', AR: '공격 효율', DR: '방어 효율' };   // 능력치 설명 — 장수 상세에서 실수치 칸 안에 한 줄로 보여 준다
 const STAT_NOTE = 'FT 높을수록 전투 효율 감소 · HR 정지 중 회복 · AR·DR 은 효율 배율(%)';
@@ -830,6 +830,7 @@ function skipEnemyMoves() {   // 건너뛰기: 적 군단 이동 안내는 생�
 }
 function endCampaignTurn() {
   if (pendingPrisoners().length) return;
+  autoDisbandEmpty();   // 전투 손실 등으로 완전히 비어 버린 군단은 진행 시작 때 해제한다
   inTurnFlow = true;
   campaign.turn++; processCustodyTurn(); campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; aiSupportUsed = new Set();
   for (const [faction, relation] of Object.entries(campaign.relations)) if (relation.status === 'truce' && campaign.turn >= relation.truceUntil) { relation.status = 'war'; relation.truceUntil = 0; campaign.notice = `${faction}군과의 휴전이 끝나 전쟁 상태로 돌아갔다.`; showDiplomacyResult(`${faction}군과 전쟁 재개`, ['휴전 기간이 끝났습니다.', '관계: 휴전 → 전쟁'], false); }
@@ -1443,7 +1444,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.246', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.247', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1756,11 +1757,27 @@ function drawExploreSelect() {
   page.forEach(({ corps, index }, row) => button(`campaign:explore:${index}`, x + 40, y + 105 + row * 46, w - 80, 38, `${corpsName(corps)} · ${stageById(corps.at).name} · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, false, 16));
   button('campaign:explore:prev', x + 40, y + h - 50, 100, 36, '◀', false, 18); button('campaign:explore:close', x + w - 140, y + h - 50, 100, 36, '닫기', false, 16); button('campaign:explore:next', x + w - 250, y + h - 50, 100, 36, '▶', false, 18); label(`${explorePage + 1}/${pages}`, x + w / 2, y + h - 32, 14, COLORS.silver2, 'center');
 }
+const rosterHeroes = () => roster.flatMap((c, ci) => c.units.map((key, slot) => ({ key, slot, ci }))).filter(x => x.key && !Sim.U[x.key].generic);   // 세력 내 모든 군단의 이름 있는 장수
+function autoDisbandEmpty() {   // 장수·병사가 하나도 없는 군단은 자동으로 해제한다 (마지막 한 군단은 남긴다)
+  let removedCount = 0;
+  for (let i = roster.length - 1; i >= 0 && roster.length > 1; i--) {
+    if (roster[i].units.some(Boolean)) continue;
+    roster.splice(i, 1); removedCount++;
+    if (campaign.corps === i) campaign.corps = 0; else if (campaign.corps > i) campaign.corps--;
+    if (rosterSource === i) rosterSource = 0; else if (rosterSource > i) rosterSource--;
+    if (rosterTarget !== null) { if (rosterTarget === i) rosterTarget = null; else if (rosterTarget > i) rosterTarget--; }
+    if (rosterNew !== null) { if (rosterNew === i) rosterNew = null; else if (rosterNew > i) rosterNew--; }
+    if (rosterDetailCorps > i) rosterDetailCorps--; else if (rosterDetailCorps === i) rosterDetailCorps = 0;
+  }
+  if (removedCount) { rosterPage = 0; const active = roster[campaign.corps]; if (active) { campaign.at = active.at; campaign.destination = active.target; } campaign.notice = `비어 있는 군단 ${removedCount}개가 자동으로 해제되었습니다.`; }
+  return removedCount;
+}
 function drawRoster() {
   ctx.fillStyle = '#0b3036'; ctx.fillRect(0, 0, VW, VH);
   panel(18, 16, 1244, 54, COLORS.gold, 3, 'rgba(6,17,23,.9)');
   label(rosterMode === 'select' ? '군단 편성 · 교환 군단 선택' : rosterMode === 'equip' ? '군단 편성 · 장비 관리' : rosterMode === 'detail' ? '군단 편성 · 장수 상세' : '군단 편성 · 군단 간 교환', 42, 43, 27, COLORS.gold);
   label(`보유 ${roster.length} / ${ROSTER_MAX}군단 · 군단당 6명×3분대`, 520, 43, 17, COLORS.silver);
+  if (rosterMode === 'select') button('roster:detail', 700, 25, 190, 36, '장수 상세 ' + rosterHeroes().length, false, 16);
   button('roster:prisoners', 900, 25, 180, 36, '포로 관리 ' + campaign.prisoners.filter(p => p.owner === playerFaction()).length, false, 16);
   button('roster:back', 1095, 25, 145, 36, rosterMode === 'select' ? '전략으로' : '군단 선택', false, 16);
   if (rosterMode === 'select') {
@@ -1778,9 +1795,7 @@ function drawRoster() {
       label(members.length ? members.map(k => Sim.U[k].name).join(' · ') : '비어 있음', 150, 359 + squad * 82, 15, members.length ? COLORS.silver : COLORS.dim);
       label(members.length ? `⚔${Sim.corpsPower(corps.units.slice(squad * 6, squad * 6 + 6), 'player', corps.growth.slice(squad * 6, squad * 6 + 6))}` : '', 548, 359 + squad * 82, 15, COLORS.goldSel, 'right');
     }
-    button('roster:detail', 52, 574, 164, 38, '장수 상세', false, 15);
-    button('roster:equip', 224, 574, 164, 38, '장비 관리', false, 15);
-    if (roster.length > 1) button('roster:dismiss', 396, 574, 164, 38, '군단 해제', false, 15);
+    button('roster:equip', 52, 574, 164, 38, '장비 관리', false, 15);
     panel(622, 94, 630, 536, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 646, 126, 20, COLORS.gold);
     const targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), page = targets.slice(rosterPage * 10, rosterPage * 10 + 10);
@@ -1788,14 +1803,16 @@ function drawRoster() {
     button('roster:new', 646, 564, 280, 42, roster.length < ROSTER_MAX ? '새 군단 생성' : '군단 보유 한도 100', false, 16);
     button('roster:page:prev', 944, 564, 132, 42, '◀', false, 18); button('roster:page:next', 1096, 564, 132, 42, '▶', false, 18);
   } else if (rosterMode === 'detail') {
-    const corps = roster[rosterSource], named = corps.units.map((key, slot) => ({ key, slot })).filter(x => x.key && !Sim.U[x.key].generic);
-    if (!named.some(x => x.slot === rosterDetailSlot)) rosterDetailSlot = named[0]?.slot ?? 0;
-    const key = corps.units[rosterDetailSlot], unit = key && Sim.U[key], growth = corps.growth[rosterDetailSlot] || {}, stats = unit && Sim.unitStats(key, 'player', growth), item = Sim.ITEMS[growth.item];
+    const all = rosterHeroes(), per = 16, pages = Math.max(1, Math.ceil(all.length / per));
+    if (!all.some(x => x.ci === rosterDetailCorps && x.slot === rosterDetailSlot)) { rosterDetailCorps = all[0]?.ci ?? 0; rosterDetailSlot = all[0]?.slot ?? 0; }
+    rosterDetailPage = Math.max(0, Math.min(rosterDetailPage, pages - 1));
+    const corps = roster[rosterDetailCorps], key = corps.units[rosterDetailSlot], unit = key && Sim.U[key], growth = corps.growth[rosterDetailSlot] || {}, stats = unit && Sim.unitStats(key, 'player', growth), item = Sim.ITEMS[growth.item];
     const passive = unit && (Sim.TITLE_EFFECT[Sim.unitSubclass(key)] || {}).passive; if (passive) for (const [stat, pct] of Object.entries(passive)) stats[stat] *= 1 + pct / 100;
     panel(28, 92, 360, 548, COLORS.silver2, 2, 'rgba(8,20,25,.92)'); panel(408, 92, 844, 548, COLORS.gold, 2, 'rgba(8,20,25,.92)');
-    label(`${rosterSource + 1}군단 · ${corpsName(corps)}`, 46, 122, 21, COLORS.gold);
-    named.forEach(({ key: k, slot }, row) => button(`roster:detail:${slot}`, 46, 146 + row * 26, 324, 24, `${Math.floor(slot / 6) + 1}분대 · ${Sim.U[k].name}`, slot === rosterDetailSlot, 14));
-    if (!named.length) label('이 군단에는 이름 있는 장수가 없습니다.', 208, 330, 17, COLORS.dim, 'center');
+    label(`${playerFaction()}군 전체 장수 ${all.length}명`, 46, 122, 21, COLORS.gold);
+    all.slice(rosterDetailPage * per, rosterDetailPage * per + per).forEach(({ key: k, slot, ci }, row) => button(`roster:detail:${ci}:${slot}`, 46, 146 + row * 28, 324, 26, `${Sim.U[k].name} · ${ci + 1}군단`, ci === rosterDetailCorps && slot === rosterDetailSlot, 14));
+    if (!all.length) label('편성된 이름 있는 장수가 없습니다.', 208, 330, 17, COLORS.dim, 'center');
+    button('roster:detail:prev', 46, 600, 100, 30, '◀', false, 16); label(`${rosterDetailPage + 1}/${pages}`, 208, 616, 15, COLORS.silver2, 'center'); button('roster:detail:next', 270, 600, 100, 30, '▶', false, 16);
     if (unit) {
       drawBody(ctx, 500, 236, 28, 0, STYLES[unit.style] || STYLES.captain, { t: T, weaponLen: 95 });
       const main = CATEGORY_NAME[Sim.unitCategory(key)], sub = Sim.unitSubclass(key), grade = Sim.GRADE[key] || '일반', lv = growth.lv || 1, xp = growth.xp || 0;
@@ -1924,7 +1941,10 @@ function cycleItem(slot, d) {   // 장수의 ITEM 을 보유 목록에서 앞뒤
   if (cur) campaign.items[cur] = (campaign.items[cur] || 0) + 1; if (next) campaign.items[next]--; g.item = next;
   campaign.notice = next ? `${Sim.U[key].name}에게 ${Sim.ITEMS[next].name}을 장착했습니다.` : `${Sim.U[key].name}의 ITEM을 해제했습니다.`;
 }
-function uiClick(id) {
+function uiClick(id) {   // 군단 편성 조작 뒤에는 비어 버린 군단을 자동 해제한다
+  uiClickCore(id); if (state === 'roster' || id.startsWith('roster:')) autoDisbandEmpty();
+}
+function uiClickCore(id) {
   if (id === 'campaign:opt:move') id = 'campaign:movemode'; else if (id === 'campaign:opt:news') id = 'campaign:news'; else if (id === 'campaign:opt:diff') id = 'campaign:diff';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
   if ((state === 'map' || state === 'roster') && custodyOpen() && !id.startsWith('custody:') && id !== 'campaign:movemode' && id !== 'campaign:news' && id !== 'campaign:diff') return;
   if (id === 'roster:prisoners') { custodyView = true; custodyPage = 0; return; }
@@ -1986,8 +2006,9 @@ function uiClick(id) {
   if (id === 'campaign:explore:close') { exploreSelectOpen = false; return; }
   if (id === 'campaign:explore:prev' || id === 'campaign:explore:next') { const available = roster.filter(c => combatReadyCorps(c) && stageById(c.at).owner === 'player'), pages = Math.max(1, Math.ceil(available.length / 8)), d = id.endsWith('next') ? 1 : -1; explorePage = (explorePage + d + pages) % pages; return; }
   if (/^campaign:explore:\d+$/.test(id)) { const index = +id.slice(17); exploreSelectOpen = false; exploreCampaign(index); return; }
-  if (id === 'roster:detail') { rosterMode = 'detail'; rosterDetailSlot = roster[rosterSource].units.findIndex(k => k && !Sim.U[k].generic); campaign.notice = '왼쪽 목록에서 상세 정보를 볼 장수를 선택하세요.'; return; }
-  if (/^roster:detail:\d+$/.test(id)) { rosterDetailSlot = +id.slice(14); return; }
+  if (id === 'roster:detail') { rosterMode = 'detail'; rosterDetailCorps = rosterSource; const own = roster[rosterSource].units.findIndex(k => k && !Sim.U[k].generic), first = rosterHeroes()[0]; if (own >= 0) rosterDetailSlot = own; else if (first) { rosterDetailCorps = first.ci; rosterDetailSlot = first.slot; } rosterDetailPage = Math.max(0, Math.floor(rosterHeroes().findIndex(x => x.ci === rosterDetailCorps && x.slot === rosterDetailSlot) / 16)); campaign.notice = '왼쪽 목록에서 상세 정보를 볼 장수를 선택하세요. (세력 내 모든 장수)'; return; }
+  if (id === 'roster:detail:prev' || id === 'roster:detail:next') { rosterDetailPage = Math.max(0, rosterDetailPage + (id.endsWith('next') ? 1 : -1)); return; }
+  if (/^roster:detail:\d+:\d+$/.test(id)) { const [, , ci, slot] = id.split(':'); rosterDetailCorps = +ci; rosterDetailSlot = +slot; return; }
   if (id === 'roster:equip') { rosterMode = 'equip'; campaign.notice = '◀ ▶ 로 장수의 ITEM 을 바꿉니다.'; return; }
   if (id.startsWith('roster:item:')) { const [, , slot, d] = id.split(':'); cycleItem(+slot, +d); return; }
   if (id === 'roster:back') {
@@ -2001,10 +2022,6 @@ function uiClick(id) {
     state = 'map'; rosterPick = null; campaign.notice = '편성이 저장되었습니다.'; saveCampaign(); return;
   }
   if (id === 'roster:source:prev' || id === 'roster:source:next') { const d = id.endsWith('next') ? 1 : -1; rosterSource = (rosterSource + d + roster.length) % roster.length; rosterPage = 0; return; }
-  if (id === 'roster:dismiss') {
-    if (roster.length <= 1 || roster[rosterSource].units.some(Boolean)) { campaign.notice = '장수를 다른 군단으로 모두 이동한 빈 군단만 해제할 수 있습니다.'; return; }
-    const removed = rosterSource; roster.splice(removed, 1); campaign.corps = campaign.corps === removed ? 0 : campaign.corps > removed ? campaign.corps - 1 : campaign.corps; rosterSource = 0; rosterPage = 0; campaign.at = roster[campaign.corps].at; campaign.destination = roster[campaign.corps].target; campaign.notice = '빈 군단을 해산했습니다.'; return;
-  }
   if (id.startsWith('roster:target:')) { rosterTarget = +id.slice(14); rosterMode = 'exchange'; rosterPick = null; campaign.notice = '장수를 선택한 뒤 반대쪽 교환 위치를 선택하세요.'; return; }
   if (id === 'roster:new') {
     if (roster.length >= ROSTER_MAX) { campaign.notice = '군단은 최대 100개까지 보유할 수 있습니다.'; return; }
