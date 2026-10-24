@@ -401,6 +401,7 @@ function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
 }
 // 레벨업 (원작식, 명세 21): 곱셈 성장 → 가산. 경험치는 "공격을 적중시킨 횟수" 위주(처치·피격·회피 보너스 없음).
 // HP +4~6%(1레벨 기준 최대 체력의 가산), 레벨업 차례마다 AT→DF→AR→DR 순서로 한 항목씩(AT·DF 는 1레벨 기준값의 8%, AR·DR 은 +2), 16의 배수 레벨에 HR→AA→AD→MD 순서로 한 항목(HR·AA +1, AD·MD 는 기준값의 8%).
+const MAX_LEVEL = 99;
 const XP_NEED = lv => lv * 30;
 const lvGain = (T, k) => Math.max(1, Math.round((T[k] || 0) * 0.08));
 function applyLevelUp(st, key, team, lv, hpRate) {   // st: 능력치 객체(maxHp·atk·df·ad·md·aa·hr·ar·dr), lv: 오르기 전 레벨. hpRate: 0.04~0.06
@@ -411,13 +412,16 @@ function applyLevelUp(st, key, team, lv, hpRate) {   // st: 능력치 객체(max
 }
 // 레벨 L 시점의 평균 능력치(HP 5%): 적 지역 레벨표(명세 15)가 같은 규칙을 쓰도록 공유
 function levelStats(key, team, level) {
+  level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level) || 1));
   const st = unitStats(key, team); st.maxMp = U[key].mp || 0;
   for (let lv = 1; lv < level; lv++) applyLevelUp(st, key, team, lv, 0.05);
   st.maxHp = Math.round(st.maxHp); st.lv = level; return st;
 }
 function gainXp(S, u, n) {
-  if (!live(u)) return; u.xp += n;
-  while (u.xp >= XP_NEED(u.lv)) {   // 레벨업: 능력치 가산 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
+  if (!live(u)) return;
+  if (u.lv >= MAX_LEVEL) { u.xp = 0; return; }
+  u.xp += n;
+  while (u.lv < MAX_LEVEL && u.xp >= XP_NEED(u.lv)) {   // 레벨업: 능력치 가산 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
     u.xp -= XP_NEED(u.lv); const was = u.maxHp, bonus = k => itemOf(u.item)[k] || 0;
     for (const k of ITEM_STATS) u[k] -= bonus(k);   // 아이템 보정은 빼고 성장시킨 뒤 다시 더한다
     applyLevelUp(u, u.key, u.originTeam, u.lv, 0.04 + S.rnd() * 0.02); u.lv++;
@@ -425,6 +429,7 @@ function gainXp(S, u, n) {
     u.hp = Math.min(u.maxHp, u.hp + (u.maxHp - was) + 20 * HP_MUL);
     text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
   }
+  if (u.lv >= MAX_LEVEL) u.xp = 0;
 }
 const gainCombatXp = (S, u, base) => gainXp(S, u, Math.max(1, Math.round(base * (u.named ? 1.5 : 1))));
 function tryRout(S, A) {
@@ -1055,6 +1060,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
