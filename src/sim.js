@@ -376,7 +376,7 @@ function createBattle(seed = 1, opts = {}) {
       const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
       const baseHp = baseMaxHp(key, d.team);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? cnt[key] : ''), cls: T.cls, category: unitCategory(key), subclass: unitSubclass(key), team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
-        hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: G.lv || 1, xp: G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
+        hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: T.generic ? 1 : G.lv || 1, xp: T.generic ? 0 : G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, sg: T.generic ? validGrade(G.sg) : null, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
         face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, attackT: -1e9, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
@@ -456,11 +456,12 @@ function applyLevelUp(st, key, team, lv, hpRate) {   // st: 능력치 객체(max
 function levelStats(key, team, level, sg = 'C') {
   level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level) || 1));
   const st = unitStats(key, team, null, sg); st.maxMp = U[key].mp || 0; if (U[key].generic) st.sg = validGrade(sg);
+  if (U[key].generic) level = 1;   // 일반 병사는 레벨 없음(명세 54): 병종 기본값 × 등급 배율
   for (let lv = 1; lv < level; lv++) applyLevelUp(st, key, team, lv, 0.05);
   st.maxHp = Math.round(st.maxHp); st.lv = level; return st;
 }
 function gainXp(S, u, n) {
-  if (!live(u)) return;
+  if (!live(u) || u.generic) return;   // 병사는 경험치·레벨업 없음(명세 54)
   if (u.lv >= MAX_LEVEL) { u.xp = 0; return; }
   u.xp += n;
   while (u.lv < MAX_LEVEL && u.xp >= XP_NEED(u.lv)) {   // 레벨업: 능력치 가산 + 부분 회복 (퍼스트퀸4 의 전투 중 레벨업)
