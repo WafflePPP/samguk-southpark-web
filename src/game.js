@@ -795,6 +795,12 @@ function aiBattleStep() {   // 타 세력 전투: 시작 → 진행(다음 턴) 
     announceAiBattle(b);
   }
 }
+const MOVE_MODES = ['detail', 'skip'], MOVE_NAME = { detail: '상세', skip: '건너뛰기' };   // 턴 진행 중 적 군단 이동 안내: 상세(군단마다 한 장씩) / 건너뛰기(아군과 상호작용하는 것만)
+function skipEnemyMoves() {   // 건너뛰기: 적 군단 이동 안내는 생략하되, 아군(도시·군단·동맹 주둔)과 맞닿는 이동·팝업이 딸린 이동은 남겨 반드시 팝업으로 알린다
+  if ((campaign.moveMode || 'detail') !== 'skip') return;
+  campaign.movement = campaign.movement.filter(m => m.team === 'player' || (m.popups && m.popups.length) || !!movementEncounter(m) || (stageById(m.to) && (stageById(m.to).owner === 'player' || hostsPlayer(stageById(m.to)))));
+  campaign.movementPage = 0;
+}
 function endCampaignTurn() {
   if (pendingPrisoners().length) return;
   campaign.turn++; processCustodyTurn(); campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; aiSupportUsed = new Set();
@@ -807,7 +813,7 @@ function endCampaignTurn() {
   }));
   flushMovePopups();   // 아군 군단의 이동 때문에 생긴 팝업(첫 이동)은 AI 쪽 사건보다 먼저 띄운다
   for (const f of enemyForces) if (f.rest > 0) f.rest--;
-  relocateCapitals(); aiDiplomacyStep(); aiBattleStep(); advanceEnemyForces(); reinforceEnemies(); reinforceCityGuards(); relocateCapitals(); flushDigest(); saveCampaign();
+  relocateCapitals(); aiDiplomacyStep(); aiBattleStep(); advanceEnemyForces(); reinforceEnemies(); reinforceCityGuards(); relocateCapitals(); flushDigest(); skipEnemyMoves(); saveCampaign();
   if (!campaign.movement.length) continueCampaignTurn(); else flushMovePopups();
 }
 // 포로는 전투 편성과 분리하고 원 소속·성장치를 보존한다.
@@ -1409,7 +1415,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.240', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.241', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1444,7 +1450,7 @@ function drawRelationPanel() {
   const pairs = [['여포', '원소'], ['여포', '조조'], ['여포', '유비'], ['원소', '조조'], ['원소', '유비'], ['조조', '유비']], x = 470, y = 636, w = 520, h = 70;
   ctx.save(); ctx.fillStyle = 'rgba(8,20,25,.78)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h); ctx.restore();
   label('세력 관계', x + 10, y + 14, 12, COLORS.gold);
-  button('campaign:news', x + w - 214, y + 3, 100, 22, '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 11); button('campaign:diff', x + w - 110, y + 3, 100, 22, '난이도: ' + aiP().name + (campaign.turn > 1 ? ' 🔒' : ''), false, 11);
+  button('campaign:movemode', x + w - 318, y + 3, 100, 22, '이동: ' + MOVE_NAME[campaign.moveMode || 'detail'], false, 11); button('campaign:news', x + w - 214, y + 3, 100, 22, '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 11); button('campaign:diff', x + w - 110, y + 3, 100, 22, '난이도: ' + aiP().name + (campaign.turn > 1 ? ' 🔒' : ''), false, 11);
   pairs.forEach(([a, b], i) => {
     const player = a === playerFaction() ? b : b === playerFaction() ? a : null, st = player ? relationOf(player) : FACTION_ALLIES[a] === b ? { status: 'ally' } : aiRel(a, b), col = REL_COL[st.status] || '#fff', cx = x + 10 + (i % 3) * 168, cy = y + 30 + Math.floor(i / 3) * 26;
     ctx.fillStyle = FACTION_STYLE[a].main; ctx.fillRect(cx, cy - 8, 8, 8); ctx.fillStyle = FACTION_STYLE[b].main; ctx.fillRect(cx + 9, cy - 8, 8, 8);
@@ -1934,6 +1940,7 @@ function uiClick(id) {
   }
   if (id === 'campaign:warn:ok' && warnMove) { const w = warnMove; warnMove = null; moveCampaign(w.id, true); moveMode = 'corps'; moveSelectOpen = false; return; }
   if (id === 'campaign:warn:cancel') { warnMove = null; moveMode = 'corps'; campaign.notice = '이동 계획을 취소했습니다.'; return; }
+  if (id === 'campaign:movemode') { campaign.moveMode = MOVE_MODES[(MOVE_MODES.indexOf(campaign.moveMode || 'detail') + 1) % MOVE_MODES.length]; campaign.notice = `턴 진행 중 적 군단 이동 안내: ${MOVE_NAME[campaign.moveMode]}${campaign.moveMode === 'skip' ? ' (아군과 상호작용하는 이동은 팝업으로 알린다)' : ''}`; saveCampaign(); return; }
   if (id === 'campaign:news') { campaign.newsMode = NEWS_MODES[(NEWS_MODES.indexOf(campaign.newsMode || 'important') + 1) % NEWS_MODES.length]; campaign.notice = `타 세력 소식: ${NEWS_NAME[campaign.newsMode]}`; saveCampaign(); return; }
   if (id === 'campaign:diff') { if (campaign.turn > 1) { campaign.notice = '난이도는 첫 턴에만 바꿀 수 있습니다.'; return; } const k = Object.keys(AI_PROFILES); campaign.difficulty = k[(k.indexOf(campaign.difficulty || 'normal') + 1) % k.length]; campaign.notice = `AI 난이도: ${aiP().name}`; saveCampaign(); return; }
   if (id === 'campaign:diplomacy:ok') { diplomacyResult = diplomacyQueue.shift() || null; return; }
