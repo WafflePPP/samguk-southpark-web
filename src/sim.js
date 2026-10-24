@@ -327,7 +327,7 @@ function createBattle(seed = 1, opts = {}) {
     const reserve = d.team === 'enemy' ? forcedReserve || reserves || enemyField + keys.length > ENEMY_FIELD_MAX : !!d.support;
     if (d.team === 'enemy' && !forcedReserve) { if (reserve) reserves = true; else enemyField += keys.length; }
     const leaderKey = d.leader || (squadDefs[0] && squadDefs[0].leader);
-    const A = { id: ai, team: d.team, ally: !!d.ally, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, reserveAt: d.reserveAt ?? 20, units: [], squads: squadDefs.map((q, id) => ({ id, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: d.formation || 'block', routed: false, order: 'idle', ctrl: null };
+    const A = { id: ai, team: d.team, ally: !!d.ally, cityGuard: !!d.cityGuard, ownedGuard: !!d.ownedGuard, name: d.name, corps: d.corps, squadIndex: d.squadIndex, forceId: d.forceId, role: d.role, stagedReserve: !!d.reserve, reserveAt: d.reserveAt ?? 20, units: [], squads: squadDefs.map((q, id) => ({ id, units: [] })), leader: null, commander: !!d.commander, trig: d.trig, support: !!d.support, state: d.support ? 'support' : d.team === 'player' ? 'player' : reserve ? 'reserve' : d.role === 'attack' ? 'advance' : 'wait', formation: d.formation || 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
     keys.forEach(({ key, squad, growth, rosterSlot }, i) => {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
@@ -936,10 +936,10 @@ function commanderDialogue(S) {
   }
 }
 function checkEnd(S) {
-  const mine = S.units.filter(u => u.team === 'player' && !u.dead && !u.army.ally);   // 동맹 AI 군단은 제외
+  const mine = S.units.filter(u => u.team === 'player' && !u.dead && (!u.army.ally || u.army.ownedGuard));   // 아군 도시수비군은 포함하고 다른 세력의 동맹군은 제외
   if (mine.length && !mine.some(u => !u.out && !u.retreated)) {   // 전장에 나온 아군이 없는데 미출진 지원만 남았으면 자동 출진시킨다 (그러지 않으면 전투가 끝나지 않는다)
-    for (const A of S.armies) if (A.team === 'player' && !A.ally && A.units.some(u => u.out && !u.dead)) deployArmy(S, A, A.ctrl, true);
-    if (!S.units.some(u => u.team === 'player' && !u.army.ally && !u.dead && !u.out && !u.retreated) ) { S.over = 'lose'; if (S.units.some(u => u.team === 'player' && !u.army.ally && u.retreated)) S.overWhy = 'retreat'; return; }
+    for (const A of S.armies) if (A.team === 'player' && (!A.ally || A.ownedGuard) && A.units.some(u => u.out && !u.dead)) deployArmy(S, A, A.ctrl, true);
+    if (!S.units.some(u => u.team === 'player' && (!u.army.ally || u.army.ownedGuard) && !u.dead && !u.out && !u.retreated) ) { S.over = 'lose'; if (S.units.some(u => u.team === 'player' && (!u.army.ally || u.army.ownedGuard) && u.retreated)) S.overWhy = 'retreat'; return; }
   }
   if (!mine.length) S.over = 'lose';   // 군단장·군주 전사만으로 즉시 패배하지 않고 생존 병력이 전투를 계속한다
   else if (mine.every(u => u.retreated)) { S.over = 'lose'; S.overWhy = 'retreat'; }   // 살아남은 병력이 모두 후퇴한 군단(후퇴한 분대·장수·병사만 남음)은 패배 처리
