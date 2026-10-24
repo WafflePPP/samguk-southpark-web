@@ -9,6 +9,7 @@ const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 1.25;   // 일반 병사 HP 누적 배율 정리: 물리 교전이 20~45초 안에 끝나도록 조정
 const FRONTLINE_HP = 1.5;  // 보병·방패병은 같은 HP, 방패병 생존력은 DF·AD·정면 방패로 확보
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
+const HP_SCALE = 0.7;   // v0.1.259: 전 세력 장수·병사 최대 HP만 30% 감소
 const HP_MUL = 2.5;   // v0.1.216: 모든 장수·병사 체력 2배 (1.25→2.5, 고정 회복량도 동일 비율)
 const DMG = 0.45;   // 물리 피해 배율. 적도 아군과 같은 능력치 기준 — 난이도는 군단 수·레벨·AI로 맞춘다
 const DEF_EFF = 1.3;   // 모든 장수·병사의 DF·AD·MD 방어 효율
@@ -234,10 +235,10 @@ for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', '
 // 모든 장수·군단장급 유닛은 등급 HP를 보존하되 같은 병종 일반 병사보다 최소 50% 높다.
 function baseMaxHp(key, team) {
   const T = U[key], frontline = T.generic && (T.cls === 'warrior' || T.cls === 'shield'), ownHp = Math.round(T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1));
-  if (T.generic) return ownHp;
+  if (T.generic) return Math.round(ownHp * HP_SCALE);
   const peerKey = (team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey];
   const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP));
-  return !peer ? ownHp : Math.max(ownHp, Math.round(peerHp * 1.5));
+  return Math.round((!peer ? ownHp : Math.max(ownHp, Math.round(peerHp * 1.5))) * HP_SCALE);
 }
 
 // ---------- 병사 등급 B·C·D·F (명세 53 §4: 모집 품질, 장수 등급과 별개 축. C = 현행 1.0) ----------
@@ -1114,6 +1115,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, SQUAD_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
