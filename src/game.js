@@ -1452,7 +1452,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.252', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.253', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
@@ -1583,24 +1583,24 @@ function drawStageMap() {
   label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 100, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
   label(`목표: 모든 도시 점령 ${STAGES.length - unclaimedCities().length}/${STAGES.length}`, 1025, 120, 13, COLORS.gold);
   { const f = stageFaction(sel), st = stationedAt(sel), foes = enemyForces.filter(x => x.active && x.at === sel.id), lead = c => c.units[0] ? Sim.U[c.units[0]].name : corpsName(c);   // 선택한 도시 정보
-    label(`${isCapital(sel) ? '★' : ''}${sel.name} · ${f} · ${CITY_SIZES[citySize(sel)].name}`, 1025, 248, 13, COLORS.goldSel);
-    label(`도시수비 ${guardsAt(sel).reduce((n, g) => n + g.army.units.length, 0)}/${CITY_SIZES[citySize(sel)].units}명 · Lv${CITY_SIZES[citySize(sel)].level}`, 1025, 264, 11, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2);
-    label(st.length ? (st.length === 1 ? `${lead(st[0].c)} 군단` : `${lead(st[0].c)} 군단 외 ${st.length - 1}`) : foes.length ? `${Sim.U[foes[0].army.leader]?.name || foes[0].army.name} 부대${foes.length > 1 ? ' 외 ' + (foes.length - 1) : ''}` : '기동 군단 없음', 1025, 279, 11, COLORS.silver);
+    label(`${isCapital(sel) ? '★' : ''}${sel.name} · ${f} · ${CITY_SIZES[citySize(sel)].name}`, 1025, 146, 13, COLORS.goldSel);
+    label(`도시수비 ${guardsAt(sel).reduce((n, g) => n + g.army.units.length, 0)}/${CITY_SIZES[citySize(sel)].units}명 · Lv${CITY_SIZES[citySize(sel)].level}`, 1025, 162, 11, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2);
+    label(st.length ? (st.length === 1 ? `${lead(st[0].c)} 군단` : `${lead(st[0].c)} 군단 외 ${st.length - 1}`) : foes.length ? `${Sim.U[foes[0].army.leader]?.name || foes[0].army.name} 부대${foes.length > 1 ? ' 외 ' + (foes.length - 1) : ''}` : '기동 군단 없음', 1025, 177, 11, COLORS.silver);
   }
-  label('내 군단', 1025, 300, 11, COLORS.gold);
-  roster.slice(0, 7).forEach((c, i) => label(`${i + 1}. ${c.units[0] ? Sim.U[c.units[0]].name : '—'} · ${stageById(c.at).name}${c.target ? ' → ' + stageById(c.target).name : ''}`, 1025, 314 + i * 14, 10, i === campaign.corps ? COLORS.goldSel : COLORS.silver));
-  if (roster.length > 7) label(`외 ${roster.length - 7}개 군단`, 1025, 314 + 7 * 14, 10, COLORS.silver2);
-  button('campaign:scout', 1025, 418, 100, 34, '정찰', mapTool === 'scout', 15); button('campaign:diplomacy', 1135, 418, 100, 34, '외교', mapTool === 'diplomacy', 15);
-  ctx.save(); ctx.strokeStyle = COLORS.gold; ctx.fillStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(1043, 433, 6, 0, TAU); ctx.moveTo(1047.5, 437.5); ctx.lineTo(1054, 444); ctx.stroke();   // 정찰: 돋보기
-  ctx.beginPath(); ctx.moveTo(1153, 444); ctx.lineTo(1153, 427); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1153, 427); ctx.lineTo(1166, 431); ctx.lineTo(1153, 436); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();   // 외교: 백기
-  button('campaign:move', 1025, 466, 210, 36, moveMode === 'city' && !moveSelectOpen ? '지역 선택 중' : '이동', moveSelectOpen || moveMode === 'city', 16);
-  button('campaign:roster', 1025, 508, 100, 36, '군단 편성', false, 15); button('campaign:heroes', 1135, 508, 100, 36, '세력 장수', false, 15);
-  button('campaign:explore', 1025, 550, 210, 36, '탐색', false, 16);
-  button('campaign:save', 1025, 592, 100, 34, '저장', false, 15); button('campaign:load', 1135, 592, 100, 34, '로드', false, 15);
-  button('campaign:end', 1025, 634, 210, 36, '진행하기', true, 16);   // 이동 버튼과 같은 크기(210×36), 저장·로드 아래
-  panel(1025, 674, 210, 40, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');   // 진행 안내 문구는 진행하기 버튼 아래
-  wrapText(campaign.notice || '', 19).slice(0, 2).forEach((t, i) => label(t, 1130, 686 + i * 12, 10, COLORS.silver, 'center'));
-  label('이동 지정 → 저장 → 진행하기', 1130, 710, 10, COLORS.goldSel, 'center');
+  label('내 군단', 1025, 198, 11, COLORS.gold);
+  roster.slice(0, 7).forEach((c, i) => label(`${i + 1}. ${c.units[0] ? Sim.U[c.units[0]].name : '—'} · ${stageById(c.at).name}${c.target ? ' → ' + stageById(c.target).name : ''}`, 1025, 212 + i * 14, 10, i === campaign.corps ? COLORS.goldSel : COLORS.silver));
+  if (roster.length > 7) label(`외 ${roster.length - 7}개 군단`, 1025, 212 + 7 * 14, 10, COLORS.silver2);
+  button('campaign:scout', 1025, 340, 100, 34, '정찰', mapTool === 'scout', 15); button('campaign:diplomacy', 1135, 340, 100, 34, '외교', mapTool === 'diplomacy', 15);
+  ctx.save(); ctx.strokeStyle = COLORS.gold; ctx.fillStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(1043, 355, 6, 0, TAU); ctx.moveTo(1047.5, 359.5); ctx.lineTo(1054, 366); ctx.stroke();   // 정찰: 돋보기
+  ctx.beginPath(); ctx.moveTo(1153, 366); ctx.lineTo(1153, 349); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1153, 349); ctx.lineTo(1166, 353); ctx.lineTo(1153, 358); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();   // 외교: 백기
+  button('campaign:move', 1025, 388, 210, 36, moveMode === 'city' && !moveSelectOpen ? '지역 선택 중' : '이동', moveSelectOpen || moveMode === 'city', 16);
+  button('campaign:roster', 1025, 430, 100, 36, '군단 편성', false, 15); button('campaign:heroes', 1135, 430, 100, 36, '세력 장수', false, 15);
+  button('campaign:explore', 1025, 472, 210, 36, '탐색', false, 16);
+  button('campaign:save', 1025, 514, 100, 34, '저장', false, 15); button('campaign:load', 1135, 514, 100, 34, '로드', false, 15);
+  button('campaign:end', 1025, 556, 210, 36, '진행하기', true, 16);   // 이동 버튼과 같은 크기(210×36), 저장·로드 아래
+  panel(1025, 600, 210, 104, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');   // 진행 안내 문구는 진행하기 버튼 아래
+  wrapText(campaign.notice || '', 20).slice(0, 5).forEach((t, i) => label(t, 1130, 616 + i * 15, 12, COLORS.silver, 'center'));
+  label('이동 지정 → 저장 → 진행하기', 1130, 692, 11, COLORS.goldSel, 'center');
   { const x0 = 10, y0 = 636;   // 세력·군단 정보는 세력 관계 박스(470~990) 왼쪽
     panel(x0, y0, 450, 70, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.78)');
     FACTIONS.forEach((f, i) => {
