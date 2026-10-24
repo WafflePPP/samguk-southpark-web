@@ -112,11 +112,19 @@ const FACTION_HEROES = {
 };
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
-// 군단 편성 (명세 43 후속): 장수 한 명 = 군단 하나(군단장, 슬롯 0). 나머지 17칸은 일반 병사. 군주가 맨 앞, 나머지는 등급 높은 순. 3번째마다 원정군.
-const FACTION_CORPS = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, list]) => [f, [list[0], ...list.slice(1).sort((a, b) => Sim.GRADE_MUL[Sim.GRADE[b]] - Sim.GRADE_MUL[Sim.GRADE[a]])]]));
+// 군단 편성 (명세 55): 기동 군단 수 = 장수 수 × 30%(최소 1). 군주가 첫 군단장, 군단장은 나머지 중 등급 높은 순. 남는 장수는 등급순 snake 분배로 슬롯 6·12(2·3분대장)·1·2·3·4·5… 에 배치. 3번째마다 원정군.
+const CORPS_RATIO = 0.3, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
+const gradeMul = k => Sim.GRADE_MUL[Sim.GRADE[k]];
+const FACTION_MEMBERS = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, list]) => {
+  const n = Math.max(1, Math.round(list.length * CORPS_RATIO)), rest = list.slice(1).sort((a, b) => gradeMul(b) - gradeMul(a)), corps = [list[0], ...rest.slice(0, n - 1)].map(lead => ({ lead, slots: {} }));
+  rest.slice(n - 1).forEach((key, i) => { const r = Math.floor(i / n), pos = i % n; corps[r % 2 ? n - 1 - pos : pos].slots[MEMBER_SLOTS[r]] = key; });   // snake: 1→N, N→1 순환
+  return [f, corps];
+}));
+const FACTION_CORPS = Object.fromEntries(Object.entries(FACTION_MEMBERS).map(([f, c]) => [f, c.map(x => x.lead)]));
+const placeMembers = (faction, n, units) => { for (const [slot, key] of Object.entries(FACTION_MEMBERS[faction][n].slots)) units[slot] = key; };
 const factionCities = f => STAGES.filter(s => INITIAL_FACTIONS[s.stage - 1] === f).sort((a, b) => (b.id === CAPITALS[f]) - (a.id === CAPITALS[f]));   // 수도가 맨 앞
 const startCity = (f, n) => { const c = factionCities(f); return c[n % c.length].id; };   // n번째 군단의 시작 도시: 자기 세력 도시에 라운드로빈 (수도 우선)
-if (Object.entries(FACTION_HEROES).some(([f, h]) => FACTION_CORPS[f].length !== h.length || new Set(FACTION_CORPS[f]).size !== h.length)) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
+if (Object.entries(FACTION_HEROES).some(([f, h]) => { const all = FACTION_MEMBERS[f].flatMap(c => [c.lead, ...Object.values(c.slots)]); return all.length !== h.length || new Set(all).size !== h.length || FACTION_MEMBERS[f].some(c => Object.keys(c.slots).some(k => k >= Sim.ARMY_MAX)); })) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
 const playerFaction = () => campaign.playerFaction || '여포';
 const playerCapital = () => CAPITALS[playerFaction()] || START_STAGE;
 const unclaimedCities = () => STAGES.filter(s => s.owner !== 'player');   // 승리 조건(명세 44): 모든 도시를 점령. 동맹 도시도 포함 — 동맹을 깨고(전쟁) 점령해야 한다
@@ -183,7 +191,7 @@ const enemyForces = [];
 function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 군단장(슬롯 0)만 이름 있는 장수, 나머지는 도시 지형의 병사. 자기 도시에 분산 배치
   const perCity = {};
   FACTION_CORPS[faction].forEach((lead, n) => {
-    const at = startCity(faction, n), stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = withHealers(Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length])); units[0] = lead; for (let i = 1; i < units.length; i++) units[i] = factionKey(faction, units[i], i);
+    const at = startCity(faction, n), stage = stageById(at), pool = THEME_UNITS[stage.theme], k = perCity[at] = (perCity[at] ?? -1) + 1, units = withHealers(Array.from({ length: Sim.ARMY_MAX }, (_, i) => pool[(n + i) % pool.length])); units[0] = lead; for (let i = 1; i < units.length; i++) units[i] = factionKey(faction, units[i], i); placeMembers(faction, n, units);
     enemyForces.push(setEnemyRole({ id: enemyForces.length, fac: faction, corpsNo: n + 1, at, home: at, active: true, army: { team: 'enemy', name: '', at: [45, 18 + 7 * k], leader: lead, units, reserve: k > 0, reserveAt: 12, leaderRear: n === 0, formation: n === 0 ? 'guard' : 'block', trig: { near: 12, t: 60 } } }, stage, 'expedition'));
   });
 }
@@ -193,7 +201,7 @@ const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 21, SAVE_SLOTS = 3;   // v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 22, SAVE_SLOTS = 3;   // v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
 let startDifficulty = 'normal', activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
 function initialPlayerRelations(faction) {
@@ -205,7 +213,7 @@ function buildPlayerRoster(faction) {   // 플레이어 세력의 군단 전부:
   const troops = ['sword', 'shield', 'archer', 'cav', 'sword', 'shield', 'mage'];
   roster.length = 0;
   FACTION_CORPS[faction].forEach((lead, n) => {
-    const units = withHealers(Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length])); units[0] = lead; for (let i = 1; i < units.length; i++) units[i] = factionKey(faction, units[i], i);
+    const units = withHealers(Array.from({ length: 18 }, (_, i) => troops[(i + n) % troops.length])); units[0] = lead; for (let i = 1; i < units.length; i++) units[i] = factionKey(faction, units[i], i); placeMembers(faction, n, units);
     const growth = units.map(key => Sim.levelStats(key, 'player', 1));
     for (let i = 0; i < units.length; i++) { const item = Object.entries(Sim.ITEMS).find(([, v]) => v.unique && v.owner === units[i]); if (item) { growth[i].item = item[0]; campaign.items[item[0]] = 0; } }
     roster.push({ id: n + 1, name: `신규 군단 ${n + 1}`, at: startCity(faction, n), target: null, units, growth });
@@ -1452,7 +1460,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.255', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.256', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, 410, 200, 58, '뉴게임', true, 24); button('title:load', 650, 410, 200, 58, hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, 495, 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, 535, 20, COLORS.danger, 'center');
