@@ -25,7 +25,7 @@ const STYLES = {
   mage: { body: '#3a5a8a', trim: '#ffd34d', skin: '#e8c9a8', hairCap: true, sleeves: '#8fb0e8', weapon: 'fan', weaponScale: 0.5 },
   soldier: { body: '#4a2b33', trim: '#a02b2b', skin: '#d9a77e', helm: true, helmColor: '#34303a', plume: 1, pauldrons: true, weapon: 'spear' },
   archer: { body: '#3d3a46', trim: '#8a2a2a', skin: '#d9a77e', helm: true, helmColor: '#5a4332', plume: 0.7, weapon: 'bow' },
-  shield: { body: '#3a4a5a', trim: '#9aa7b8', skin: '#d9a77e', helm: true, helmColor: '#2c3340', plume: 0.5, pauldrons: true, weapon: 'axe', shield: true },
+  shield: { body: '#4a2b33', trim: '#b8433a', skin: '#d9a77e', helm: true, helmColor: '#2c3340', plume: 0.5, pauldrons: true, weapon: 'axe', shield: true },
   cav: { body: '#3b3f4b', trim: '#c9302c', skin: '#d9a77e', helm: true, helmColor: '#2b2d36', plume: 1.2, pauldrons: true, weapon: 'spear', horse: '#4a3a30' },
   captain: { body: '#5a1c24', trim: '#e0b13a', skin: '#c9946a', helm: true, helmColor: '#24222c', plume: 1.6, pauldrons: true, weapon: 'sword' },
   hua: { body: '#7a1c24', trim: '#ffd34d', skin: '#c9946a', cape: '#3a0e14', helm: true, helmColor: '#1c1c26', plume: 1.8, pauldrons: true, beard: true, weapon: 'axe' },
@@ -52,14 +52,14 @@ const STYLES = {
 };
 // 세력 고유 병종(명세 53 §3.5): 몸통·장식 위주로 구별한다. 아군/적 팀색(body·trim·horse)은 game.js styleOf 가 base 로 바꿔 끼운다.
 const FACTION_UNIT_STYLES = {
-  f_xian: { base: 'shield', armorPlate: '#54515a', helmColor: '#163b70', plumeColor: '#cce8ff', bulk: 1.1, towerShield: true },
+  f_xian: { base: 'shield', body: '#3f78c0', armorPlate: '#54515a', helmColor: '#163b70', enemyHelm: '#3a1418', plumeColor: '#cce8ff', bulk: 1.1, towerShield: true },   // 아군 밝은 청 몸통·은 방패 / 적 암적 몸통·붉은 방패 (v0.1.264)
   f_bing: { base: 'cav', feathers: true, plumeColor: '#c9302c', weapon: 'lance', fixedWeapon: true },
   f_nu: { base: 'archer', helmColor: '#4a5a66', plumeColor: '#dce8c6', weapon: 'crossbow', weaponScale: 1.15 },
   f_ji: { base: 'sword', weapon: 'halberd', fixedWeapon: true, pauldrons: true, plumeColor: '#d1a537' },
   f_qing: { base: 'sword', wrap: true, wrapColor: '#e0c040', helm: false },
-  f_hubao: { base: 'cav', plume: 1.8, plumeColor: '#b84338', armorPlate: '#54515a', fur: true, weapon: 'lance', fixedWeapon: true },
+  f_hubao: { base: 'cav', plume: 1.8, plumeColor: '#b84338', armorPlate: '#54515a', fur: true, tigerEars: true, stripes: '#e8892a', bulk: 1.18, weapon: 'lance', fixedWeapon: true },
   f_bai: { base: 'sword', helmColor: '#f0ece0', plume: 1.4, plumeColor: '#ffffff', cape: '#e8e4da', weapon: 'spear' },
-  f_dan: { base: 'sword', helm: false, hairCap: true, band: true, sleeves: '#bc9b72' },
+  f_dan: { base: 'sword', helm: false, hairCap: true, band: true, sleeves: '#bc9b72', strawHat: true },
 };
 const ENEMY_BASE_STYLE = { sword: 'soldier', shield: 'shield', archer: 'archer', cav: 'cav' };
 const ALLY_BASE_STYLE = { sword: 'ally_sword', shield: 'ally_shield', archer: 'ally_archer', cav: 'ally_cav' };
@@ -207,6 +207,9 @@ function drawBody(g, x, y, r, face, s, o = {}) {
     if (s.feathers) { g.strokeStyle = f ? W : '#c9302c'; g.lineWidth = 4; g.beginPath(); g.moveTo(x - r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x - r * 1.2, hy - r * 2.2, x - r * 0.6, hy - r * 2.9); g.moveTo(x + r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x + r * 1.2, hy - r * 2.2, x + r * 0.6, hy - r * 2.9); g.stroke(); }
     if (s.horns) { g.strokeStyle = f ? W : s.trim; g.lineWidth = r * 0.16; g.beginPath(); g.moveTo(x - r * 0.45, hy - r * 0.45); g.quadraticCurveTo(x - r * 1.05, hy - r * 0.9, x - r * 0.92, hy - r * 1.35); g.moveTo(x + r * 0.45, hy - r * 0.45); g.quadraticCurveTo(x + r * 1.05, hy - r * 0.9, x + r * 0.92, hy - r * 1.35); g.stroke(); }
   }
+  if (s.stripes) { g.strokeStyle = f ? W : s.stripes; g.lineWidth = Math.max(2, r * 0.2); g.lineCap = 'butt'; g.beginPath(); for (const o of [-0.5, 0, 0.5]) { g.moveTo(x + (o - 0.18) * r, by - r * 0.85); g.lineTo(x + (o + 0.18) * r, by + r * 0.05); } g.stroke(); }
+  if (s.tigerEars) { g.fillStyle = f ? W : s.stripes; g.strokeStyle = '#1c2230'; g.lineWidth = 1.5; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(x + sd * r * 0.2, hy - r * 0.55); g.lineTo(x + sd * r * 0.85, hy - r * 1.35); g.lineTo(x + sd * r * 0.8, hy - r * 0.3); g.closePath(); g.fill(); g.stroke(); } }
+  if (s.strawHat) { g.fillStyle = f ? W : '#d2b06a'; g.strokeStyle = '#1c2230'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, hy - r * 1.55); g.lineTo(x + r * 1.15, hy - r * 0.25); g.lineTo(x - r * 1.15, hy - r * 0.25); g.closePath(); g.fill(); g.stroke(); }
   if (s.beard) { g.fillStyle = f ? W : (s.beardColor || '#17171b'); g.beginPath(); g.moveTo(x - r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 1.7, x + r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 0.35, x - r * 0.5, hy + r * 0.1); g.fill(); }
   if (s.hair) { g.fillStyle = f ? W : '#2b2433'; g.beginPath(); g.arc(x, hy - r * 0.04, r * 0.64, Math.PI, TAU); g.fill(); g.strokeStyle = f ? W : '#2b2433'; g.lineWidth = 3; g.beginPath(); g.moveTo(x - cx * r * 0.2, hy - r * 0.3); g.quadraticCurveTo(x - cx * r * 1.1, hy - r * 0.1, x - cx * r * 1.3, hy + r * 0.7); g.stroke(); }
   if (s.shield) { g.fillStyle = f ? W : s.trim; g.strokeStyle = '#1c2230'; g.lineWidth = 2; g.beginPath(); if (s.towerShield) g.rect(x + cx * r * 0.95 - r * 0.65, by - r, r * 1.3, r * 2.2); else g.ellipse(x + cx * r * 0.95, by + 2, r * 0.5, r * 1.0, 0, 0, TAU); g.fill(); g.stroke(); }
@@ -227,13 +230,17 @@ function drawBody(g, x, y, r, face, s, o = {}) {
     for (let i = 0; i < 4; i++) { const a = face + i * TAU / 4; g.beginPath(); g.moveTo(ex + Math.cos(a) * radius * 1.2, ey + Math.sin(a) * radius * 1.2); g.lineTo(ex + Math.cos(a) * radius * 1.6, ey + Math.sin(a) * radius * 1.6); g.stroke(); }
     g.restore();
   }
-  if (pose && ['slash', 'thrust', 'dash', 'guard', 'hurt'].includes(pose.state)) {
-    g.save(); const hit = pose.state === 'guard' || pose.state === 'hurt';
-    g.globalAlpha *= hit ? pose.impact : pose.state === 'dash' ? 0.45 : pose.trail * 0.6;
-    g.strokeStyle = hit ? pose.state === 'guard' ? '#b4e8ff' : '#fff0b0' : '#ffe9a0'; g.lineWidth = 2;
+  if (pose && ['guard', 'hurt'].includes(pose.state)) {   // 색 없이도 구분: 방어=방패 마름모(채움+굵은 테두리), 피격=뾰족한 충격 별 (v0.1.264)
+    const guard = pose.state === 'guard', ex = x + cx * r, ey = by + sy * r, k = Math.max(0.6, pose.impact), R = r * (guard ? 1.25 : 1.4);
+    g.save(); g.globalAlpha *= k; g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = '#1c2230'; g.fillStyle = guard ? '#b4e8ff' : '#ffe27a';
     g.beginPath();
-    if (hit) { const ex = x + cx * r, ey = by + sy * r, reach = r * (1.4 - pose.impact * 0.4); for (let i = 0; i < 4; i++) { const a = face + Math.PI / 4 + i * TAU / 4; g.moveTo(ex + Math.cos(a) * r * 0.3, ey + Math.sin(a) * r * 0.3); g.lineTo(ex + Math.cos(a) * reach, ey + Math.sin(a) * reach); } }
-    else if (pose.state === 'slash') g.arc(x, by, r * 2, pose.angle - 0.7, pose.angle + 0.3);
+    if (guard) { g.moveTo(ex, ey - R); g.lineTo(ex + R * 0.8, ey); g.lineTo(ex, ey + R * 1.15); g.lineTo(ex - R * 0.8, ey); g.closePath(); }
+    else { for (let i = 0; i < 16; i++) { const a = face + i * TAU / 16, d = i % 2 ? R * 0.4 : R; i ? g.lineTo(ex + Math.cos(a) * d, ey + Math.sin(a) * d) : g.moveTo(ex + Math.cos(a) * d, ey + Math.sin(a) * d); } g.closePath(); }
+    g.stroke(); g.fill(); g.restore();
+  }
+  if (pose && ['slash', 'thrust', 'dash'].includes(pose.state)) {
+    g.save(); g.globalAlpha *= pose.state === 'dash' ? 0.45 : pose.trail * 0.6; g.strokeStyle = '#ffe9a0'; g.lineWidth = 2; g.beginPath();
+    if (pose.state === 'slash') g.arc(x, by, r * 2, pose.angle - 0.7, pose.angle + 0.3);
     else { for (const side of [-1, 1]) { const ex = x - sy * side * r, ey = by + cx * side * r; g.moveTo(ex - cx * r * 1.8, ey - sy * r * 1.8); g.lineTo(ex + cx * r * 0.5, ey + sy * r * 0.5); } }
     g.stroke(); g.restore();
   }
