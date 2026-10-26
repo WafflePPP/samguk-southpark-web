@@ -494,7 +494,7 @@ function tryHpRetreat(S, A) {
   A.nextHpRetreatCheck = S.t + 12;
   const power = statPower(L), chance = clamp(0.78 - 0.58 * power / (power + 1200), 0.2, 0.78) * S.retreatScale; if (S.rnd() >= chance) return false;
   const why = leaderLow ? '군단장 생명력 ' + Math.round(RETREAT_HP * 100) + '% 이하' : '군단 생명력 ' + Math.round(RETREAT_CORPS_HP * 100) + '% 이하', info = ` · 군단장 전투력 ${Math.round(power)} · 확률 ${Math.round(chance * 100)}%`;
-  if (leaderLow && !L.named && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); notice(S, 'enemy', `적 ${A.name} 군단장이 투항하고 군단이 후퇴합니다. · ${why}${info}`); return true; }
+  if (leaderLow && !L.named && S.surrenderSlots > 0 && S.rnd() < LEADER_SURRENDER) { surrender(S, L); startRetreat(S, A); return true; }   // 군단장(일반 병사) 투항은 팝업 없이 결과 화면에서 정리
   startRetreat(S, A); notice(S, 'enemy', `적 ${A.name}가 ${why}로 후퇴합니다.${info}`); return true;
 }
 function orphanRetreat(S, units, team, label) {   // 군단장이 전사하면 같은 군단 병사들이 후퇴할 수 있다 (확률 = 퇴각 사기 판정, 광신자 제외)
@@ -518,12 +518,12 @@ function die(S, u, killer) {
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
-  if (u.team === 'player' && !u.named) dialogue(S, u, '아군 ' + u.name + '이 전사했습니다.');
+  if (u.team === 'player' && !u.named) S.stats.soldierLost = (S.stats.soldierLost || 0) + 1;   // 일반 병사 전사: 팝업 없이 결과 화면에서 정리
+  else if (u.team === 'enemy' && !u.named) S.stats.soldierKilled = (S.stats.soldierKilled || 0) + 1;
   const corpsLead = u.team === 'player' && u.isLeader && u.army === S.armies.find(B => B.team === 'player' && B.corps === u.army.corps);   // 아군 군단장(군단 첫 분대의 지휘관)
   if (corpsLead) { for (const B of S.armies) if (B.team === 'player' && B.corps === u.army.corps) orphanRetreat(S, B.units, 'player', B.name); }
   if (u.isLeader && !u.army.routed) {
     u.army.routed = true; text(S, u.x, u.y - 60, u.army.name + (u.captured ? ' 지휘관 포박!' : ' 지휘관 전사!'), '#ff5a4a');
-    if (u.team === 'enemy' && !u.named) dialogue(S, u, '내가 여기서 쓰러지다니…');
     if (u.team === 'enemy') {
       const fleeing = tryRout(S, u.army);
       notice(S, 'enemy', fleeing ? '적 ' + u.army.name + '가 후퇴합니다.' : '적 ' + u.army.name + '가 지휘관 없이 전투를 계속합니다.');
@@ -553,7 +553,7 @@ function surrender(S, u) {
   const squad = A.squads[0] || (A.squads[0] = { id: 0, units: [] });
   u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = 0;
   A.units.push(u); squad.units.push(u); if (!A.ctrl) A.ctrl = u; if (A.support) A.state = 'player'; setFormation(A, A.formation); S.surrenderSlots--;
-  dialogue(S, u, '목숨을 살려주십시오. 아군으로 싸우겠습니다!'); return true;
+  S.stats.surrendered = (S.stats.surrendered || 0) + 1; return true;   // 일반 병사 투항은 팝업 없이 전투 결과 화면에서 정리
 }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
