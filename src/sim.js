@@ -547,6 +547,7 @@ function surrender(S, u) {
     A = { id: S.armies.length, team: 'player', name: '투항 군단', corps: 'surrender', squadIndex: 0, units: [], squads: [squad], leader: null, commander: false, trig: null, support: false, state: 'player', formation: 'block', routed: false, order: 'idle', ctrl: null };
     S.armies.push(A);
   }
+  if (u.rep) { const f = S.stats.foeRep || (S.stats.foeRep = { d: 0, t: 0, h: 0, s: 0 }); for (const k in f) f[k] += u.rep[k]; u.rep = null; }   // 투항 전 분량은 적 집계로 옮기고 합류 후 분량만 아군에 남긴다
   const old = u.army, oi = old.units.indexOf(u); if (oi >= 0) old.units.splice(oi, 1);
   if (old.leader === u) { old.leader = null; old.routed = true; }
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
@@ -555,10 +556,15 @@ function surrender(S, u) {
   A.units.push(u); squad.units.push(u); if (!A.ctrl) A.ctrl = u; if (A.support) A.state = 'player'; setFormation(A, A.formation); S.surrenderSlots--;
   S.stats.surrendered = (S.stats.surrendered || 0) + 1; return true;   // 일반 병사 투항은 팝업 없이 전투 결과 화면에서 정리
 }
+// 전투 기여 집계(결과 화면): u.rep = { d 가한 피해, t 받은 피해, h 남에게 준 회복, s 자가 회복 }. 모두 실제 HP 증감분(과다 피해·과회복은 잘림). 집계만 하며 규칙·난수에는 영향 없음.
+// d: 적에게 준 피해만(번개 오폭은 d 에서 제외, 맞은 쪽 t 에는 포함) / h: 치유·축복으로 다른 아군을 회복 / s: 자기 자신 회복(치유 대상이 자신인 경우·HR 자연회복). 레벨업 회복은 제외.
+const rp = u => u.rep || (u.rep = { d: 0, t: 0, h: 0, s: 0 });
+function healTo(from, t, amt) { const was = t.hp; t.hp = Math.min(t.maxHp, t.hp + amt); rp(from)[from === t ? 's' : 'h'] += t.hp - was; }
 function hurt(S, from, t, dmg) {
   if (!live(t) || dmg <= 0) return;
   const opposed = from && from.team !== t.team, tier = opposed ? matchup(from.category, t.category) : 0;
   if (opposed) { const m = classMultiplier(from.category, t.category); dmg *= m > 1 ? m * MATCHUP_BONUS : m; }
+  { const real = Math.min(dmg, t.hp); rp(t).t += real; if (opposed) rp(from).d += real; }
   t.hp -= dmg; t.flash = 0.12; t.lastHurt = S.t;
   if (opposed) gainCombatXp(S, from, 1);
   t.hitState = tier; t.hitDuration = tier > 0 ? 0.24 : tier < 0 ? 0.48 : 0.35; t.hitT = t.hitDuration;
@@ -597,7 +603,7 @@ function castSpell(S, u, key, x, y) {
   if (sp.kind === 'heal') {
     let t = null, bd = 1e9; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp && Math.hypot(e.x - x, e.y - y) < 60 && dist(e, u) <= sp.range) { const r = e.hp / e.maxHp; if (r < bd) { bd = r; t = e; } }
     if (!t) return false;
-    const heal = Math.round((70 + u.lv * 5) * HP_MUL * (1 + 0.5 * (spellPower(u.generic ? null : u) - 1)) * (1 + skillPct(u, 'heal') / 100)); t.hp = Math.min(t.maxHp, t.hp + heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
+    const heal = Math.round((70 + u.lv * 5) * HP_MUL * (1 + 0.5 * (spellPower(u.generic ? null : u) - 1)) * (1 + skillPct(u, 'heal') / 100)); healTo(u, t, heal); text(S, t.x, t.y - t.r * 4, '+' + heal, '#7dff9a', 'buff'); ring(S, t.x, t.y, 24, '#7dff9a', 0.4); buffFx(S, t, 'heal', '#7dff9a');
   } else if (sp.kind === 'homing') {   // 장풍: 가까운 적을 쫓아간다 (조준한 곳 가까이에 적이 없으면 직진)
     let tgt = null, bd = 80; for (const e of S.units) if (live(e) && e.team !== u.team) { const dd = Math.hypot(e.x - x, e.y - y); if (dd < bd) { bd = dd; tgt = e; } }
     shot({ kind: 'homing', vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420, left: sp.range * 1.5, tgt });
@@ -630,7 +636,7 @@ function useSpecial(S, u, x, y) {
     u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; u.titleDash = titled; u.dashHit = titled ? new Set() : null; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
-  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); e.hp = Math.min(e.maxHp, e.hp + h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
+  else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); healTo(u, e, h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   const OS = ((TITLE_EFFECT[u.subclass] || {}).onSpecial || {})[u.special];
   if (OS) { if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d'); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt); }
   u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = u.special; u.face = ang; tire(u, 'special');
@@ -886,7 +892,7 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.kiteT = (u.kiteT || 0) - dt; u.ftDebuffT -= dt; if (u.buffs) { for (const b of u.buffs) b.t -= dt; u.buffs = u.buffs.filter(b => b.t > 0); } u.moving = false;
   const HT = (TITLE_EFFECT[u.subclass] || {}).hp; if (HT) { if (u.hp <= u.maxHp * HT.below && !u.hpTrig) { u.hpTrig = true; addBuff(S, u, 'hp', HT.mods, HT.glyph, HT.col); text(S, u.x, u.y - u.r * 5, HT.text, HT.col, 'buff'); ring(S, u.x, u.y, 36, HT.col, 0.5); } else if (u.hp > u.maxHp * HT.below) u.hpTrig = false; }
-  if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * combatStat(S, u, 'hr') * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
+  if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) healTo(u, u, u.maxHp * combatStat(S, u, 'hr') * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }

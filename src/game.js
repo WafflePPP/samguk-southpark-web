@@ -530,6 +530,7 @@ function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 �
   mobile = on; loadZoom(on); TB_H = on ? 0 : 58; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
 function startBattle(stage, explore = false) {
+  repSide = 'player'; repPage = 0;
   if (!combatReadyCorps(roster[campaign.corps])) { state = 'map'; campaign.battle = null; campaign.notice = '군단 편성에서 1번 칸에 이름 있는 군단장을 배치해야 출전할 수 있습니다.'; saveCampaign(); return false; }
   const st0 = stage || campaign.battle, gi = st0 && guestInfo(st0), hostIds = campaign.invasion && st0 && st0.owner === 'enemy' && relationOf(st0.faction).status === 'ally' ? gi.allies.filter(f => forceFaction(f) === st0.faction).map(f => f.id) : [];
   if (!explore && !allyHelpIds) { const guests = gi ? gi.allies.filter(f => !hostIds.includes(f.id)) : []; if (guests.length) { allyChoice = { stage: st0, explore, ids: guests.map(f => f.id) }; return false; } }   // 동맹 도시의 주둔군은 자동 방어하고, 다른 동맹 원군만 돕기·퇴각을 고른다
@@ -1684,10 +1685,54 @@ function heroFateLines() {   // 전투 직후 인게임 결과 화면에 표시�
   if (fell.length) out.push('아군 전사: ' + list(fell)); if (held.length) out.push('아군 포박: ' + list(held));
   return out;
 }
+// 전투 기여 표(결과 화면): 이름 있는 장수는 한 명씩, 일반 병사는 병종별로 합산. 집계 정의는 sim.js `rp`.
+let repSide = 'player', repPage = 0;
+const repZero = () => ({ d: 0, t: 0, h: 0, s: 0 });
+function battleReport(side) {
+  const rows = [], gen = {}, sum = repZero(); let foe = 0;
+  for (const u of S.units) {
+    if (u.team !== side) continue;
+    const r = u.rep || repZero(), live = !u.dead && !u.fled && !u.out;
+    if (u.named) rows.push({ name: u.name, role: CATEGORY_NAME[u.category] || '', alive: live, n: 1, ...r });
+    else { const g = gen[u.key] || (gen[u.key] = { name: Sim.U[u.key].name, role: '병사', alive: 0, n: 0, ...repZero() }); g.n++; if (live) g.alive++; for (const k in r) g[k] += r[k]; }
+  }
+  if (side === 'enemy' && S.stats.foeRep) foe = S.stats.foeRep;   // 투항 전 분량
+  const all = [...rows, ...Object.values(gen)].sort((a, b) => b.d - a.d);
+  for (const r of all) for (const k in sum) sum[k] += r[k];
+  if (foe) { const g = all.find(r => r.role === '병사'); if (g) for (const k in foe) { g[k] += foe[k]; sum[k] += foe[k]; } else { all.push({ name: '투항 병사', role: '병사', alive: 0, n: 0, ...foe }); for (const k in foe) sum[k] += foe[k]; } }
+  if (side === 'enemy') { const named = all.filter(r => r.role !== '병사'), sol = all.filter(r => r.role === '병사'); if (sol.length) { const m = { name: '일반 병사', role: '병사', alive: 0, n: 0, ...repZero() }; for (const r of sol) { m.alive += r.alive; m.n += r.n; for (const k in sum) m[k] += r[k]; } return { rows: [...named, m].sort((a, b) => b.d - a.d), sum }; } }
+  return { rows: all, sum };
+}
+const repPerPage = () => mb(8, 5);
+function repTurn(d) { if (!S || !S.over) return; const n = Math.max(1, Math.ceil(battleReport(repSide).rows.length / repPerPage())); repPage = (repPage + d + n) % n; }
+function repToggle() { repSide = repSide === 'player' ? 'enemy' : 'player'; repPage = 0; }
+function drawBattleReport(y0) {
+  const { rows, sum } = battleReport(repSide), per = repPerPage(), pages = Math.max(1, Math.ceil(rows.length / per)), rh = mb(28, 32), n = v => String(Math.round(v)), fs = 18;
+  if (repPage >= pages) repPage = 0;
+  const X = mb({ name: 150, d: 640, t: 780, h: 920, s: 1060 }, { name: 120, d: 700, t: 870, h: 1040, s: 0 });
+  const head = repSide === 'player' ? '아군' : '적군';
+  label(`${head} 전투 기여 (${repPage + 1}/${pages}쪽)`, X.name, y0, fs, COLORS.gold);
+  label('피해', X.d, y0, fs, COLORS.gold, 'right'); label('받은 피해', X.t, y0, fs, COLORS.gold, 'right'); label('회복', X.h, y0, fs, COLORS.gold, 'right'); if (X.s) label('자가회복', X.s, y0, fs, COLORS.gold, 'right');
+  const maxD = Math.max(1, ...rows.map(r => r.d));
+  rows.slice(repPage * per, repPage * per + per).forEach((r, i) => {
+    const y = y0 + rh * (i + 1);
+    ctx.fillStyle = repSide === 'player' ? 'rgba(80,140,255,.28)' : 'rgba(255,100,70,.28)'; ctx.fillRect(X.name - 10, y - rh / 2 + 2, (X.d - X.name + 20) * r.d / maxD, rh - 4);   // 피해량 비율 막대
+    label(r.role === '병사' ? `${r.name} ${r.alive}/${r.n}` : `${r.name} ${r.role}${r.alive ? '' : ' ✝'}`, X.name, y, fs, r.alive || r.role === '병사' ? COLORS.silver : COLORS.silver2, 'left', 300);
+    label(n(r.d), X.d, y, fs, '#fff', 'right'); label(n(r.t), X.t, y, fs, '#ff9a8a', 'right'); label(n(r.h), X.h, y, fs, '#7dff9a', 'right'); if (X.s) label(n(r.s), X.s, y, fs, '#7dff9a', 'right');
+  });
+  const yt = y0 + rh * (per + 1);
+  label('합계', X.name, yt, fs, COLORS.gold); label(n(sum.d), X.d, yt, fs, COLORS.gold, 'right'); label(n(sum.t), X.t, yt, fs, COLORS.gold, 'right'); label(n(sum.h), X.h, yt, fs, COLORS.gold, 'right'); if (X.s) label(n(sum.s), X.s, yt, fs, COLORS.gold, 'right');
+  const by = VH - tb(50) - 8, bw = 230;
+  button('rep:prev', VW / 2 - 365, by, bw, tb(50), '이전 쪽', false, 20); button('rep:side', VW / 2 - 115, by, bw, tb(50), repSide === 'player' ? '적군 보기' : '아군 보기', true, 20); button('rep:next', VW / 2 + 135, by, bw, tb(50), '다음 쪽', false, 20);
+}
 function drawOverlay(title, lines, col) {
-  if (S && S.over && (title === '승 리' || title === '패 배')) lines = [...lines, soldierTallyLine(), ...heroFateLines()].filter(Boolean);
-  ctx.fillStyle = 'rgba(10,12,20,.8)'; ctx.fillRect(0, 0, VW, VH);
-  label(title, VW / 2, 230, 96, col, 'center'); lines.forEach((s, i) => label(s, VW / 2, 330 + i * 38, 22, COLORS.silver, 'center'));
+  const result = S && S.over && (title === '승 리' || title === '패 배');
+  if (result) lines = [...lines, soldierTallyLine(), ...heroFateLines()].filter(Boolean);
+  ctx.fillStyle = result ? 'rgba(10,12,20,.95)' : 'rgba(10,12,20,.8)'; ctx.fillRect(0, 0, VW, VH);
+  if (!result) { label(title, VW / 2, 230, 96, col, 'center'); lines.forEach((s, i) => label(s, VW / 2, 330 + i * 38, 22, COLORS.silver, 'center')); return; }
+  label(title, VW / 2, 44, 60, col, 'center'); const ly = mb(28, 30);
+  lines.forEach((s, i) => label(s, VW / 2, 96 + i * ly, mb(18, 20), COLORS.silver, 'center', VW - 40));
+  drawBattleReport(Math.max(96 + lines.length * ly + 22, 200));
 }
 function advanceBattleEvent() {
   const e = S.events[0];
@@ -1717,7 +1762,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.271', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.272', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
@@ -2574,7 +2619,7 @@ cv.addEventListener('pointerdown', e => {
   if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && b.id.startsWith('campaign:diplomacy:') : heroView ? b && b.id.startsWith('campaign:heroes:') : econView ? b && b.id === 'campaign:econ:close' : scoutView ? b && b.id === 'campaign:scout:close' : exploreSelectOpen ? b && b.id.startsWith('campaign:explore:') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) uiClick(b.id); } return; }
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { advanceBattleEvent(); return; }
-  if (S.over) { if (T - overAt > 1) finishBattle(); return; }
+  if (S.over) { if (b && b.id.startsWith('rep:')) { if (b.id === 'rep:side') repToggle(); else repTurn(b.id === 'rep:next' ? 1 : -1); } else if (T - overAt > 1) finishBattle(); return; }
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
   if (menuOpen) { if (b && /^m:(?!act$|alt$|spell$)/.test(b.id)) uiClick(b.id); return; }
   if (supportOpen) { if (b && b.id.startsWith('support:')) uiClick(b.id); return; }
@@ -2625,7 +2670,7 @@ addEventListener('keydown', e => {
   if (state === 'roster') { if (e.code === 'Escape') uiClick('roster:back'); return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') finishTutorial(); else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 3 ? finishTutorial() : tutorialStep++; return; }
   if (S.events.length) { if (['Enter', ' ', 'Escape'].includes(e.key)) advanceBattleEvent(); return; }
-  if (S.over) { if (e.key.toLowerCase() === 'r' && T - overAt > 1) finishBattle(); return; }
+  if (S.over) { if (e.key === 'ArrowRight') repTurn(1); else if (e.key === 'ArrowLeft') repTurn(-1); else if (e.key === 'Tab') { e.preventDefault(); repToggle(); } else if (e.key.toLowerCase() === 'r' && T - overAt > 1) finishBattle(); return; }
   if (e.code in DIRS) { if (selectMode) confirmSelect(); dirStack = dirStack.filter(c => c !== e.code); dirStack.push(e.code); e.preventDefault(); return; }   // 방향 입력 (NumLock 상태와 무관하게 code 로 판별)
   keys[e.key] = true;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
