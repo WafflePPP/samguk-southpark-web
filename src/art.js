@@ -299,8 +299,8 @@ function battleHeroMotion(pose,face,r) {
   let reach=0;
   switch(pose.state){
     case 'move': m.y=-Math.abs(pose.stride||0)*2; m.turn=(pose.stride||0)*.035; m.frame=pose.stride>0?1:0; break;
-    case 'thrust': reach=12*k; m.turn=side*.12*k; m.frame=k>.2?1:0; break;
-    case 'slash': reach=7*k; m.turn=side*(-.3*k+.2*Math.sin(Math.PI*(pose.progress||0))); m.frame=k>.2?1:0; break;
+    case 'thrust': reach=18*k-3*Math.sin(Math.PI*(pose.progress||0)); m.turn=side*.2*k; m.frame=k>.12?1:0; break;
+    case 'slash': reach=10*k; m.turn=side*(-.48*k+.38*Math.sin(Math.PI*(pose.progress||0))); m.frame=k>.12?1:0; break;
     case 'shoot': reach=-7*k; m.turn=-side*.12*k; m.frame=k>.35?1:0; break;
     case 'cast': case 'heal': case 'bless': m.y=-5*k; m.turn=side*.06*k; m.frame=k>.25?1:0; break;
     case 'spin': m.face=face+Math.PI*2*(pose.progress||0); m.turn=side*.18*Math.sin(Math.PI*2*(pose.progress||0)); m.frame=k>.2?1:0; break;
@@ -310,6 +310,27 @@ function battleHeroMotion(pose,face,r) {
   }
   m.x=Math.round(Math.cos(face)*reach*size);m.y=Math.round((m.y+Math.sin(face)*reach)*size);
   return m;
+}
+function drawBattleMeleeTrail(g,x,y,r,face,pose,horse=false) {
+  if(!pose||!['thrust','slash'].includes(pose.state)||!(pose.trail>0))return;
+  const p=pose.progress||0,fade=pose.trail,cs=Math.cos(face),sn=Math.sin(face),side=cs<0?-1:1;
+  const point=(along,across)=>[x+cs*along-sn*across*side,y-r*(horse?2.15:1.7)+sn*along+cs*across*.65*side];
+  const line=(a,b,col,w=1)=>{const aa=point(...a),bb=point(...b);pixelLine(g,...aa,...bb,col,w);};
+  g.save();g.globalAlpha*=Math.min(.9,fade*1.6);
+  if(pose.state==='thrust'){
+    const tip=r*(2.8-p*.8);
+    line([r*.5,0],[tip,0],'#fff3cf',2);
+    line([r*.7,-4],[tip-5,-2],'#b0d9d4');line([r*.7,4],[tip-5,2],'#b0d9d4');
+    line([tip-6,-4],[tip,0],'#fff3cf');line([tip,0],[tip-6,4],'#fff3cf');
+  }else{
+    const end=-.8+p*2.6,start=end-1.8;
+    for(let i=0;i<12;i++){
+      const a=start+(end-start)*i/12,b=start+(end-start)*(i+1)/12;
+      for(const [radius,col,width] of [[r*2.5,'#b0d9d4',1],[r*2.2,'#fff3cf',2]])
+        line([Math.cos(a)*radius,Math.sin(a)*radius],[Math.cos(b)*radius,Math.sin(b)*radius],col,width);
+    }
+  }
+  g.restore();
 }
 function drawBattleBody(g,x,y,r,face,s,o={}) {
   if(!BATTLE_ART.ready||!BATTLE_ART.models.size)return;
@@ -322,6 +343,7 @@ function drawBattleBody(g,x,y,r,face,s,o={}) {
   const h=battleSpriteHeight(r,s),w=image.width/image.height*h;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+(motion?.x||0)),Math.round(y+(motion?motion.y:o.moving&&frame?-1:0)));if(motion?.turn)g.rotate(motion.turn);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if((Math.cos(view)<-.25)!==sourceLeft)g.scale(-1,1);
   g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round(h),Math.round(w),Math.round(h));g.restore();
+  drawBattleMeleeTrail(g,x,y,r,face,pose,!!s.horse);
 }
 if(typeof Image==='function')loadBattleArt();
 
