@@ -1655,23 +1655,24 @@ function drawOverlay(title, lines, col) {
 }
 function advanceBattleEvent() {
   const e = S.events[0];
-  if (e && e.type === 'casualties' && ((e.page || 0) + 1) * 8 < e.lines.length) e.page = (e.page || 0) + 1;
+  if (e && e.type === 'casualties' && (e.page || 0) + 1 < e.lines.length) e.page = (e.page || 0) + 1;
   else S.events.shift();
 }
 function drawEvent(e) {
   if (e.type === 'casualties') {
-    const page = e.page || 0; panel(100, 80, 1080, 560, COLORS.gold, 3, '#082027');
-    label('전투 중 장수 전사·포박 일괄 알림', 140, 124, 26, COLORS.gold);
-    e.lines.slice(page * 8, page * 8 + 8).forEach((line, i) => label(line, 140, 185 + i * 46, 22, COLORS.silver));
-    label(page * 8 + 8 < e.lines.length ? '탭 / Enter: 다음 목록' : '탭 / Enter: 전투 계속', 1140, 610, 20, COLORS.silver2, 'right'); return;
+    const text = e.lines[e.page || 0], u = S.units.find(u => u.dead && text.startsWith((u.team === 'player' ? '아군 ' : '적군 ') + u.name + '이(가) '));
+    // 판정과 일괄 이벤트는 유지하고, 표시만 기존 초상 대화창으로 한 명씩 넘긴다.
+    e = { type: 'dialogue', team: u ? u.team : e.team, key: u && u.style, speaker: u ? u.name : '전투 소식', text };
   }
   ctx.fillStyle = 'rgba(10,12,20,.55)'; ctx.fillRect(0, 0, VW, VH);
   const col = e.team === 'enemy' ? '#ff8a32' : COLORS.gold, w = e.type === 'dialogue' ? 760 : 700, h = e.type === 'dialogue' ? 150 : 104, x = (VW - w) / 2, y = (VH - h) / 2;
   panel(x, y, w, h, col, 4, '#e7e1cf');
   if (e.type === 'dialogue') {
     panel(x + 14, y + 14, 112, h - 28, COLORS.ink, 2, '#b9c5c7');
-    drawBody(ctx, x + 70, y + 112, 22, e.team === 'enemy' ? Math.PI : 0, STYLES[e.key] || STYLES.captain, { t: T, weaponLen: 62 });
-    label(e.speaker, x + 148, y + 42, 21, e.team === 'enemy' ? '#c55a2d' : '#315a86'); label(e.text, x + 148, y + 84, 22, '#292520');
+    const portrait = STYLES[e.key] || STYLES.captain;
+    ctx.save(); ctx.beginPath(); ctx.rect(x + 15, y + 15, 110, h - 30); ctx.clip();
+    drawBody(ctx, x + 70, y + 112, portrait.feathers ? 16 : 22, e.team === 'enemy' ? Math.PI : 0, portrait, { t: T, weaponLen: 52 }); ctx.restore();
+    label(e.speaker, x + 148, y + 42, 21, e.team === 'enemy' ? '#c55a2d' : '#315a86'); label(e.text, x + 148, y + 84, 22, '#292520', 'left', w - 164);
   } else label(e.text, VW / 2, y + 50, 24, col, 'center');
   label(mobile ? '화면을 탭하여 계속' : '클릭 / Enter', x + w - 16, y + h - 14, 14, '#68645d', 'right');
 }
@@ -1680,7 +1681,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.267', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.268', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
