@@ -318,6 +318,8 @@ function loadBattleArt() {
     const update=await fetch('src/assets/lubu-v284/layout.json?v=284&try='+attempt).then(r=>{if(!r.ok)throw new Error('여포 아트 목록 로드 실패');return r.json();});
     const sheets=await Promise.all(update.map(async sheet=>{const image=await load('src/assets/lubu-v284/'+sheet.file,284);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     installLubuRework(sheets);
+    const diao=BATTLE_ART.models.get('diao');
+    diao.bodyRatio=diao.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/diao.directionHeight;
     const jang=await fetch('src/assets/zhangliao-v287/layout.json?v=287&try='+attempt).then(r=>{if(!r.ok)throw new Error('장료 아트 목록 로드 실패');return r.json();});
     const jangSheets=await Promise.all(jang.map(async sheet=>{const image=await load('src/assets/zhangliao-v287/'+sheet.file,287);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     BATTLE_ART.models.set('zhangliao',{...BATTLE_ART.models.get('jang')});
@@ -400,6 +402,7 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
     let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
     const kind=model.attacks&&(['thrust','dash'].includes(p.state)?'thrust':['slash','spin'].includes(p.state)?'slash':null);
     if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
+    if(model.bodyRatio&&image.bodyHeight>0)height=image.bodyHeight/model.bodyRatio;
     return {...l,m,image,height};
   });
   const motion={x:0,y:0,turn:0,stretch:0};for(const l of samples)for(const k of Object.keys(motion))motion[k]+=l.m[k]*l.weight;
