@@ -244,10 +244,10 @@ function baseMaxHp(key, team) {
 // ---------- 병사 등급 B·C·D·F (명세 53 §4: 모집 품질, 장수 등급과 별개 축. C = 현행 1.0) ----------
 const SOLDIER_GRADE = { B: { name: '정예', hp: 1.12, st: 1.14 }, C: { name: '정규', hp: 1, st: 1 }, D: { name: '신병', hp: 0.87, st: 0.9 }, F: { name: '징집병', hp: 0.77, st: 0.82 } };
 const SOLDIER_GRADE_COLOR = { B: '#9fdcff', C: '#cfd3e6', D: '#c9a56a', F: '#8a90a6' };
-const GRADE_PATTERN = { low: 'FFDDDDCCCC', mid: 'FDDCCCCCBB', high: 'DCCCCCCBBB' };   // 인덱스 % 10
+const GRADE_PATTERN = { low: 'FFDDDDCCCC', mid: 'FDDCCCCCBB', high: 'DCCCCCCBBB', cap: 'CBBBBBBBBB' };   // 인덱스 % 10 · cap: 수도 수비병(명세 62) 정예 B 90%
 const soldierTier = level => level >= 5 ? 'high' : level >= 3 ? 'mid' : 'low';
 // 군단 안 슬롯 번호(index)와 도시·군단 레벨로 병사 등급을 정한다(결정적). 수도는 한 단계 위.
-function soldierGradeAt(level, index, capital = false) { const t = soldierTier(level), tier = capital ? (t === 'low' ? 'mid' : 'high') : t; return GRADE_PATTERN[tier][index % 10]; }
+function soldierGradeAt(level, index, capital = false) { return GRADE_PATTERN[capital ? 'cap' : soldierTier(level)][index % 10]; }
 const validGrade = sg => SOLDIER_GRADE[sg] ? sg : 'C';
 // ---------- 전투력 ----------
 // 한 유닛의 능력치를 가중합해 하나의 수로 환산한다 (체력 100당 1, 공격·방어·명중 계열은 반영, 이동 속도는 약하게). 군단 전투력은 소속 유닛 전투력의 합.
