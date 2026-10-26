@@ -605,9 +605,38 @@ function routeVia(from, to, ok) {   // 중간 도시가 ok 를 만족하는 경�
   while (q.length) { const path = q.shift(), id = path[path.length - 1]; if (id === to) return path; for (const n of stageById(id).links) if (!seen.has(n) && (n === to || ok(stageById(n)))) { seen.add(n); q.push(path.concat(n)); } }
   return [];
 }
+// 명세 63c 목표 도시 점수화: 플레이어와 전쟁 중인 세력은 수도 직행 대신 세력당 턴 1회 점수가 높은 플레이어 도시를 목표로 삼는다 (AI 끼리 목표는 그대로).
+// score = value ÷ (1 + def ÷ max(집결지 전력, 1)) − 거리×distPenalty. 수도는 최고 점수와의 차가 |최고|×capBias 이하면 우선, 이전 목표는 새 후보가 |이전|×(keep−1) 이상 앞설 때만 교체. 끄는 값 on:false (= 수도 직행)
+const AI_GOAL = { on: false, distPenalty: 0.25, capBias: 0.15, keep: 1.25 };   // 꺼 둠: 유비 첫 접촉 개선 없음·도시 변화 없는 판 증가 (켜는 값 on:true, 명세 63 구현 결과)
+const aiGoal = {};   // 세력 → { turn, sig, id, score } 메모리 캐시 (저장하지 않음 — 불러온 뒤 첫 턴에 다시 계산)
+const aiCityValue = st => ({ small: 1, medium: 1.5, large: 2 }[citySize(st)]) * (['barracks', 'granary'].includes(CITY_KIND[st.id]) ? 1.3 : 1) * (st.id === playerCapital() ? 2 : 1);
+function aiChooseGoal(scored, cap, prevId) {   // scored: [{id, score}] → 최고 점수 · 수도 우선(capBias) · 이전 목표 유지(keep). 순수 함수 (시험용)
+  let pick = scored.reduce((a, b) => b.score > a.score ? b : a);
+  const capRow = scored.find(x => x.id === cap); if (capRow && (AI_GOAL.capBias >= 1 || capRow.score >= pick.score - Math.abs(pick.score) * AI_GOAL.capBias)) pick = capRow;
+  const prev = prevId && scored.find(x => x.id === prevId);
+  return prev && pick.score <= prev.score + Math.abs(prev.score) * (AI_GOAL.keep - 1) ? prev : pick;
+}
+function aiPlayerGoal(faction) {
+  const sig = playerCapital() + '|' + playerFaction() + '|' + aiSeed, cache = aiGoal[faction];
+  if (cache && cache.turn === campaign.turn && cache.sig === sig && stageById(cache.id).owner === 'player') return cache.id;
+  const cap = playerCapital(), pows = {};
+  for (const f of enemyForces) if (f.active && f.role !== 'garrison' && forceFaction(f) === faction) pows[f.at] = (pows[f.at] || 0) + forcePow(f);
+  const ids = Object.keys(pows).sort((a, b) => pows[b] - pows[a] || routeVia(a, cap, () => true).length - routeVia(b, cap, () => true).length);
+  if (!ids.length) return cap;
+  const staging = ids[0], own = Math.max(pows[staging], 1), scored = [];
+  for (const st of STAGES) {
+    if (st.owner !== 'player') continue;
+    const path = routeVia(staging, st.id, x => aiPassable(faction, x)); if (path.length < 2) continue;
+    scored.push({ id: st.id, score: aiCityValue(st) / (1 + playerPowerNear(st) / own) - (path.length - 1) * AI_GOAL.distPenalty });
+  }
+  if (!scored.length) return cap;
+  const pick = aiChooseGoal(scored, cap, cache && cache.turn === campaign.turn - 1 && cache.sig === sig ? cache.id : null);
+  aiGoal[faction] = { turn: campaign.turn, sig, id: pick.id, score: pick.score };
+  return pick.id;
+}
 function aiPickTarget(faction, here) {   // 이 세력이 전쟁 중인 상대의 도시 중 지나갈 수 있는 가장 가까운 곳 (같으면 플레이어 우선)
   const goals = [];
-  if (relationOf(faction).status === 'war') goals.push({ id: playerCapital(), kind: 'player' });
+  if (relationOf(faction).status === 'war') goals.push({ id: AI_GOAL.on ? aiPlayerGoal(faction) : playerCapital(), kind: 'player' });
   for (const other of aiFactions()) if (other !== faction && !factionDead(other) && !alliedFactions(faction, other) && aiRel(faction, other).status === 'war') for (const s of factionStages(other)) goals.push({ id: s.id, kind: 'ai' });
   let best = null;
   for (const goal of goals) { const path = routeVia(here.id, goal.id, s => aiPassable(faction, s)); if (path.length > 1 && (!best || path.length < best.path.length || path.length === best.path.length && goal.kind === 'player')) best = { path, kind: goal.kind }; }
@@ -620,6 +649,12 @@ function aiPressure(key, ratio) {   // 같은 목표 앞에서 집결만 하며 
 }
 const AI_EASE_STEP = 0.12, AI_MIN_RATIO = 0.5;   // 방어·집결로 기다린 턴마다 요구 전력비 -12%, 단 공격 전력비는 0.5 미만으로 내려가지 않는다 (자살 공세 방지, 명세 44)
 const aiEase = force => Math.min(1, Math.max(AI_MIN_RATIO / aiP().attack, 1 - AI_EASE_STEP * (force.wait || 0)));   // 기다린 턴 수에 따라 1 → 하한
+// 명세 63b 호감도 연동 침공비: 플레이어 대상 침공 ratio 에 clamp(1 + k×호감도, lo, hi) 를 곱한다 (숙적 ×0.75 까지 더 공격적, 우호 ×1.15 까지 신중). AI_MIN_RATIO 하한에도 같은 계수가 곱해진다. 끄는 값 k:0
+// 명세 63d 세력 성향(원작 근거 없는 설계값): 플레이어 대상 침공 ratio 에 attack 을 곱하고(하한도 함께 낮아짐/높아짐), 전선 군단 증원 주기에 reinforce 를 곱한다. 끄는 값 전부 1
+const AI_STYLE = { '여포': { attack: 0.8, reinforce: 1 }, '조조': { attack: 1, reinforce: 1 }, '원소': { attack: 1, reinforce: 1 }, '유비': { attack: 1, reinforce: 1 } };   // 켬: 여포만 0.80 (유비 시작 첫 접촉 8/12→12/12). 원소 1.1/0.8·유비 1.05 는 조조 시작 첫 접촉을 늦춰 1.0 으로, 설계값 여포 0.90 은 부족해 0.80, 0.85 는 수도 분포 묶음 38% 로 탈락 (명세 63 구현 결과)
+const aiStyle = faction => AI_STYLE[faction] || { attack: 1, reinforce: 1 };
+const AI_AFF = { k: 0, lo: 0.75, hi: 1.15 };   // 측정 결과 효과 없음 → 꺼 둠 (켜는 값 k:0.004, 명세 63 구현 결과)
+const aiAffF = faction => Math.min(AI_AFF.hi, Math.max(AI_AFF.lo, 1 + AI_AFF.k * affinityOf(playerFaction(), faction)));
 function enemyDecision(force) {
   if (force.role === 'garrison') force.at = force.home;
   const here = stageById(force.at), own = enemyForces.filter(f => f.active && f.at === here.id && forceFaction(f) === forceFaction(force) && f.role !== 'garrison').reduce((n, f) => n + forcePow(f), 0), threat = playerPowerNear(here), mine = forcePow(force), faction = forceFaction(force), relation = relationOf(faction), base = { own, threat, mine, from: here.id, to: null };
@@ -631,10 +666,10 @@ function enemyDecision(force) {
   const next = stageById(tgt.path[1]); base.to = next.id;
   if (tgt.kind === 'player' && threat > 0 && threat >= (own + guardsAt(here).filter(f => forceFaction(f) === faction).reduce((n, f) => n + forcePow(f), 0)) * aiP().defend / aiEase(force)) return { ...base, act: 'hold', mode: '방어', reason: `아군 위협 ${threat} ≥ 주둔 ${own}×${(aiP().defend / aiEase(force)).toFixed(2)}` };
   if (next.owner === 'player' || hostsPlayer(next)) {
-    const def = playerPowerNear(next), ratio = aiP().attack * aiEase(force) * (grainOf(faction) < ECON.hungry ? 1.2 : 1);
+    const def = playerPowerNear(next), affF = aiAffF(faction), ratio = aiP().attack * aiEase(force) * (grainOf(faction) < ECON.hungry ? 1.2 : 1) * affF * aiStyle(faction).attack, aff = affF === 1 ? '' : ' 호감도 ×' + affF.toFixed(2);
     if (def === 0) return { ...base, act: 'advance', mode: '침공', def, reason: '무방비 지역' };
-    if (own >= def * ratio) return { ...base, act: 'advance', mode: '침공', def, reason: `집결 ${own} ≥ 대응 ${def}×${ratio.toFixed(2)}` };
-    return { ...base, act: 'hold', mode: '집결', def, reason: `집결 ${own} < 대응 ${def}×${ratio.toFixed(2)}` };
+    if (own >= def * ratio) return { ...base, act: 'advance', mode: '침공', def, reason: `집결 ${own} ≥ 대응 ${def}×${ratio.toFixed(2)}${aff}` };
+    return { ...base, act: 'hold', mode: '집결', def, reason: `집결 ${own} < 대응 ${def}×${ratio.toFixed(2)}${aff}` };
   }
   if (next.owner === 'enemy' && next.faction && next.faction !== faction && !alliedFactions(faction, next.faction)) {   // 전쟁 상대(AI)의 도시
     const key = next.id + '|' + pairKey(faction, next.faction), last = campaign.aiLast && campaign.aiLast[key];
@@ -672,10 +707,14 @@ function advanceEnemyForces() {
   });
   const entries = aiEntries; aiEntries = null; aiResolveEntries(entries);
 }
-function reinforceEnemies() {   // 원정 주기마다 자기 세력 도시에 있는 적 군단이 일반 병사를 3명씩 보충한다 (최대 18명, 장수·가상 지휘관은 만들지 않는다)
-  if (campaign.turn % aiP().expedition) return; let n = 0;
+// 명세 63a 전선 증원: 플레이어와 전쟁 중인 세력의 기동 군단이 플레이어 도시와 맞닿은 자기 도시에 있으면 증원 주기를 줄이고 1회 수를 늘린다. 끄는 값 cut:0·add:3·lateDrop:0 (= v0.1.274 동작)
+const AI_FRONT = { cut: 0, add: 3, lateFrom: 40, lateDrop: 0 };   // 측정 결과 효과 없음·도시 변화 없는 판 증가 → 꺼 둠 (켜는 값 cut:2 add:4 lateDrop:1, 명세 63 구현 결과)
+const isFrontForce = force => force.role !== 'garrison' && relationOf(forceFaction(force)).status === 'war' && stageById(force.at).links.some(id => stageById(id).owner === 'player');
+const reinforceEvery = force => { const ex = aiP().expedition; return isFrontForce(force) ? Math.max(2, Math.round((ex - AI_FRONT.cut - (campaign.turn >= AI_FRONT.lateFrom ? AI_FRONT.lateDrop : 0)) * aiStyle(forceFaction(force)).reinforce)) : ex; };
+function reinforceEnemies() {   // 원정 주기마다 자기 세력 도시에 있는 적 군단이 일반 병사를 3명씩 보충한다 (전선 군단은 AI_FRONT) (최대 18명, 장수·가상 지휘관은 만들지 않는다)
+  let n = 0;
   for (const force of enemyForces) {
-    const stage = stageById(force.at), fac = forceFaction(force); if (!force.active || !stage || stage.owner !== 'enemy' || stage.faction !== fac) continue; const kind = cityKind(stage), add = Math.min(3, Sim.ARMY_MAX - force.army.units.length, grainRoom(fac, kind.cost)); if (add <= 0) continue; spendGrain(fac, add * kind.cost);
+    const stage = stageById(force.at), fac = forceFaction(force); if (!force.active || !stage || stage.owner !== 'enemy' || stage.faction !== fac) continue; const front = isFrontForce(force); if (campaign.turn % reinforceEvery(force)) continue; const kind = cityKind(stage), add = Math.min(front ? AI_FRONT.add : 3, Sim.ARMY_MAX - force.army.units.length, grainRoom(fac, kind.cost)); if (add <= 0) continue; spendGrain(fac, add * kind.cost);
     const pool = THEME_UNITS[stage.theme]; for (let i = 0; i < add; i++) force.army.units.push(force.army.units.filter(k => k === 'healer').length < Math.ceil(Sim.ARMY_MAX * 0.1) ? 'healer' : factionKey(forceFaction(force), pool[(force.army.units.length + force.id) % pool.length], force.army.units.length));
     setEnemyRole(force, stageById(force.home) || stage, force.role, force.level); n++;
   }
@@ -1741,7 +1780,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.276', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.278', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
