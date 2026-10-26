@@ -52,14 +52,14 @@ const STYLES = {
 };
 // 세력 고유 병종(명세 53 §3.5): 몸통·장식 위주로 구별한다. 아군/적 팀색(body·trim·horse)은 game.js styleOf 가 base 로 바꿔 끼운다.
 const FACTION_UNIT_STYLES = {
-  f_xian: { base: 'shield', body: '#3f78c0', armorPlate: '#54515a', helmColor: '#163b70', enemyHelm: '#3a1418', plumeColor: '#cce8ff', bulk: 1.1, towerShield: true },   // 아군 밝은 청 몸통·은 방패 / 적 암적 몸통·붉은 방패 (v0.1.264)
-  f_bing: { base: 'cav', feathers: true, plumeColor: '#c9302c', weapon: 'lance', fixedWeapon: true },
-  f_nu: { base: 'archer', helmColor: '#4a5a66', plumeColor: '#dce8c6', weapon: 'crossbow', weaponScale: 1.15 },
-  f_ji: { base: 'sword', weapon: 'halberd', fixedWeapon: true, pauldrons: true, plumeColor: '#d1a537' },
-  f_qing: { base: 'sword', wrap: true, wrapColor: '#e0c040', helm: false },
-  f_hubao: { base: 'cav', plume: 1.8, plumeColor: '#b84338', armorPlate: '#54515a', fur: true, tigerEars: true, stripes: '#e8892a', bulk: 1.18, weapon: 'lance', fixedWeapon: true },
-  f_bai: { base: 'sword', helmColor: '#f0ece0', plume: 1.4, plumeColor: '#ffffff', cape: '#e8e4da', weapon: 'spear' },
-  f_dan: { base: 'sword', helm: false, hairCap: true, band: true, sleeves: '#bc9b72', strawHat: true },
+  f_xian: { base: 'shield', armorPlate: '#54515a', helmColor: '#202126', enemyHelm: '#202126', plumeColor: '#e5e7eb', bulk: 1.1, towerShield: true },   // 여포 검정 투구 + 밝은 회색 깃털(검정만으론 어두워 보조색 병행), 몸통은 팀색(아군 청/적 암) — v0.1.279 세력 색 정렬
+  f_bing: { base: 'cav', feathers: true, featherColor: '#202126', plumeColor: '#202126', helmColor: '#e5e7eb', weapon: 'lance', fixedWeapon: true },
+  f_nu: { base: 'archer', helmColor: '#4a5a66', plumeColor: '#d2a82e', weapon: 'crossbow', weaponScale: 1.15 },
+  f_ji: { base: 'sword', weapon: 'halberd', fixedWeapon: true, pauldrons: true, plumeColor: '#d2a82e' },
+  f_qing: { base: 'sword', wrap: true, wrapColor: '#2e77c7', armorPlate: '#cce8ff', helm: false },
+  f_hubao: { base: 'cav', plume: 1.8, plumeColor: '#2e77c7', armorPlate: '#54515a', fur: true, tigerEars: true, stripes: '#e8892a', bulk: 1.18, weapon: 'lance', fixedWeapon: true },
+  f_bai: { base: 'sword', helmColor: '#f0ece0', plume: 1.4, plumeColor: '#329653', cape: '#329653', weapon: 'spear' },
+  f_dan: { base: 'sword', helm: false, hairCap: true, band: true, bandGem: '#329653', sleeves: '#329653', strawHat: true },
 };
 const ENEMY_BASE_STYLE = { sword: 'soldier', shield: 'shield', archer: 'archer', cav: 'cav' };
 const ALLY_BASE_STYLE = { sword: 'ally_sword', shield: 'ally_shield', archer: 'ally_archer', cav: 'ally_cav' };
@@ -221,7 +221,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   if (s.helm) {
     g.fillStyle = f ? W : (s.helmColor || '#1c1c26'); g.beginPath(); g.arc(x, hy, r * 0.66, Math.PI, TAU); g.fill();
     if (s.plume) { const q = s.plume; g.fillStyle = f ? W : (s.plumeColor || '#c9302c'); g.beginPath(); g.moveTo(x - r * 0.14, hy - r * 0.62); g.quadraticCurveTo(x - r * 0.55 * q, hy - r * 1.05 * q, x + r * 0.02, hy - r * (0.7 + 0.65 * q)); g.quadraticCurveTo(x + r * 0.08, hy - r * 0.95, x + r * 0.16, hy - r * 0.62); g.closePath(); g.fill(); }
-    if (s.feathers) { g.strokeStyle = f ? W : '#c9302c'; g.lineWidth = 4; g.beginPath(); g.moveTo(x - r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x - r * 1.2, hy - r * 2.2, x - r * 0.6, hy - r * 2.9); g.moveTo(x + r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x + r * 1.2, hy - r * 2.2, x + r * 0.6, hy - r * 2.9); g.stroke(); }
+    if (s.feathers) { g.strokeStyle = f ? W : (s.featherColor || '#c9302c'); g.lineWidth = 4; g.beginPath(); g.moveTo(x - r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x - r * 1.2, hy - r * 2.2, x - r * 0.6, hy - r * 2.9); g.moveTo(x + r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x + r * 1.2, hy - r * 2.2, x + r * 0.6, hy - r * 2.9); g.stroke(); }
     if (s.horns) { g.strokeStyle = f ? W : s.trim; g.lineWidth = r * 0.16; g.beginPath(); g.moveTo(x - r * 0.45, hy - r * 0.45); g.quadraticCurveTo(x - r * 1.05, hy - r * 0.9, x - r * 0.92, hy - r * 1.35); g.moveTo(x + r * 0.45, hy - r * 0.45); g.quadraticCurveTo(x + r * 1.05, hy - r * 0.9, x + r * 0.92, hy - r * 1.35); g.stroke(); }
   }
   if (s.stripes) { g.strokeStyle = f ? W : s.stripes; g.lineWidth = Math.max(2, r * 0.2); g.lineCap = 'butt'; g.beginPath(); for (const o of [-0.5, 0, 0.5]) { g.moveTo(x + (o - 0.18) * r, by - r * 0.85); g.lineTo(x + (o + 0.18) * r, by + r * 0.05); } g.stroke(); }
@@ -230,7 +230,7 @@ function drawBody(g, x, y, r, face, s, o = {}) {
   if (s.beard) { g.fillStyle = f ? W : (s.beardColor || '#17171b'); g.beginPath(); g.moveTo(x - r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 1.7, x + r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 0.35, x - r * 0.5, hy + r * 0.1); g.fill(); }
   if (s.hair) { g.fillStyle = f ? W : '#2b2433'; g.beginPath(); g.arc(x, hy - r * 0.04, r * 0.64, Math.PI, TAU); g.fill(); g.strokeStyle = f ? W : '#2b2433'; g.lineWidth = 3; g.beginPath(); g.moveTo(x - cx * r * 0.2, hy - r * 0.3); g.quadraticCurveTo(x - cx * r * 1.1, hy - r * 0.1, x - cx * r * 1.3, hy + r * 0.7); g.stroke(); }
   if (s.shield) { g.fillStyle = f ? W : s.trim; g.strokeStyle = '#1c2230'; g.lineWidth = 2; g.beginPath(); if (s.towerShield) g.rect(x + cx * r * 0.95 - r * 0.65, by - r, r * 1.3, r * 2.2); else g.ellipse(x + cx * r * 0.95, by + 2, r * 0.5, r * 1.0, 0, 0, TAU); g.fill(); g.stroke(); }
-  if (s.band) { g.fillStyle = f ? W : '#c9cfd8'; g.fillRect(x - r * 0.62, hy - r * 0.3, r * 1.24, r * 0.15); g.fillStyle = f ? W : '#3a8be0'; circle(g, x, hy - r * 0.225, r * 0.1); }
+  if (s.band) { g.fillStyle = f ? W : '#c9cfd8'; g.fillRect(x - r * 0.62, hy - r * 0.3, r * 1.24, r * 0.15); g.fillStyle = f ? W : (s.bandGem || '#3a8be0'); circle(g, x, hy - r * 0.225, r * 0.1); }
   if (s.hat) { g.fillStyle = f ? W : '#2a6b44'; g.beginPath(); g.arc(x, hy - r * 0.1, r * 0.64, Math.PI * 1.02, TAU * 0.999); g.fill(); g.fillStyle = f ? W : '#d4a73a'; g.fillRect(x - r * 0.64, hy - r * 0.18, r * 1.28, r * 0.12); }
   if (s.wrap) { g.fillStyle = f ? W : (s.wrapColor || '#b3281f'); g.beginPath(); g.arc(x, hy - r * 0.08, r * 0.68, Math.PI * 0.98, TAU + 0.04); g.fill(); }
   if (s.hairCap) { g.fillStyle = f ? W : '#1e1624'; g.beginPath(); g.arc(x, hy - r * 0.04, r * 0.66, Math.PI * 0.95, TAU + 0.05); g.fill(); }
