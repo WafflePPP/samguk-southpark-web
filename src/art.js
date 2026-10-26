@@ -318,15 +318,25 @@ function loadBattleArt() {
     const update=await fetch('src/assets/lubu-v284/layout.json?v=284&try='+attempt).then(r=>{if(!r.ok)throw new Error('여포 아트 목록 로드 실패');return r.json();});
     const sheets=await Promise.all(update.map(async sheet=>{const image=await load('src/assets/lubu-v284/'+sheet.file,284);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     installLubuRework(sheets);
-    const diao=BATTLE_ART.models.get('diao');
-    diao.bodyRatio=diao.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/diao.directionHeight;
     const jang=await fetch('src/assets/zhangliao-v287/layout.json?v=287&try='+attempt).then(r=>{if(!r.ok)throw new Error('장료 아트 목록 로드 실패');return r.json();});
     const jangSheets=await Promise.all(jang.map(async sheet=>{const image=await load('src/assets/zhangliao-v287/'+sheet.file,287);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     BATTLE_ART.models.set('zhangliao',{...BATTLE_ART.models.get('jang')});
-    installLubuRework(jangSheets,'zhangliao');BATTLE_ART.ready=true;
+    installLubuRework(jangSheets,'zhangliao');
+    const diao=await fetch('src/assets/diao-v289/layout.json?v=289&try='+attempt).then(r=>{if(!r.ok)throw new Error('초선 아트 목록 로드 실패');return r.json();});
+    const diaoSheets=await Promise.all(diao.map(async sheet=>{const image=await load('src/assets/diao-v289/'+sheet.file,289);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
+    installDiaoRework(diaoSheets);BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
-function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6);}
+// 여포의 기수·얼굴 비율에 맞춘 외형 배율이며 전투 반경은 바꾸지 않는다.
+function battleSpriteHeight(r,s){return r*(s.battleStyle==='diao'?4.7:s.battleStyle==='zhangliao'?4.4:s.horse?4.8:3.6);}
+function installDiaoRework(sheets){
+  const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
+  if(sheets.length!==2||idle?.length!==8||walk?.length!==32||!model)throw new Error('초선 방향/동작 이미지 누락');
+  model.idle=idle;model.directions=Array.from({length:8},(_,d)=>Array.from({length:4},(_,f)=>walk[f*8+d]));
+  model.directionHeight=Math.max(...walk.map(c=>c.height));
+  const body=a=>a.map(c=>c.bodyHeight).sort((a,b)=>a-b)[Math.floor(a.length/2)];
+  model.bodyRatio=body(walk)/model.directionHeight;model.idleHeight=body(idle)/model.bodyRatio;model.reworked=true;
+}
 function battleDirection(face){return ((Math.round(face/(Math.PI/4))%8)+8)%8;}
 function installLubuRework(sheets,key='lubu') {
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,attack=sheets.find(s=>s.kind==='attack')?.frames;
