@@ -1371,24 +1371,23 @@ const cooldownText = a => a.cd > 0 ? a.cd.toFixed(1) + '초' : a.ready ? '준비
 function drawUnit(u) {
   const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && pArmies().some(A => A !== army() && A.ctrl === u);
   ctx.save(); ctx.lineWidth = mine ? 4 : 3; ctx.strokeStyle = mine ? COLORS.gold : ally ? COLORS.ally : COLORS.danger;   // 팀 표시(아트방향 5-5): 아군 청 실선 / 적 주홍 점선 / 조작 중 금
-  ctx.setLineDash(ally || mine ? [] : [6, 5]); ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, u.r * 1.3, u.r * 0.7, 0, 0, TAU); ctx.stroke(); ctx.restore();
+  drawBattleRing(ctx,x,y+u.r*0.35,u.r*1.3,u.r*0.7,ctx.strokeStyle,!ally&&!mine); ctx.restore();
   { const marks = [...(u.buffs || []).map(b => [true, b.col]), [u.ftDebuffT > 0, '#ff9a4a'], ...Object.entries(u.auraOn || {}).filter(([, on]) => on).map(([k]) => [true, Sim.TITLE_EFFECT[k].col])].filter(m => m[0]), pulse = 0.45 + 0.3 * Math.sin(T * 6);   // 효과가 켜져 있는 동안 발밑에 색 고리 (공격 금·방어 청·피로 디버프 주황)
-    if (marks.length) { ctx.save(); ctx.lineWidth = 2; marks.forEach((m, i) => { ctx.globalAlpha = pulse; ctx.strokeStyle = m[1]; ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, u.r * (1.6 + i * 0.28), u.r * (1.6 + i * 0.28) * 0.55, 0, 0, TAU); ctx.stroke(); }); ctx.restore(); }
-    const TA = (Sim.TITLE_EFFECT[u.subclass] || {}).aura && Sim.TITLE_EFFECT[u.subclass]; if (TA) { ctx.save(); ctx.globalAlpha = 0.16 + 0.06 * Math.sin(T * 3); ctx.strokeStyle = TA.col; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.ellipse(x, y + u.r * 0.35, Sim.AURA_RANGE, Sim.AURA_RANGE * 0.55, 0, 0, TAU); ctx.stroke(); ctx.restore(); } }   // 무신(관우 등) 공격·화살·마법 방어 +20%, 간웅(조조) 전 능력 +10% 오라 범위
+    if (marks.length) { ctx.save(); marks.forEach((m, i) => { ctx.globalAlpha = pulse; drawBattleRing(ctx,x,y+u.r*0.35,u.r*(1.6+i*0.28),u.r*(1.6+i*0.28)*0.55,m[1]); }); ctx.restore(); }
+    const TA = (Sim.TITLE_EFFECT[u.subclass] || {}).aura && Sim.TITLE_EFFECT[u.subclass]; if (TA) { ctx.save(); ctx.globalAlpha = 0.16 + 0.06 * Math.sin(T * 3); drawBattleRing(ctx,x,y+u.r*0.35,Sim.AURA_RANGE,Sim.AURA_RANGE*0.55,TA.col,true); ctx.restore(); } }   // 무신(관우 등) 공격·화살·마법 방어 +20%, 간웅(조조) 전 능력 +10% 오라 범위
   const swing = u.anim > 0 ? -1.3 + 2.6 * (1 - u.anim / 0.28) : 0.9;
   const k = Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))), mag = (u.hitMag || 1) * (u.hitState < 0 ? 1.25 : u.hitState > 0 ? 0.55 : 1), ds = Math.cos(u.hitAng) >= 0 ? 1 : -1, ap = !u.named && u.anim > 0 && u.range === 0 ? Math.sin((1 - u.anim / 0.28) * Math.PI) : 0;   // 상성 우세는 짧은 방어 반응, 불리는 강한 경직
-  const tilt = ds * 0.5 * mag * k * Math.cos((1 - k) * 6) + (u.stun > 0 ? Math.sin(T * 8) * 0.16 : 0), sqy = 1 - 0.13 * mag * k - 0.05 * ap, sqx = 1 + 0.09 * mag * k + 0.04 * ap;
   const ox = Math.cos(u.hitAng) * 7 * mag * k + Math.sin(T * 100) * 2.5 * k + Math.cos(u.face) * 7 * ap, oy = Math.sin(u.hitAng) * 5 * mag * k + Math.sin(u.face) * 4 * ap;
-  ctx.save(); ctx.translate(x + ox, y + oy); ctx.rotate(tilt); ctx.scale(sqx, sqy); ctx.translate(-x, -y);
-  drawBody(ctx, x, y, u.r * 1.15, u.face, styleOf(u), { pose: heroPose(u, styleOf(u), T), flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4), bob: u.moving ? Math.abs(Math.sin(T * 9 + u.id)) * 1.5 : 0 });
+  ctx.save(); ctx.translate(Math.round(ox), Math.round(oy));
+  drawBattleBody(ctx, x, y, u.r * 1.15, u.face, styleOf(u), { pose: heroPose(u, styleOf(u), T), flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4) });
   ctx.restore();
-  const top = y - u.r * 4.4 - (u.style === 'lubu' ? 22 : 0) - (styleOf(u).horse ? 10 : 0), w = u.r * 2.4;
+  const style = styleOf(u), top = y - u.r * (style.horse ? 4.6 : 3.7) - (style.feathers ? 10 : style.courtHat ? 4 : 0), w = u.r * 2.4;
   if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, hpCol(u.hp / u.maxHp, ally ? COLORS.ally : COLORS.danger)); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); const sk = u.special && Sim.SPECIAL[u.special]; if (sk) { const ready = u.spT <= 0, cy = top + (u.maxMp && ally ? 8 : 5); bar(x - w / 2, cy, w, 2.5, ready ? 1 : 1 - Math.max(0, u.spT) / sk.cd, ready ? COLORS.gold : '#c7822f'); } }   // 특수기(스킬) 쿨타임 바: 차오르는 중 주황, 준비되면 금색 가득
   if (mine || other) { ctx.fillStyle = mine ? COLORS.gold : COLORS.ally; ctx.beginPath(); ctx.moveTo(x - 7, top - 14); ctx.lineTo(x + 7, top - 14); ctx.lineTo(x, top - 4); ctx.closePath(); ctx.fill(); }
   if ((u.named && !Sim.U[u.key].synthetic) || u.isLeader) { const current = u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0'; label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, hpCol(u.hp / u.maxHp, current), 'center'); }   // 이름도 HP 30%·10% 구간을 같이 표시
 }
 function drawWorld() {
-  ctx.save(); ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
   const z = Z(), vw = VPW / z, vhh = vh / z; wz = z; worldDraw = true;
   ctx.drawImage(terrain, cam.x, cam.y, vw, vhh, LEFT_W, TB_H, VPW, vh);
   ctx.translate(LEFT_W, TB_H); ctx.scale(z, z); ctx.translate(-cam.x, -cam.y);
@@ -1397,30 +1396,9 @@ function drawWorld() {
   if (c && alive(c)) { tileBox(c.tx, c.ty, COLORS.gold, 'rgba(255,211,77,.16)'); if (c.mv) tileBox(c.mv.nx, c.mv.ny, 'rgba(255,211,77,.5)'); }   // 조작 캐릭터가 서 있는 칸
   for (const t of new Set(army().units.filter(u => alive(u) && u.order.type === 'attack' && u.order.target && alive(u.order.target)).map(u => u.order.target))) tileBox(t.tx, t.ty, COLORS.danger, 'rgba(255,90,74,.18)');   // 집중 공격 표적
   for (const m of marks) { const tx = Math.floor(m.x / TILE), ty = Math.floor(m.y / TILE), g = 1.4 - m.t; ctx.strokeStyle = m.col; ctx.globalAlpha = m.t / 0.7; ctx.lineWidth = 3; ctx.strokeRect(tx * TILE - g * 6, ty * TILE - g * 6, TILE + g * 12, TILE + g * 12); ctx.globalAlpha = 1; }
-  for (const f of S.fx) {
-    const p = 1 - f.t / f.max; ctx.globalAlpha = 1 - p;
-    if (f.kind === 'spark') { ctx.strokeStyle = f.col || '#fff3c0'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); for (let i = 0; i < (f.count || 6); i++) { const a = f.ang + (i - ((f.count || 6) - 1) / 2) * 0.55, r0 = 6 + p * 8, r1 = 12 + p * (f.count > 6 ? 30 : 22); ctx.moveTo(f.x + Math.cos(a) * r0, f.y + Math.sin(a) * r0 * 0.8); ctx.lineTo(f.x + Math.cos(a) * r1, f.y + Math.sin(a) * r1 * 0.8); } ctx.stroke(); ctx.fillStyle = f.col || '#fff3c0'; ctx.globalAlpha *= 0.7; ctx.beginPath(); ctx.arc(f.x, f.y, 8 * (1 - p), 0, TAU); ctx.fill(); }
-    else if (f.kind === 'guard') { const r = 15 + p * 7; ctx.strokeStyle = f.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x - r * 0.7, f.y - r * 0.65); ctx.lineTo(f.x + r * 0.7, f.y - r * 0.65); ctx.lineTo(f.x + r * 0.55, f.y + r * 0.2); ctx.quadraticCurveTo(f.x, f.y + r, f.x - r * 0.55, f.y + r * 0.2); ctx.closePath(); ctx.stroke(); }
-    else if (f.kind === 'fall') { const e = 1 - (1 - p) * (1 - p), sd = Math.cos(f.ang) >= 0 ? 1 : -1; ctx.save(); ctx.globalAlpha = Math.max(0, 1 - p * p); ctx.translate(f.x + Math.cos(f.ang) * 14 * e, f.y + Math.sin(f.ang) * 8 * e); ctx.rotate(sd * 1.45 * e); ctx.translate(-f.x, -f.y); drawBody(ctx, f.x, f.y, f.r * 1.15, f.face, { ...STYLES[f.style], weapon: null }, { flash: p < 0.15, t: T }); ctx.restore(); }
-    else if (f.kind === 'buff') {   // 바닥 고리가 퍼지고 효과 기호가 떠오른다
-      const gy = f.y - f.r * 2 - p * 24; ctx.strokeStyle = f.col; ctx.fillStyle = f.col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.ellipse(f.x, f.y + f.r * 0.35, f.r * (1.2 + p * 1.6), f.r * (1.2 + p * 1.6) * 0.5, 0, 0, TAU); ctx.stroke();
-      if (f.glyph === 'atk' || f.glyph === 'down') { const d = f.glyph === 'atk' ? -1 : 1; for (let i = 0; i < 3; i++) { const yy = gy - d * (i * 7 - 7) + 14; ctx.globalAlpha = (1 - p) * (1 - i * 0.25); ctx.beginPath(); ctx.moveTo(f.x - 8, yy - d * 5); ctx.lineTo(f.x, yy + d * 3); ctx.lineTo(f.x + 8, yy - d * 5); ctx.stroke(); } }
-      else if (f.glyph === 'all') { for (let i = 0; i < 3; i++) { const px = f.x + (i - 1) * 12, py = gy + (i === 1 ? -6 : 3) - p * 3, q = 5; ctx.globalAlpha = 1 - p; ctx.beginPath(); ctx.moveTo(px, py - q); ctx.lineTo(px + q * 0.35, py - q * 0.35); ctx.lineTo(px + q, py); ctx.lineTo(px + q * 0.35, py + q * 0.35); ctx.lineTo(px, py + q); ctx.lineTo(px - q * 0.35, py + q * 0.35); ctx.lineTo(px - q, py); ctx.lineTo(px - q * 0.35, py - q * 0.35); ctx.closePath(); ctx.fill(); } }
-      else if (f.glyph === 'guard') { const r = 11; ctx.beginPath(); ctx.moveTo(f.x - r * 0.8, gy - r * 0.7); ctx.lineTo(f.x + r * 0.8, gy - r * 0.7); ctx.lineTo(f.x + r * 0.6, gy + r * 0.2); ctx.quadraticCurveTo(f.x, gy + r * 1.1, f.x - r * 0.6, gy + r * 0.2); ctx.closePath(); ctx.globalAlpha = (1 - p) * 0.35; ctx.fill(); ctx.globalAlpha = 1 - p; ctx.stroke(); }
-      else { for (let i = -1; i <= 1; i++) { const px = f.x + i * 11, py = gy + (i === 0 ? -6 : 4) - p * 4; ctx.beginPath(); ctx.moveTo(px - 4, py); ctx.lineTo(px + 4, py); ctx.moveTo(px, py - 4); ctx.lineTo(px, py + 4); ctx.stroke(); } }
-    }
-    else if (f.kind === 'ring') { ctx.strokeStyle = f.col; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (0.4 + 0.6 * p), f.r * (0.4 + 0.6 * p) * 0.6, 0, 0, TAU); ctx.stroke(); }
-    else { ctx.fillStyle = 'rgba(30,25,20,.5)'; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (1 + p), f.r * (1 + p) * 0.5, 0, 0, TAU); ctx.fill(); }
-    ctx.globalAlpha = 1;
-  }
+  for (const f of S.fx) drawBattleEffect(ctx, f, T);
   for (const u of S.units.filter(alive).sort((a, b) => a.y - b.y)) { if (u.x < cam.x - 60 || u.x > cam.x + vw + 60 || u.y < cam.y - 90 || u.y > cam.y + vhh + 60) continue; drawUnit(u); }
-  for (const p of S.proj) {
-    if (p.kind === 'arrow') { ctx.strokeStyle = p.team === 'player' ? '#e8f4ff' : '#ffc9b8'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - Math.cos(p.a) * 14, p.y - Math.sin(p.a) * 14); ctx.stroke(); }
-    else if (p.kind === 'roll') { ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y + 10, 8, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(255,200,120,.5)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(p.x, p.y + 10); ctx.lineTo(p.x - Math.cos(p.a) * 22, p.y + 10 - Math.sin(p.a) * 22); ctx.stroke(); }   // 불공: 땅을 구른다
-    else if (p.kind === 'ball') { ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, TAU); ctx.fill(); }   // 불꽃탄
-    else { const L = p.kind === 'pierce' ? 46 : 30; ctx.fillStyle = p.col || '#9fe8ff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.kind === 'pierce' ? 9 : 7, 0, TAU); ctx.fill(); ctx.strokeStyle = (p.col || '#9fe8ff') + '88'; ctx.lineWidth = p.kind === 'pierce' ? 12 : 8; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - Math.cos(p.a) * L, p.y - Math.sin(p.a) * L); ctx.stroke(); }   // 장풍(추적)·관통 마법
-  }
+  for (const p of S.proj) drawBattleProjectile(ctx, p);
   for (const t of S.texts) { if (t.k && t.k !== 'sys' && !SHOW[t.k]) continue; ctx.globalAlpha = Math.min(1, t.t * 2); label(String(t.s), t.x, t.y, 18, t.col, 'center'); ctx.globalAlpha = 1; }
   ctx.restore(); wz = 1; worldDraw = false;
 }
@@ -1431,7 +1409,7 @@ function drawPortraits(x0, y0, w, h, step, A = army(), vert = false, cols = 2) {
     const x = vert ? x0 + (i % cols) * (w + 2) : x0 + i * step, y = vert ? y0 + Math.floor(i / cols) * step : y0, on = A === army() && u === ctrlOf(), cx = x + w / 2, k = h / 36;
     panel(x, y, w, h, on ? COLORS.gold : 'rgba(255,255,255,.25)', on ? 3 : 1);
     ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip(); ctx.globalAlpha = u.dead ? 0.25 : u.out ? 0.45 : 1;
-    drawBody(ctx, cx, y + h, 9 * k, Math.PI / 2, { ...styleOf(u), weapon: null, horse: null }, { t: T }); ctx.restore();
+    drawBattleBody(ctx, cx, y + h, 9 * k, Math.PI / 2, { ...styleOf(u), weapon: null, horse: null }, { t: T }); ctx.restore();
     if (!u.dead && !u.out) { bar(x + 2, y + h - 4, w - 4, 3 * k, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); if (vert && u.maxMp) bar(x + 2, y + h - 9, w - 4, 3, u.mp / u.maxMp, '#8a6aff'); }
     if (u.dead) label('✕', cx, y + h / 2, 22, COLORS.danger, 'center'); else if (u.out) label('철', cx, y + h / 2, 16, COLORS.silver2, 'center');
     btns.push({ id: 'slot' + u.id, x, y, w, h });
@@ -1752,7 +1730,7 @@ function drawEvent(e) {
     panel(x + 14, y + 14, 112, h - 28, COLORS.ink, 2, '#b9c5c7');
     const portrait = STYLES[e.key] || STYLES.captain;
     ctx.save(); ctx.beginPath(); ctx.rect(x + 15, y + 15, 110, h - 30); ctx.clip();
-    drawBody(ctx, x + 70, y + 112, portrait.feathers ? 16 : 22, e.team === 'enemy' ? Math.PI : 0, portrait, { t: T, weaponLen: 52 }); ctx.restore();
+    drawBattleBody(ctx, x + 70, y + 112, 22, e.team === 'enemy' ? Math.PI : 0, portrait, { t: T, weaponLen: 52 }); ctx.restore();
     label(e.speaker, x + 148, y + 42, 21, e.team === 'enemy' ? '#c55a2d' : '#315a86'); label(e.text, x + 148, y + 84, 22, '#292520', 'left', w - 164);
   } else label(e.text, VW / 2, y + 50, 24, col, 'center');
   label(mobile ? '화면을 탭하여 계속' : '클릭 / Enter', x + w - 16, y + h - 14, 14, '#68645d', 'right');
@@ -1762,7 +1740,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.272', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.273', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
@@ -2363,7 +2341,7 @@ function drawRoster() {
 // 미니맵 (우측 상단): 지형 축소도 + 아군(파랑)·적군(빨강) 점 + 현재 화면 사각형. 누르거나 끌면 그 위치를 4초 둘러본다 (look).
 function drawMinimap() {
   const mw = mobile ? 200 : 180, mh = Math.round(mw * Sim.MH / Sim.MW), mx = VW - mw - 6, my = mobile ? 6 : TB_H + 6, k = mw / WW; mini = { x: mx, y: my, w: mw, h: mh, k };
-  ctx.save(); ctx.globalAlpha = 0.92; ctx.drawImage(terrain, mx, my, mw, mh); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx, my, mw, mh);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = 0.92; ctx.drawImage(terrain, mx, my, mw, mh); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx, my, mw, mh);
   for (const e of S.units) if (alive(e)) { ctx.fillStyle = e.team === 'player' ? '#4fb0ff' : '#ff5a4a'; const s = e.isLeader ? 4 : 2.5; ctx.fillRect(mx + e.x * k - s / 2, my + e.y * k - s / 2, s, s); }
   const c = ctrlOf(); if (c && alive(c)) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 1.5; ctx.strokeRect(mx + c.x * k - 3.5, my + c.y * k - 3.5, 7, 7); }
   ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 1.5; ctx.strokeRect(mx + cam.x * k, my + cam.y * k, VPW / Z() * k, vh / Z() * k); ctx.restore();
