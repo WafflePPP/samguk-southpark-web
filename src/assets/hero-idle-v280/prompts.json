@@ -1,0 +1,128 @@
+[
+  {
+    "file": "idle-0.png",
+    "keys": [
+      "lubu",
+      "guan",
+      "zhao"
+    ],
+    "reference": [
+      "../heroes-v277/lubu.png",
+      "../heroes-v277/guan.png",
+      "../heroes-v277/zhao.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character lubu from reference1; Row2 is ONLY character guan from reference2; Row3 is ONLY character zhao from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width145px and height220px. Count EXACT8 columns3rows24 sprites. CRITICAL additional requirements: For Guan Yu in row2, hold exactly ONE guandao UPRIGHT vertically next to his body, gold/green crescent blade visible above his shoulder in ALL eight views including front and back, single red wooden shaft touching ground, feet planted. Do not hide/omit the weapon. All sprites must have at least25px EMPTY TRANSPARENT clearance on ALL sides from other sprites, including long weapons, no touching. Absolutely no colored glow, fog, matte or painted background. This is a new sheet, not an edit."
+  },
+  {
+    "file": "idle-1.png",
+    "keys": [
+      "diao",
+      "dian",
+      "huang"
+    ],
+    "reference": [
+      "../heroes-v277/diao.png",
+      "../heroes-v277/dian.png",
+      "../heroes-v277/huang.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character diao from reference1; Row2 is ONLY character dian from reference2; Row3 is ONLY character huang from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width145px and height220px. Count EXACT8 columns3rows24 sprites. CRITICAL additional requirements: For Diao Chan in row1, exactly ONE pink folding fan held at chest or visible beside one shoulder in back views, never a second fan. Feet both planted. Dian Wei alone has two axes. All sprites must have at least25px EMPTY TRANSPARENT clearance on ALL sides from other sprites, including long weapons, no touching. Absolutely no colored glow, fog, matte or painted background. This is a new sheet, not an edit."
+  },
+  {
+    "file": "idle-2.png",
+    "keys": [
+      "kong",
+      "hua",
+      "jang"
+    ],
+    "reference": [
+      "../heroes-v277/kong.png",
+      "../heroes-v277/hua.png",
+      "../heroes-v277/jang.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character kong from reference1; Row2 is ONLY character hua from reference2; Row3 is ONLY character jang from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  },
+  {
+    "file": "idle-3.png",
+    "keys": [
+      "gong",
+      "lulingqi",
+      "gao"
+    ],
+    "reference": [
+      "../heroes-v277/gong.png",
+      "../heroes-v277/lulingqi.png",
+      "../heroes-v277/gao.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character gong from reference1; Row2 is ONLY character lulingqi from reference2; Row3 is ONLY character gao from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  },
+  {
+    "file": "idle-4.png",
+    "keys": [
+      "cao",
+      "xia",
+      "xiahouyuan"
+    ],
+    "reference": [
+      "../heroes-v277/cao.png",
+      "../heroes-v277/xia.png",
+      "../heroes-v277/xiahouyuan.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character cao from reference1; Row2 is ONLY character xia from reference2; Row3 is ONLY character xiahouyuan from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  },
+  {
+    "file": "idle-5.png",
+    "keys": [
+      "liubei",
+      "zhangfei",
+      "machao"
+    ],
+    "reference": [
+      "../heroes-v277/liubei.png",
+      "../heroes-v277/zhangfei.png",
+      "../heroes-v277/machao.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character liubei from reference1; Row2 is ONLY character zhangfei from reference2; Row3 is ONLY character machao from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  },
+  {
+    "file": "idle-6.png",
+    "keys": [
+      "xuhuang",
+      "yuan",
+      "yan"
+    ],
+    "reference": [
+      "../heroes-v277/xuhuang.png",
+      "../heroes-v277/yuan.png",
+      "../heroes-v277/yan.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character xuhuang from reference1; Row2 is ONLY character yuan from reference2; Row3 is ONLY character yan from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  },
+  {
+    "file": "idle-7.png",
+    "keys": [
+      "wen",
+      "sima",
+      "xuchu"
+    ],
+    "reference": [
+      "../heroes-v277/wen.png",
+      "../heroes-v277/sima.png",
+      "../heroes-v277/xuchu.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character wen from reference1; Row2 is ONLY character sima from reference2; Row3 is ONLY character xuchu from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  },
+  {
+    "file": "idle-8.png",
+    "keys": [
+      "dong",
+      "guo",
+      "xun"
+    ],
+    "reference": [
+      "../heroes-v277/dong.png",
+      "../heroes-v277/guo.png",
+      "../heroes-v277/xun.png"
+    ],
+    "prompt": "Create a production neutral IDLE / READY STANCE sprite atlas, landscape1536x1024 with genuine transparent alpha. There are THREE reference images, each a different character's walking sheet. Preserve these SAME 3 characters, costumes, pixel art, weapons and mount status exactly. Output EXACTLY EIGHT COLUMNS by THREE ROWS =24 full isolated sprites. Row1 is ONLY character dong from reference1; Row2 is ONLY character guo from reference2; Row3 is ONLY character xun from reference3. Every row is that ONE character in eight different IDLE directions, not animation or walking. Columns must be E(right true profile), SE(front down-right), S(straight centered front), SW(front down-left), W(left true profile), NW(rear up-left), N(straight centered back, no face), NE(rear up-right), in THIS exact order. CRITICAL: all infantry must STAND STILL with both feet planted comfortably apart, weight balanced, knees slightly relaxed, no stride, no raised foot, no running or attack. Mounted characters sit neutrally centered on the SAME horse from reference, all four hooves resting on ground, no trotting or rearing. Weapons held calmly ready close to body, exactly ONE weapon unless original reference is dual-axe Dian Wei, bow undrawn, fan resting at chest, cape/plumes resting. This is the common BASE POSE that walking, attacks and casting begin from and return to. Match the original recognizable proportions/head size, silhouette and palette. Full character and entire horse if mounted, all weapons intact, transparent gaps, black crisp pixel contours, no shadows, no scenery, no text or grid. Keep each complete sprite within its192x341px cell, max figure width160px and height200px. Count EXACT8 columns3rows24 sprites."
+  }
+]
