@@ -160,7 +160,7 @@ function heroPose(u, s, t) {
   const p = Math.max(0, Math.min(1, 1 - u.anim / duration)), kick = action ? (1 - p) ** 2 : 0;
   const fleeing = u.order && ['retreat', 'flee'].includes(u.order.type);
   const gait = u.moving ? Math.sin(t * (fleeing ? 14 : 10) + u.id) : 0;
-  const pose = { state: u.moving ? 'move' : 'idle', angle: u.face + 0.9, reach: 0, lean: 0, bob: Math.abs(gait) * 2, stride: gait, pull: 0, glow: null, glowAlpha: 0.7 * kick, trail: kick, impact: Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))) };
+  const pose = { state: u.moving ? 'move' : 'idle', progress:p, angle: u.face + 0.9, reach: 0, lean: 0, bob: Math.abs(gait) * 2, stride: gait, pull: 0, glow: null, glowAlpha: 0.7 * kick, trail: kick, impact: Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))) };
   if (action) {
     if (action === 'cast' || action === 'heal' || action === 'bless') {
       pose.state = action; pose.angle = u.face - 0.6 * kick; pose.reach = 3 * kick; pose.bob += 3 * kick; pose.glow = action === 'cast' ? '#b398ff' : '#7dff9a';
@@ -293,17 +293,34 @@ function loadBattleArt() {
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
 function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6);}
+// 기존 행동 타이머만 읽는다. 타격 판정 시점에 정점을 보여 주고 원위치로 복귀한다.
+function battleHeroMotion(pose,face,r) {
+  const m={x:0,y:0,turn:0,face,frame:0}, k=pose.trail||0, hit=pose.impact||0, size=r/15, side=Math.cos(face)<0?-1:1;
+  let reach=0;
+  switch(pose.state){
+    case 'move': m.y=-Math.abs(pose.stride||0)*2; m.turn=(pose.stride||0)*.035; m.frame=pose.stride>0?1:0; break;
+    case 'thrust': reach=12*k; m.turn=side*.12*k; m.frame=k>.2?1:0; break;
+    case 'slash': reach=7*k; m.turn=side*(-.3*k+.2*Math.sin(Math.PI*(pose.progress||0))); m.frame=k>.2?1:0; break;
+    case 'shoot': reach=-7*k; m.turn=-side*.12*k; m.frame=k>.35?1:0; break;
+    case 'cast': case 'heal': case 'bless': m.y=-5*k; m.turn=side*.06*k; m.frame=k>.25?1:0; break;
+    case 'spin': m.face=face+Math.PI*2*(pose.progress||0); m.turn=side*.18*Math.sin(Math.PI*2*(pose.progress||0)); m.frame=k>.2?1:0; break;
+    case 'dash': reach=8; m.y=-(pose.bob||0); m.turn=side*.2; m.frame=pose.bob>1.5?1:0; break;
+    case 'guard': reach=-3*hit; m.turn=-side*.08*hit; break;
+    case 'hurt': reach=-7*hit; m.turn=-side*.24*hit; break;
+  }
+  m.x=Math.round(Math.cos(face)*reach*size);m.y=Math.round((m.y+Math.sin(face)*reach)*size);
+  return m;
+}
 function drawBattleBody(g,x,y,r,face,s,o={}) {
   if(!BATTLE_ART.ready||!BATTLE_ART.models.size)return;
   let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
   const enemy=o.team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
   if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield',ally_cav:'cav',mage:'emage'})[key]||key;
   const model=BATTLE_ART.models.get(key);if(!model)throw new Error('전투 이미지 누락: '+key);
-  const pose=o.pose,phase=pose?.trail||0,frame=o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0,back=Math.sin(face)<-.25,frames=back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
+  const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,face,r):null,frame=motion?motion.frame:o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0,view=motion?motion.face:face,back=Math.sin(view)<-.25,frames=back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
   if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
   const h=battleSpriteHeight(r,s),w=image.width/image.height*h;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
-  const thrust=pose?.state==='thrust'?phase*5:0,bob=o.moving&&frame?-1:pose&&['cast','heal','bless'].includes(pose.state)?-2:0;
-  g.translate(Math.round(x+Math.cos(face)*thrust),Math.round(y+bob));if(pose?.state==='slash')g.rotate((phase-.5)*.16);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if((Math.cos(face)<-.25)!==sourceLeft)g.scale(-1,1);
+  g.translate(Math.round(x+(motion?.x||0)),Math.round(y+(motion?motion.y:o.moving&&frame?-1:0)));if(motion?.turn)g.rotate(motion.turn);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if((Math.cos(view)<-.25)!==sourceLeft)g.scale(-1,1);
   g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round(h),Math.round(w),Math.round(h));g.restore();
 }
 if(typeof Image==='function')loadBattleArt();
@@ -368,5 +385,6 @@ function buildTerrain(map,MW,MH,TILE) {
     const object=BATTLE_ART.terrainObjects[(t===1?0:2)+((tx*7+ty*11)%2)],w=TILE*(t===1?(group?2.5:1.4):1.12),h=w*object.height/object.width;
     g.drawImage(object,Math.round((tx+(group?1:.5))*TILE-w/2),Math.round((ty+(group?2:1))*TILE-h),Math.round(w),Math.round(h));
   }
+  g.filter='saturate(55%) brightness(82%)';g.drawImage(c,0,0);g.filter='none';
   return c;
 }
