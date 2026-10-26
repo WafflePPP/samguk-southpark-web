@@ -265,79 +265,48 @@ function pixelPoly(g, pts, col) {
     for (let i = 0; i + 1 < edges.length; i += 2) { const x = Math.ceil(edges[i]); g.fillRect(x, y, Math.max(0, Math.ceil(edges[i + 1]) - x), 1); }
   }
 }
-const PIXEL_SPRITES = new Map();
-function drawBattleBody(g, x, y, r, face, s, o = {}) {
-  const dir = (Math.round(face / (Math.PI / 2)) % 4 + 4) % 4, walk = o.moving ? Math.floor((o.t || 0) * 7) % 2 : 0, pose = o.pose;
-  const state = pose ? pose.state : o.moving ? 'move' : 'idle', phase = Math.min(2, Math.floor((pose?.trail || pose?.impact || 0) * 3));
-  const angle = Math.round((pose?.angle ?? o.weaponAng ?? face + 0.7) / (Math.PI / 4)), reach = Math.round((pose?.reach || 0) / 4);
-  const key = JSON.stringify(s) + [dir, walk, state, phase, angle, reach, Math.round((o.weaponLen||48)/4), !!o.flash].join('/');
-  let c = PIXEL_SPRITES.get(key);
-  if (!c) {
-    c = document.createElement('canvas'); c.width = 88; c.height = 80; const p = c.getContext('2d'), ink = '#18201e', white = '#fff4d6'; p.translate(12,0);
-    const rect = (x, y, w, h, col) => { p.fillStyle = o.flash ? white : col; p.fillRect(x, y, w, h); };
-    const line = (x, y, xx, yy, col, w = 1) => pixelLine(p, x, y, xx, yy, o.flash ? white : col, w);
-    const poly = (pts, col) => pixelPoly(p, pts, o.flash ? white : col);
-    const back = dir === 3, left = dir === 2, bob = walk && !s.horse ? 1 : 0, hy = (s.horse ? 20 : 26) - bob, by = hy + 12, wide = s.bulk > 1.1 ? 1 : 0;
-    if (left) { p.translate(64, 0); p.scale(-1, 1); }
-    rect(23, 52, 20, 2, '#30782b'); rect(20, 51, 25, 1, '#30782b');
-    if (s.horse) {
-      poly([[16,39],[20,35],[38,35],[41,29],[47,30],[50,36],[47,41],[42,41],[41,47],[20,48],[16,44]], ink);
-      poly([[18,39],[21,37],[38,37],[42,31],[46,32],[48,36],[45,39],[40,39],[39,45],[21,46],[18,43]], s.horse);
-      poly([[39,39],[40,30],[44,27],[49,28],[50,31],[55,33],[55,38],[49,40],[44,38]],ink);
-      poly([[41,37],[42,31],[45,29],[48,30],[48,33],[53,34],[53,37],[48,38],[44,36]],s.horse);
-      rect(20, 38, 17, 3, '#bd8958'); rect(24, 39, 10, 7, s.cape || s.body); rect(26, 40, 7, 1, s.trim);
-      for (const [lx, step] of [[20,walk],[26,1-walk],[35,walk],[40,1-walk]]) { rect(lx, 45, 3, 7 - step, ink); rect(lx, 46, 2, 4 - step, s.horse); rect(lx - step, 51 - step, 4, 2, ink); }
-      line(18,39,13,46,ink,2); line(13,46,12,49,ink,2); line(40,32,43,30,ink,2); rect(47,31,1,1,white); rect(52,35,1,1,ink); line(47,33,51,37,s.trim); line(51,37,34,37,s.trim);
-    } else { rect(25, by + 9, 5, 9 - walk, ink); rect(33, by + 9, 5, 8 + walk, ink); rect(25, by + 9, 4, 4, '#79634d'); rect(34, by + 9, 3, 4, '#79634d'); }
-    if (s.cape || s.longHair) poly([[24,by],[39,by],[42,by+13],[35,by+11],[25,by+14],[21,by+10]], s.cape || '#272337');
-    rect(24-wide, by-1, 16+wide*2, 12, ink); rect(25-wide, by, 14+wide*2, 10, s.body); rect(26, by, 3, 8, s.trim);
-    rect(27, by+3, 10, 1, s.trim); rect(26, by+7, 12, 2, s.trim); rect(31, by+7, 2, 2, '#ffdf75');
-    if (s.armorPlate) { rect(29,by+1,7,6,s.armorPlate); line(29,by+3,35,by+3,ink); }
-    if (s.stripes) for (let i=0;i<3;i++) rect(30+i*2,by+1,1,5,s.stripes);
-    rect(21-wide,by,4,7,ink); rect(22-wide,by+1,3,5,s.sleeves||s.body); rect(39+wide,by,4,7,ink); rect(39+wide,by+1,3,5,s.sleeves||s.body);
-    if (s.pauldrons || s.fur) { rect(22-wide,by-1,5,3,s.fur?'#eee6c6':s.trim); rect(37+wide,by-1,5,3,s.fur?'#eee6c6':s.trim); }
-    // 큰 머리·짧은 몸통과 1픽셀 윤곽으로 원본 참고 이미지의 SD 비율을 맞춘다.
-    poly([[27,hy-1],[37,hy-1],[40,hy+2],[40,hy+9],[37,hy+12],[27,hy+12],[24,hy+9],[24,hy+2]],ink);
-    rect(26,hy+2,12,8,s.skin); rect(28,hy+1,8,10,s.skin); rect(27,hy+3,3,5,'#ffe2b1');
-    if (back) { rect(25,hy,14,10,s.helmColor||'#292638'); rect(27,hy+1,9,2,s.trim); }
-    else { rect(29,hy+6,2,2,ink); rect(35,hy+6,2,2,ink); rect(33,hy+8,2,1,'#b57353'); rect(30,hy+10,5,1,ink); }
-    if (s.helm) { rect(25,hy,14,4,s.helmColor||'#53596a'); rect(27,hy-2,10,3,s.helmColor||'#53596a'); rect(27,hy-1,6,1,'#aab9c3'); rect(25,hy+3,14,1,s.trim); rect(25,hy+3,2,5,s.helmColor||ink); }
-    if (s.hair || s.hairCap || s.longHair) { rect(26,hy-1,12,4,'#292337'); rect(25,hy+2,2,6,'#292337'); }
-    if (s.hat) { rect(26,hy-3,12,6,'#247142'); rect(25,hy+2,14,2,s.trim); }
-    if (s.courtHat) { rect(27,hy-7,10,9,ink); rect(28,hy-6,1,6,s.trim); rect(24,hy,17,2,ink); }
-    if (s.wrap) { rect(25,hy-1,14,4,s.wrapColor||'#b6372e'); line(25,hy+1,21,hy+6,s.wrapColor||'#b6372e',2); }
-    if (s.band) rect(25,hy+3,14,2,'#dbe5df');
-    if (s.beard && !back) poly([[28,hy+8],[37,hy+8],[35,hy+15],[32,hy+17],[29,hy+14]],s.beardColor||'#242127');
-    if (s.eyePatch && !back) { line(26,hy+4,38,hy+8,ink); rect(28,hy+5,4,3,ink); }
-    if (s.plume && !s.feathers) { line(32,hy-2,34,hy-7-Math.round(s.plume),s.plumeColor||'#c13c32',2); }
-    if (s.feathers) for (const side of [-1,1]) { const xx=32+side*3; line(xx,hy-2,xx+side*5,hy-12,'#261f24',3); line(xx,hy-3,xx+side*5,hy-13,'#d63836',2); line(xx+side*5,hy-13,xx+side*2,hy-16,'#d63836',2); }
-    if (s.crown || s.horns || s.tigerEars) { rect(26,hy-4,3,4,s.tigerEars?'#e99435':s.trim); rect(36,hy-4,3,4,s.tigerEars?'#e99435':s.trim); if(s.crown)rect(31,hy-6,3,5,'#ffe477'); }
-    if (s.flower) { rect(37,hy+1,4,4,'#ff7cb3'); rect(38,hy+2,2,2,'#ffe477'); }
-    if (s.strawHat) { poly([[31,hy-5],[43,hy+3],[22,hy+3]],ink); poly([[31,hy-4],[40,hy+2],[25,hy+2]],'#d9ba6b'); rect(23,hy+3,19,2,'#f5d987'); }
-    if (s.shield) { const h=s.towerShield?14:10; rect(19,by+2,8,h,ink); rect(20,by+3,6,h-2,s.trim); rect(22,by+4,1,h-4,'#eef2df'); }
-    if(s.weapon==='twin')for(const hx of [23,41]){line(hx,by+8,hx+2,by-10,ink,3);line(hx,by+8,hx+2,by-10,'#a77542');poly([[hx+1,by-10],[hx+7,by-7],[hx+2,by-3]],'#dce7e3');rect(hx-1,by+4,3,3,s.skin);}
-    if (s.weapon && s.weapon!=='twin') {
-      let a=angle*Math.PI/4; if(left)a=Math.PI-a;
-      const dx=Math.cos(a), dy=Math.sin(a), nx=-dy, ny=dx, hx=38+reach, yy=by+5, len=Math.round((s.weapon==='fan'?18*(s.weaponScale||1):s.weapon==='bow'?10:s.weapon==='crossbow'?14:s.weapon==='sword'?18:24)*(o.weaponLen?Math.min(1.2,o.weaponLen/48):1));
-      const tx=hx+dx*len, ty=yy+dy*len;
-      line(hx-dx*5,yy-dy*5,tx,ty,ink,3); line(hx-dx*4,yy-dy*4,tx,ty,'#a77542',1);
-      if (s.weapon==='bow'||s.weapon==='crossbow') { const R=s.weapon==='crossbow'?9:7,pull=3+(state==='shoot'?phase*2:0); line(hx+nx*R,yy+ny*R,hx+dx*5,yy+dy*5,'#d6b26d',2); line(hx+dx*5,yy+dy*5,hx-nx*R,yy-ny*R,'#d6b26d',2); line(hx+nx*R,yy+ny*R,hx-dx*pull,yy-dy*pull,white); line(hx-dx*pull,yy-dy*pull,hx-nx*R,yy-ny*R,white); }
-      else if(s.weapon==='fan') { poly([[hx,yy],[tx+nx*6,ty+ny*6],[tx+dx*4,ty+dy*4],[tx-nx*6,ty-ny*6]],'#f0dba4'); }
-      else { const blade=s.weapon==='sword'?10:6; line(tx-dx*blade,ty-dy*blade,tx,ty,'#dce7e3',2); if(['glaive','halberd','axe','twin'].includes(s.weapon)){line(tx-dx*5+nx*5,ty-dy*5+ny*5,tx+dx*2,ty+dy*2,'#dce7e3',3);if(s.weapon==='halberd'||s.weapon==='twin')line(tx-dx*5-nx*5,ty-dy*5-ny*5,tx+dx*2,ty+dy*2,'#aebfc9',2);}else {line(tx-dx*4+nx*2,ty-dy*4+ny*2,tx+dx*2,ty+dy*2,white);line(tx-dx*4-nx*2,ty-dy*4-ny*2,tx+dx*2,ty+dy*2,white);} }
-      rect(hx-1,yy,3,3,s.skin);
-    }
-    if (['cast','heal','bless'].includes(state)) { const col=state==='cast'?'#b398ff':'#7dff9a', R=5+phase; line(43-R,by,43+R,by,col);line(43,by-R,43,by+R,col);rect(42,by-1,3,3,white); }
-    if (state==='guard') { poly([[42,by-2],[48,by+2],[46,by+9],[42,by+12],[38,by+9],[36,by+2]],ink); poly([[42,by],[46,by+3],[44,by+8],[42,by+10],[40,by+8],[38,by+3]],'#b4e8ff'); }
-    if (state==='hurt') for(let i=0;i<8;i++){const a=i*TAU/8;line(43+Math.cos(a)*3,by+Math.sin(a)*3,43+Math.cos(a)*(7+phase),by+Math.sin(a)*(7+phase),'#ffe27a',2);}
-    if (['slash','thrust','spin','dash'].includes(state)) { line(42,by-4,48+phase*2,by-9,'#ffe9a0',2); if(state==='dash')for(let i=0;i<3;i++)line(14,40+i*4,22,40+i*4,'#ffe9a0'); }
-    // 최대 512장(픽셀 약 14MiB)으로 제한해 다수 유닛의 짧은 자세를 무한히 쌓지 않는다.
-    if (PIXEL_SPRITES.size >= 512) PIXEL_SPRITES.delete(PIXEL_SPRITES.keys().next().value);
-    PIXEL_SPRITES.set(key,c);
-  }
-  const scale = r / 12; g.save(); g.imageSmoothingEnabled=false;
-  if(o.alpha!=null)g.globalAlpha*=o.alpha;
-  g.drawImage(c,Math.round(x-44*scale),Math.round(y-54*scale),88*scale,80*scale); g.restore();
+
+const BATTLE_ATLASES = [{"file":"units-0.png","view":"front","keys":["guan","lubu","zhao","diao","dian","huang","kong","ally_sword","ally_archer","ally_shield","ally_cav","mage"],"frames":[{"x":38,"y":97,"w":170,"h":190,"sx":64,"sy":97},{"x":271,"y":97,"w":180,"h":190,"sx":295,"sy":97},{"x":507,"y":42,"w":257,"h":248,"sx":609,"sy":42},{"x":773,"y":39,"w":253,"h":251,"sx":882,"sy":39},{"x":1058,"y":77,"w":185,"h":213,"sx":1141,"sy":77},{"x":1285,"y":77,"w":232,"h":213,"sx":1375,"sy":77},{"x":68,"y":343,"w":162,"h":180,"sx":139,"sy":343},{"x":288,"y":342,"w":173,"h":181,"sx":371,"sy":342},{"x":524,"y":349,"w":235,"h":173,"sx":626,"sy":349},{"x":772,"y":346,"w":243,"h":180,"sx":868,"sy":346},{"x":1071,"y":347,"w":173,"h":176,"sx":1141,"sy":347},{"x":1301,"y":352,"w":180,"h":171,"sx":1384,"sy":352},{"x":78,"y":579,"w":144,"h":161,"sx":131,"sy":579},{"x":300,"y":577,"w":166,"h":164,"sx":367,"sy":577},{"x":580,"y":590,"w":147,"h":146,"sx":633,"sy":590},{"x":818,"y":590,"w":152,"h":146,"sx":874,"sy":590},{"x":1099,"y":597,"w":152,"h":146,"sx":1150,"sy":597},{"x":1339,"y":599,"w":141,"h":144,"sx":1389,"sy":599},{"x":78,"y":815,"w":137,"h":174,"sx":84,"sy":815},{"x":302,"y":826,"w":154,"h":163,"sx":304,"sy":826},{"x":528,"y":791,"w":238,"h":200,"sx":631,"sy":791},{"x":780,"y":789,"w":245,"h":204,"sx":885,"sy":789},{"x":1103,"y":829,"w":136,"h":161,"sx":1150,"sy":829},{"x":1324,"y":825,"w":161,"h":165,"sx":1384,"sy":825}]},{"file":"units-1.png","view":"front","keys":["soldier","archer","shield","cav","captain","hua","jang","gong","lulingqi","gao","cao","xia"],"frames":[{"x":72,"y":66,"w":136,"h":150,"sx":125,"sy":66},{"x":314,"y":66,"w":131,"h":150,"sx":367,"sy":66},{"x":571,"y":66,"w":148,"h":150,"sx":633,"sy":66},{"x":820,"y":66,"w":145,"h":155,"sx":883,"sy":66},{"x":1057,"y":34,"w":176,"h":188,"sx":1062,"sy":34},{"x":1311,"y":34,"w":177,"h":193,"sx":1315,"sy":34},{"x":16,"y":276,"w":266,"h":206,"sx":117,"sy":276},{"x":286,"y":277,"w":259,"h":205,"sx":374,"sy":277},{"x":561,"y":261,"w":193,"h":217,"sx":644,"sy":261},{"x":811,"y":261,"w":192,"h":221,"sx":890,"sy":261},{"x":1038,"y":293,"w":240,"h":189,"sx":1136,"sy":293},{"x":1290,"y":288,"w":239,"h":194,"sx":1384,"sy":288},{"x":16,"y":523,"w":269,"h":221,"sx":116,"sy":523},{"x":286,"y":523,"w":267,"h":222,"sx":381,"sy":523},{"x":545,"y":516,"w":218,"h":234,"sx":644,"sy":516},{"x":790,"y":516,"w":203,"h":235,"sx":884,"sy":516},{"x":1041,"y":530,"w":251,"h":220,"sx":1127,"sy":530},{"x":1296,"y":530,"w":226,"h":220,"sx":1369,"sy":530},{"x":16,"y":775,"w":222,"h":215,"sx":113,"sy":775},{"x":272,"y":779,"w":227,"h":208,"sx":375,"sy":779},{"x":546,"y":804,"w":201,"h":183,"sx":649,"sy":804},{"x":793,"y":803,"w":210,"h":183,"sx":900,"sy":803},{"x":1058,"y":811,"w":195,"h":176,"sx":1136,"sy":811},{"x":1304,"y":811,"w":212,"h":181,"sx":1395,"sy":811}]},{"file":"units-2.png","view":"front","keys":["xiahouyuan","liubei","zhangfei","machao","xuhuang","yuan","yan","wen","sima","xuchu","dong","guo"],"frames":[{"x":42,"y":29,"w":191,"h":213,"sx":115,"sy":29},{"x":311,"y":34,"w":187,"h":208,"sx":384,"sy":34},{"x":579,"y":84,"w":168,"h":157,"sx":659,"sy":84},{"x":806,"y":84,"w":184,"h":157,"sx":897,"sy":84},{"x":1057,"y":91,"w":215,"h":150,"sx":1126,"sy":91},{"x":1316,"y":91,"w":196,"h":150,"sx":1381,"sy":91},{"x":32,"y":277,"w":243,"h":218,"sx":123,"sy":277},{"x":297,"y":272,"w":246,"h":223,"sx":395,"sy":272},{"x":568,"y":280,"w":210,"h":215,"sx":636,"sy":280},{"x":806,"y":277,"w":220,"h":218,"sx":881,"sy":277},{"x":1053,"y":316,"w":184,"h":179,"sx":1160,"sy":316},{"x":1294,"y":312,"w":188,"h":183,"sx":1388,"sy":312},{"x":32,"y":525,"w":245,"h":226,"sx":122,"sy":525},{"x":304,"y":527,"w":239,"h":224,"sx":401,"sy":527},{"x":556,"y":527,"w":234,"h":224,"sx":635,"sy":527},{"x":799,"y":524,"w":240,"h":227,"sx":881,"sy":524},{"x":1073,"y":570,"w":158,"h":181,"sx":1149,"sy":570},{"x":1306,"y":570,"w":170,"h":181,"sx":1384,"sy":570},{"x":32,"y":821,"w":215,"h":156,"sx":120,"sy":821},{"x":296,"y":818,"w":209,"h":159,"sx":383,"sy":818},{"x":569,"y":787,"w":183,"h":190,"sx":657,"sy":787},{"x":794,"y":786,"w":208,"h":191,"sx":899,"sy":786},{"x":1082,"y":817,"w":149,"h":160,"sx":1141,"sy":817},{"x":1322,"y":816,"w":139,"h":161,"sx":1373,"sy":816}]},{"file":"units-3.png","view":"front","keys":["xun","emage","f_xian","f_bing","f_nu","f_ji","f_qing","f_hubao","f_bai","f_dan","ally_spear","enemy_spear"],"frames":[{"x":83,"y":79,"w":126,"h":170,"sx":133,"sy":79},{"x":299,"y":79,"w":142,"h":170,"sx":363,"sy":79},{"x":592,"y":79,"w":126,"h":170,"sx":645,"sy":79},{"x":808,"y":81,"w":139,"h":168,"sx":879,"sy":81},{"x":1093,"y":55,"w":136,"h":194,"sx":1112,"sy":55},{"x":1319,"y":55,"w":133,"h":194,"sx":1340,"sy":55},{"x":64,"y":277,"w":234,"h":227,"sx":159,"sy":277},{"x":300,"y":279,"w":254,"h":227,"sx":390,"sy":279},{"x":602,"y":356,"w":142,"h":143,"sx":644,"sy":356},{"x":824,"y":356,"w":144,"h":143,"sx":869,"sy":356},{"x":1072,"y":311,"w":208,"h":193,"sx":1138,"sy":311},{"x":1298,"y":314,"w":206,"h":190,"sx":1373,"sy":314},{"x":86,"y":599,"w":159,"h":144,"sx":135,"sy":599},{"x":312,"y":599,"w":160,"h":144,"sx":364,"sy":599},{"x":526,"y":526,"w":254,"h":219,"sx":609,"sy":526},{"x":752,"y":525,"w":265,"h":221,"sx":882,"sy":525},{"x":1064,"y":580,"w":177,"h":165,"sx":1150,"sy":580},{"x":1285,"y":580,"w":198,"h":165,"sx":1380,"sy":580},{"x":81,"y":812,"w":152,"h":149,"sx":134,"sy":812},{"x":307,"y":812,"w":154,"h":149,"sx":362,"sy":812},{"x":535,"y":816,"w":182,"h":145,"sx":644,"sy":816},{"x":772,"y":816,"w":176,"h":145,"sx":874,"sy":816},{"x":1063,"y":816,"w":171,"h":145,"sx":1163,"sy":816},{"x":1286,"y":816,"w":174,"h":145,"sx":1389,"sy":816}]},{"file":"back-0.png","view":"back","keys":["guan","lubu","zhao","diao","dian","huang","kong","ally_sword","ally_archer","ally_shield","ally_cav","mage"],"frames":[{"x":44,"y":96,"w":204,"h":189,"sx":130,"sy":96},{"x":282,"y":96,"w":207,"h":190,"sx":372,"sy":96},{"x":508,"y":14,"w":260,"h":276,"sx":608,"sy":14},{"x":779,"y":16,"w":247,"h":275,"sx":870,"sy":16},{"x":1053,"y":71,"w":224,"h":219,"sx":1143,"sy":71},{"x":1301,"y":73,"w":223,"h":217,"sx":1393,"sy":73},{"x":63,"y":344,"w":178,"h":183,"sx":117,"sy":344},{"x":288,"y":339,"w":185,"h":185,"sx":353,"sy":339},{"x":508,"y":344,"w":237,"h":183,"sx":622,"sy":344},{"x":766,"y":344,"w":247,"h":183,"sx":881,"sy":344},{"x":1055,"y":346,"w":190,"h":181,"sx":1135,"sy":346},{"x":1301,"y":350,"w":202,"h":183,"sx":1387,"sy":350},{"x":66,"y":573,"w":165,"h":175,"sx":129,"sy":573},{"x":300,"y":573,"w":175,"h":171,"sx":374,"sy":573},{"x":569,"y":589,"w":168,"h":155,"sx":625,"sy":589},{"x":815,"y":589,"w":163,"h":153,"sx":871,"sy":589},{"x":1094,"y":592,"w":150,"h":156,"sx":1149,"sy":592},{"x":1322,"y":590,"w":156,"h":158,"sx":1383,"sy":590},{"x":57,"y":786,"w":156,"h":199,"sx":199,"sy":786},{"x":299,"y":789,"w":161,"h":198,"sx":449,"sy":789},{"x":517,"y":773,"w":239,"h":225,"sx":623,"sy":773},{"x":772,"y":766,"w":235,"h":232,"sx":881,"sy":766},{"x":1082,"y":815,"w":166,"h":169,"sx":1167,"sy":815},{"x":1323,"y":815,"w":171,"h":175,"sx":1402,"sy":815}]},{"file":"back-1.png","view":"back","keys":["soldier","archer","shield","cav","captain","hua","jang","gong","lulingqi","gao","cao","xia"],"frames":[{"x":80,"y":65,"w":133,"h":149,"sx":124,"sy":65},{"x":317,"y":65,"w":135,"h":152,"sx":364,"sy":65},{"x":568,"y":65,"w":147,"h":152,"sx":634,"sy":65},{"x":824,"y":64,"w":142,"h":157,"sx":896,"sy":64},{"x":1072,"y":37,"w":163,"h":181,"sx":1228,"sy":37},{"x":1328,"y":37,"w":163,"h":184,"sx":1484,"sy":37},{"x":16,"y":268,"w":257,"h":215,"sx":144,"sy":268},{"x":272,"y":269,"w":247,"h":216,"sx":390,"sy":269},{"x":544,"y":258,"w":191,"h":219,"sx":623,"sy":258},{"x":792,"y":262,"w":197,"h":215,"sx":846,"sy":262},{"x":1046,"y":285,"w":229,"h":194,"sx":1142,"sy":285},{"x":1297,"y":285,"w":234,"h":198,"sx":1403,"sy":285},{"x":15,"y":521,"w":259,"h":229,"sx":141,"sy":521},{"x":272,"y":523,"w":246,"h":230,"sx":391,"sy":523},{"x":559,"y":512,"w":194,"h":239,"sx":661,"sy":512},{"x":799,"y":513,"w":197,"h":239,"sx":898,"sy":513},{"x":1050,"y":531,"w":231,"h":225,"sx":1154,"sy":531},{"x":1305,"y":531,"w":225,"h":226,"sx":1410,"sy":531},{"x":18,"y":771,"w":219,"h":211,"sx":120,"sy":771},{"x":266,"y":772,"w":219,"h":206,"sx":364,"sy":772},{"x":544,"y":799,"w":197,"h":183,"sx":645,"sy":799},{"x":791,"y":799,"w":206,"h":183,"sx":891,"sy":799},{"x":1043,"y":799,"w":220,"h":183,"sx":1137,"sy":799},{"x":1298,"y":803,"w":215,"h":179,"sx":1390,"sy":803}]},{"file":"back-2.png","view":"back","keys":["xiahouyuan","liubei","zhangfei","machao","xuhuang","yuan","yan","wen","sima","xuchu","dong","guo"],"frames":[{"x":34,"y":23,"w":210,"h":223,"sx":123,"sy":23},{"x":301,"y":24,"w":206,"h":222,"sx":390,"sy":24},{"x":574,"y":75,"w":188,"h":167,"sx":659,"sy":75},{"x":804,"y":74,"w":193,"h":168,"sx":897,"sy":74},{"x":1063,"y":81,"w":208,"h":165,"sx":1133,"sy":81},{"x":1301,"y":81,"w":207,"h":163,"sx":1373,"sy":81},{"x":29,"y":268,"w":262,"h":231,"sx":135,"sy":268},{"x":300,"y":268,"w":241,"h":231,"sx":394,"sy":268},{"x":569,"y":268,"w":227,"h":231,"sx":649,"sy":268},{"x":806,"y":268,"w":226,"h":230,"sx":886,"sy":268},{"x":1056,"y":313,"w":209,"h":183,"sx":1155,"sy":313},{"x":1293,"y":310,"w":206,"h":186,"sx":1390,"sy":310},{"x":34,"y":518,"w":248,"h":234,"sx":129,"sy":518},{"x":300,"y":518,"w":238,"h":234,"sx":397,"sy":518},{"x":559,"y":517,"w":238,"h":235,"sx":651,"sy":517},{"x":796,"y":517,"w":247,"h":235,"sx":891,"sy":517},{"x":1070,"y":561,"w":185,"h":191,"sx":1158,"sy":561},{"x":1302,"y":561,"w":187,"h":191,"sx":1393,"sy":561},{"x":33,"y":814,"w":220,"h":167,"sx":132,"sy":814},{"x":295,"y":814,"w":219,"h":167,"sx":393,"sy":814},{"x":564,"y":777,"w":201,"h":204,"sx":662,"sy":777},{"x":795,"y":777,"w":213,"h":204,"sx":906,"sy":777},{"x":1075,"y":810,"w":178,"h":171,"sx":1152,"sy":810},{"x":1310,"y":810,"w":175,"h":171,"sx":1386,"sy":810}]},{"file":"back-3.png","view":"back","keys":["xun","emage","f_xian","f_bing","f_nu","f_ji","f_qing","f_hubao","f_bai","f_dan","ally_spear","enemy_spear"],"frames":[{"x":68,"y":71,"w":164,"h":179,"sx":134,"sy":71},{"x":304,"y":71,"w":159,"h":177,"sx":369,"sy":71},{"x":573,"y":71,"w":163,"h":181,"sx":644,"sy":71},{"x":810,"y":71,"w":160,"h":181,"sx":881,"sy":71},{"x":1089,"y":34,"w":166,"h":212,"sx":1245,"sy":34},{"x":1327,"y":34,"w":160,"h":218,"sx":1476,"sy":34},{"x":66,"y":268,"w":235,"h":249,"sx":157,"sy":268},{"x":320,"y":267,"w":245,"h":250,"sx":411,"sy":267},{"x":604,"y":352,"w":146,"h":150,"sx":651,"sy":352},{"x":827,"y":352,"w":149,"h":153,"sx":877,"sy":352},{"x":1076,"y":307,"w":211,"h":201,"sx":1156,"sy":307},{"x":1309,"y":312,"w":204,"h":196,"sx":1395,"sy":312},{"x":79,"y":590,"w":150,"h":155,"sx":138,"sy":590},{"x":312,"y":591,"w":149,"h":156,"sx":366,"sy":591},{"x":549,"y":522,"w":251,"h":229,"sx":633,"sy":522},{"x":780,"y":525,"w":258,"h":226,"sx":862,"sy":525},{"x":1069,"y":578,"w":199,"h":169,"sx":1154,"sy":578},{"x":1302,"y":576,"w":191,"h":171,"sx":1388,"sy":576},{"x":74,"y":802,"w":159,"h":161,"sx":133,"sy":802},{"x":306,"y":803,"w":166,"h":163,"sx":369,"sy":803},{"x":579,"y":800,"w":189,"h":163,"sx":645,"sy":800},{"x":819,"y":800,"w":190,"h":166,"sx":885,"sy":800},{"x":1096,"y":803,"w":190,"h":160,"sx":1161,"sy":803},{"x":1324,"y":802,"w":187,"h":164,"sx":1393,"sy":802}]}];
+for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
+const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
+const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
+function extractBattleSprite(image,b,tint=false) {
+  const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
+  const pixels=g.getImageData(0,0,b.w,b.h),d=pixels.data,seen=new Uint8Array(b.w*b.h),queue=new Int32Array(b.w*b.h);let head=0,tail=1;const seed=(b.sy-b.y)*b.w+b.sx-b.x;queue[0]=seed;seen[seed]=1;
+  if(seed<0||seed>=seen.length||d[seed*4+3]<128)throw new Error('스프라이트 투명 경계 오류');
+  // 같은 사각형에 걸친 이웃의 무기를 제거하고 이 스프라이트의 연결된 알파만 사용한다.
+  while(head<tail){const i=queue[head++],x=i%b.w,y=Math.floor(i/b.w);for(const n of [x?i-1:-1,x+1<b.w?i+1:-1,y?i-b.w:-1,y+1<b.h?i+b.w:-1])if(n>=0&&!seen[n]&&d[n*4+3]>=128){seen[n]=1;queue[tail++]=n;}}
+  if(tail<500)throw new Error('빈 스프라이트 이미지');
+  for(let i=0;i<seen.length;i++){const j=i*4;if(!seen[i]){d[j+3]=0;continue;}d[j+3]=255;if(tint&&d[j+2]>d[j]*1.18&&d[j+2]>d[j+1]*1.05){const r=d[j],g=d[j+1],blue=d[j+2];d[j]=Math.min(255,blue*.9+25);d[j+1]=g*.7+8;d[j+2]=r*.8+8;}}
+  const feet=new Uint32Array(b.w);let total=0;for(let y=Math.floor(b.h*.85);y<b.h;y++)for(let x=0;x<b.w;x++)if(seen[y*b.w+x]){feet[x]++;total++;}
+  let weight=0;c.footX=b.w/2;for(let x=0;x<b.w;x++){weight+=feet[x];if(weight>=total/2){c.footX=x;break;}}
+  g.putImageData(pixels,0,0);return c;
 }
+function loadBattleArt() {
+  if(typeof Image==='undefined')return Promise.resolve();if(BATTLE_ART.loading)return BATTLE_ART.promise;
+  BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
+  const names=[...BATTLE_ATLASES.map(s=>s.file),'terrain.png','approved-reference.png'];
+  BATTLE_ART.promise=Promise.all(names.map(name=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(name));image.src='src/assets/battle-v274/'+name+'?v=274&try='+attempt;}))).then(images=>{
+    BATTLE_ATLASES.forEach((sheet,si)=>sheet.keys.forEach((key,i)=>{const row=Math.floor(i/3),col=(i%3)*2,bs=[sheet.frames[row*6+col],sheet.frames[row*6+col+1]],model=BATTLE_ART.models.get(key)||{},back=sheet.view==='back';model[back?'back':'frames']=bs.map(b=>extractBattleSprite(images[si],b));if(key.startsWith('f_'))model[back?'enemyBack':'enemy']=bs.map(b=>extractBattleSprite(images[si],b,true));BATTLE_ART.models.set(key,model);}));
+    for(const model of BATTLE_ART.models.values())if(!model.frames||!model.back)throw new Error('캐릭터 방향 이미지 누락');
+    const n=BATTLE_ATLASES.length;BATTLE_ART.terrain=images[n];BATTLE_ART.reference=images[n+1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[n],b));BATTLE_ART.ready=true;
+  }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
+}
+function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6);}
+function drawBattleBody(g,x,y,r,face,s,o={}) {
+  if(!BATTLE_ART.ready||!BATTLE_ART.models.size)return;
+  let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
+  const enemy=o.team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
+  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield',ally_cav:'cav',mage:'emage'})[key]||key;
+  const model=BATTLE_ART.models.get(key);if(!model)throw new Error('전투 이미지 누락: '+key);
+  const pose=o.pose,phase=pose?.trail||0,frame=o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0,back=Math.sin(face)<-.25,frames=back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
+  if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
+  const h=battleSpriteHeight(r,s),w=image.width/image.height*h;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
+  const thrust=pose?.state==='thrust'?phase*5:0,bob=o.moving&&frame?-1:pose&&['cast','heal','bless'].includes(pose.state)?-2:0;
+  g.translate(Math.round(x+Math.cos(face)*thrust),Math.round(y+bob));if(pose?.state==='slash')g.rotate((phase-.5)*.16);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if((Math.cos(face)<-.25)!==sourceLeft)g.scale(-1,1);
+  g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round(h),Math.round(w),Math.round(h));g.restore();
+}
+if(typeof Image==='function')loadBattleArt();
 
 function drawBattleEffect(g, f, t) {
   const p=Math.max(0,Math.min(1,1-f.t/f.max));
@@ -375,17 +344,29 @@ function drawBattleRing(g,x,y,rx,ry,col,dashed=false) {
 }
 
 // map: 0 풀 1 숲 2 바위 3 강 4 여울. 판정 격자는 유지하고 2px 도트로만 그린다.
-function buildTerrain(map, MW, MH, TILE) {
-  const c = document.createElement('canvas'); c.width = MW * TILE; c.height = MH * TILE; const g = c.getContext('2d');
-  let s = 12345; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
-  g.scale(2,2); const tile=TILE/2;
-  g.fillStyle = '#49b72e'; g.fillRect(0,0,c.width/2,c.height/2);
-  for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-    const t=map[ty*MW+tx],x=tx*tile,y=ty*tile;
-    if(t===3||t===4){g.fillStyle=t===3?'#397d9c':'#c4ac68';g.fillRect(x,y,tile,tile);}
-    for(let i=0;i<7;i++){g.fillStyle=t===3?(i%2?'#67b4c0':'#2f668b'):t===4?(i%2?'#e2ce8d':'#9b9158'):(i%2?'#399c2a':'#64c53b');g.fillRect(x+Math.floor(r()*tile),y+Math.floor(r()*tile),t===3?3:1,1);}
-    if(t===1){g.fillStyle='#4d4327';g.fillRect(x+6,y+11,4,5);pixelPoly(g,[[x+4,y],[x+12,y],[x+16,y+4],[x+16,y+10],[x+12,y+14],[x+3,y+14],[x,y+10],[x,y+4]],'#1e5427');pixelPoly(g,[[x+4,y+1],[x+11,y+1],[x+15,y+5],[x+14,y+10],[x+10,y+12],[x+3,y+11],[x+1,y+8],[x+2,y+4]],'#258b30');for(let i=0;i<9;i++){g.fillStyle=i%2?'#65c43b':'#3eac30';g.fillRect(x+3+Math.floor(r()*9),y+2+Math.floor(r()*8),2,1);}}
-    if(t===2){pixelPoly(g,[[x+4,y+3],[x+10,y+1],[x+14,y+6],[x+16,y+13],[x+12,y+15],[x+2,y+14],[x,y+10]],'#384c43');pixelPoly(g,[[x+4,y+4],[x+10,y+2],[x+13,y+7],[x+13,y+12],[x+3,y+13],[x+1,y+9]],'#8a9990');pixelPoly(g,[[x+4,y+4],[x+9,y+3],[x+11,y+7],[x+5,y+8],[x+2,y+10]],'#c4c9b0');}
+function buildTerrain(map,MW,MH,TILE) {
+  const c=document.createElement('canvas');c.width=MW*TILE;c.height=MH*TILE;c.battleAtlasReady=!!BATTLE_ART.terrain;
+  if(!BATTLE_ART.ready||!BATTLE_ART.terrain)return c;
+  const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  // 승인 원본의 빈 잔디 구역을 그대로 반복해 바탕 색·픽셀 밀도를 유지한다.
+  const grass=document.createElement('canvas');grass.width=grass.height=128;const gg=grass.getContext('2d');gg.imageSmoothingEnabled=false;gg.drawImage(BATTLE_ART.reference,490,25,256,256,0,0,128,128);g.fillStyle=g.createPattern(grass,'repeat');g.fillRect(0,0,c.width,c.height);
+  let seed=12345;const rnd=()=>((seed=seed*16807%2147483647)/2147483647),atlas=BATTLE_ART.terrain;
+  const earth=document.createElement('canvas');earth.width=earth.height=128;const eg=earth.getContext('2d');eg.imageSmoothingEnabled=false;eg.drawImage(BATTLE_ART.reference,650,580,128,128,0,0,128,128);g.fillStyle=g.createPattern(earth,'repeat');
+  const cx=c.width*.5,cy=c.height*.5,rx=c.width*.24,ry=c.height*.075;
+  for(let y=Math.floor(cy-ry*1.1);y<cy+ry*1.1;y+=2)for(let x=Math.floor(cx-rx*1.1);x<cx+rx*1.1;x+=2){const d=((x-cx)/rx)**2+((y-cy)/ry)**2;if(rnd()<Math.max(0,Math.min(1,(1.2-d)/.7)))g.fillRect(x,y,2,2);}
+  const tile=(index,x,y)=>{const col=index%4,row=Math.floor(index/4),sx=Math.floor(col*atlas.width/4)+6,sy=Math.floor(row*atlas.height/3)+6,sw=Math.floor((col+1)*atlas.width/4)-sx-6,sh=Math.floor((row+1)*atlas.height/3)-sy-6;g.drawImage(atlas,sx,sy,sw,sh,x,y,TILE,TILE);};
+  for(let ty=0;ty<MH;ty++)for(let tx=0;tx<MW;tx++){
+    const t=map[ty*MW+tx],x=tx*TILE,y=ty*TILE,v=rnd();
+    if(t===3)tile(v<.5?8:9,x,y);else if(t===4)tile(v<.5?3:11,x,y);
+  }
+  // 수풀·바위는 투명 이미지를 겹쳐 타일의 사각 테두리가 드러나지 않게 한다.
+  const covered=new Set();
+  for(let ty=0;ty<MH;ty++)for(let tx=0;tx<MW;tx++){
+    const index=ty*MW+tx,t=map[index];if(t!==1&&t!==2||covered.has(index))continue;
+    const group=t===1&&tx+1<MW&&ty+1<MH&&[index+1,index+MW,index+MW+1].every(i=>map[i]===1&&!covered.has(i));
+    if(group)for(const i of [index+1,index+MW,index+MW+1])covered.add(i);
+    const object=BATTLE_ART.terrainObjects[(t===1?0:2)+((tx*7+ty*11)%2)],w=TILE*(t===1?(group?2.5:1.4):1.12),h=w*object.height/object.width;
+    g.drawImage(object,Math.round((tx+(group?1:.5))*TILE-w/2),Math.round((ty+(group?2:1))*TILE-h),Math.round(w),Math.round(h));
   }
   return c;
 }
