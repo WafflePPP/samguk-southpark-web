@@ -149,10 +149,10 @@ const WAR_COST = { neutral: 5, truce: 25, ally: 40 };   // 선전포고·휴전 
 const FACTION_ALLIES = {};   // 고정 동맹은 없다 — 동맹은 외교(플레이어·AI)로만 맺는다
 const THEME_NAME = { plains: '평야', mountain: '산악', riverside: '강가', fortress: '성채' };
 const FACTION_STYLE = {
-  '여포': { main: '#2e77c7', light: '#cce8ff', dark: '#163b70' },
-  '원소': { main: '#68865a', light: '#dce8c6', dark: '#344a2d' },
-  '조조': { main: '#b84338', light: '#ffd4c9', dark: '#68221f' },
-  '유비': { main: '#d2a82e', light: '#fff0a3', dark: '#705616' },
+  '여포': { main: '#202126', light: '#e5e7eb', dark: '#8a90a6' },
+  '원소': { main: '#d2a82e', light: '#fff0a3', dark: '#705616' },
+  '조조': { main: '#2e77c7', light: '#cce8ff', dark: '#163b70' },
+  '유비': { main: '#329653', light: '#c9f2ce', dark: '#1d5730' },
 };
 // 세력 고유 병종(명세 53 §3.6): 정규화한 병종 키가 표에 있으면 고유 키로 바꾼다. FACTION_UNIT_RATE 로 치환 비율(슬롯 번호 기준 10칸 중 몇 칸)을 조절한다.
 const FACTION_UNITS = { '여포': { shield: 'f_xian', cav: 'f_bing' }, '원소': { sword: 'f_ji', archer: 'f_nu' }, '조조': { sword: 'f_qing', cav: 'f_hubao' }, '유비': { sword: 'f_dan', shield: 'f_bai', spear: 'f_bai' } };
@@ -1717,7 +1717,7 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
   ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.270', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.271', 24, 30, 16, COLORS.silver2);
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
@@ -1743,7 +1743,7 @@ function drawSaveSlots() {
 }
 function drawMapFlag(x, y, faction, mark, highlight = false) {
   const style = FACTION_STYLE[faction] || FACTION_STYLE['여포'], w = highlight ? 38 : 31, h = highlight ? 27 : 22;
-  ctx.save(); ctx.strokeStyle = '#211b18'; ctx.lineWidth = highlight ? 4 : 3;
+  ctx.save(); ctx.strokeStyle = style.dark; ctx.lineWidth = highlight ? 4 : 3;
   ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.lineTo(x, y - h); ctx.stroke();
   ctx.fillStyle = style.main; ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + w, y - h + 3); ctx.lineTo(x + w - 7, y - 8); ctx.lineTo(x, y - 11); ctx.closePath(); ctx.fill(); ctx.stroke();
   label(mark, x + w * .48, y - 12, highlight ? 14 : 12, style.light, 'center'); ctx.restore();
@@ -1790,7 +1790,7 @@ function drawMapMini() {
   ctx.save(); ctx.translate(m.x, m.y); ctx.scale(k, k); drawMapSea(); ctx.restore();
   ctx.strokeStyle = '#78b8c6'; ctx.lineWidth = 1.5; ctx.beginPath();
   YELLOW_RIVER.forEach(([x, y], i) => { if (i) ctx.lineTo(m.x + x * k, m.y + y * k); else ctx.moveTo(m.x + x * k, m.y + y * k); }); ctx.stroke();
-  for (const s of STAGES) { ctx.fillStyle = FACTION_STYLE[stageFaction(s)].main; ctx.fillRect(m.x + s.x * k - 1.5, m.y + s.y * k - 1.5, 3, 3); }
+  for (const s of STAGES) { const style = FACTION_STYLE[stageFaction(s)]; ctx.fillStyle = style.dark; ctx.fillRect(m.x + s.x * k - 2.5, m.y + s.y * k - 2.5, 5, 5); ctx.fillStyle = style.main; ctx.fillRect(m.x + s.x * k - 1.5, m.y + s.y * k - 1.5, 3, 3); }
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(m.x + mcam.x * k, m.y + mcam.y * k, MAP_VW * k, VH * k);
 }
 function drawStageMap() {
