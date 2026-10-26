@@ -106,6 +106,7 @@ const CLONES = {
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
 for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo', 'gong']) U[k].style = k;
+U.liushan.style = 'ally_sword';
 for (const k of ['xiahouyuan', 'xuhuang', 'yan', 'wen', 'gong']) Object.assign(U[k], { cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 8, special: 'dash', range: 0 });   // 참조 디자인에서 말에 탑승한 장수는 기병
 for (const k of ['xiahouyuan', 'gong']) Object.assign(U[k], { range: 270, movingShot: true });   // 기마궁병은 이동 중에도 원거리 공격
 for (const k of ['ecap', 'esage']) STAT5.forEach((f, i) => { U[k][f] = ROLE_CAPTAIN[roleOf(k)][i]; });
