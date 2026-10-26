@@ -198,6 +198,7 @@ function heroPose(u, s, t) {
 
 // TKC drawBody 축약: 타원 몸통 + 원 머리 + 띠, 영웅별 장식 플래그.
 function drawBody(g, x, y, r, face, s, o = {}) {
+  if(s.battleStyle==='lubu'&&BATTLE_ART.ready&&BATTLE_ART.models.get('lubu')?.reworked){drawBattleBody(g,x,y,r,face,s,o);return;}
   const pose = o.pose;
   g.save();
   if (pose) { g.translate(x, y); g.rotate(pose.lean); g.translate(-x, -y); o = { ...o, weaponAng: pose.angle, bob: pose.bob }; }
@@ -313,11 +314,23 @@ function loadBattleArt() {
     await Promise.all(heroes.map(async h=>{const image=await load('src/assets/heroes-v277/'+h.file),model=BATTLE_ART.models.get(h.key);if(!model||h.frames.length!==32)throw new Error('장수 8방향 이미지 누락: '+h.key);model.directions=Array.from({length:8},(_,d)=>h.frames.slice(d*4,d*4+4).map(b=>extractBattleSprite(image,b)));model.directionHeight=Math.max(...h.frames.map(b=>b.h));}));
     const idleKeys=idleSheets.flatMap(s=>s.keys);if(idleKeys.length!==27||new Set(idleKeys).size!==27||heroes.some(h=>!idleKeys.includes(h.key)))throw new Error('장수 대기 외형 누락');
     await Promise.all(idleSheets.map(async sheet=>{if(sheet.frames.length!==sheet.keys.length*8)throw new Error('장수 대기 방향 누락');const image=await load('src/assets/hero-idle-v280/'+sheet.file,280);sheet.keys.forEach((key,i)=>{const model=BATTLE_ART.models.get(key);model.idle=sheet.frames.slice(i*8,i*8+8).map(b=>extractBattleSprite(image,b,false,200));const walk=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b),idle=model.idle.map(c=>c.bodyHeight).sort((a,b)=>a-b);model.idleHeight=model.directionHeight*idle[4]/walk[16];});}));
-    BATTLE_ART.ready=true;
+    const update=await fetch('src/assets/lubu-v284/layout.json?v=284&try='+attempt).then(r=>{if(!r.ok)throw new Error('여포 아트 목록 로드 실패');return r.json();});
+    const sheets=await Promise.all(update.map(async sheet=>{const image=await load('src/assets/lubu-v284/'+sheet.file,284);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
+    installLubuRework(sheets);BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
 function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6);}
 function battleDirection(face){return ((Math.round(face/(Math.PI/4))%8)+8)%8;}
+function installLubuRework(sheets) {
+  const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,attack=sheets.find(s=>s.kind==='attack')?.frames;
+  if(sheets.length!==3||idle?.length!==8||walk?.length!==32||attack?.length!==32)throw new Error('여포 방향/동작 이미지 누락');
+  const model=BATTLE_ART.models.get('lubu');if(!model)throw new Error('여포 기본 모델 누락');
+  model.idle=idle;model.directions=Array.from({length:8},(_,d)=>Array.from({length:4},(_,f)=>walk[f*8+d]));
+  model.attacks={thrust:Array.from({length:8},(_,d)=>[attack[d],attack[8+d]]),slash:Array.from({length:8},(_,d)=>[attack[16+d],attack[24+d]])};
+  model.directionHeight=Math.max(...walk.map(c=>c.height));
+  const body=a=>a.map(c=>c.bodyHeight).sort((a,b)=>a-b)[Math.floor(a.length/2)],ref=body(walk);
+  model.idleHeight=model.directionHeight*body(idle)/ref;model.attackHeight=model.directionHeight*body(attack)/ref;model.reworked=true;
+}
 function battleActionWeight(p){p=Math.max(0,Math.min(1,p||0));const k=p<.2?p/.2:(1-p)/.8;return k*k*(3-2*k);}
 // 기존 타이머를 읽어 대기 자세에서 동작을 거쳐 같은 기준점으로 복귀한다.
 function battleHeroMotion(pose,face,r) {
@@ -377,9 +390,12 @@ function drawBattleBody(g,x,y,r,face,s,o={}) {
 function drawConnectedHero(g,x,y,r,face,s,o,model) {
   const layers=o.pose?.layers||[{pose:o.pose||{state:'idle'},face,weight:1}];
   const samples=layers.map(l=>{
-    const p=l.pose,m=battleHeroMotion(p,l.face,r),d=battleDirection(m.face),idle=p.state==='idle';
+    const p=l.pose,m=battleHeroMotion(p,l.face,r),d=battleDirection(m.face),idle=p.state==='idle'||model.reworked&&['guard','hurt','cast','heal','bless'].includes(p.state);
     const walking=['move','dash'].includes(p.state),f=walking?p.walkFrame??Math.floor((o.t||0)*8)%4:p.trail>0?Math.min(3,Math.floor((p.progress||0)*4)):0;
-    return {...l,m,image:idle?model.idle[d]:model.directions[d][f],height:idle?model.idleHeight:model.directionHeight};
+    let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
+    const kind=model.attacks&&(['thrust','dash'].includes(p.state)?'thrust':['slash','spin'].includes(p.state)?'slash':null);
+    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
+    return {...l,m,image,height};
   });
   const motion={x:0,y:0,turn:0,stretch:0};for(const l of samples)for(const k of Object.keys(motion))motion[k]+=l.m[k]*l.weight;
   const l=samples[0];let image=l.image;
