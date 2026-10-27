@@ -293,8 +293,8 @@ function loadBattleArt() {
 // 시뮬레이션의 판정 반경과 독립된 공통 외형 크기. 기병은 말까지 포함한다.
 const BATTLE_UNIT_RADIUS=8.5;
 // 여포의 기수·말을 기준으로 원본마다 다른 머리/갑옷 비중을 시각 보정한다.
-// 얼굴 가로폭을 여포(=1) 기준으로 맞춘 배율 = 여포 얼굴/해당 얼굴, 범위 .85~1.15 (정면 눈대중 ±12%). 얼굴이 작은 도트는 1
-const FACE_SCALE={diao:0.85,dian:0.85,captain:0.85,liubei:0.85,zhangfei:0.85,xuchu:0.85,guo:0.85,cao:0.85,gao:0.85,dong:0.85,guan:0.85,hua:0.85,xia:0.85,yuan:0.85,sima:0.9,xun:0.9,huang:0.9,kong:0.9,zhao:0.9,jang:0.85,gong:0.85,lulingqi:0.9,xiahouyuan:0.85,xuhuang:0.85,yan:0.9,wen:0.9,zhangliao:0.9,ally_archer:0.85,archer:0.85,ally_shield:0.85,shield:0.85,ally_cav:0.9,cav:0.9,mage:0.85,emage:0.85,f_xian:0.9,f_nu:0.85,f_ji:1.1,f_qing:0.85,f_hubao:0.85,f_bai:0.9,f_dan:0.85};
+// 머리(투구·머리카락 포함) 가로폭을 여포(=1) 기준으로 맞춘 배율. 전투 정면 확대 비교에서 여포 머리 폭 58px 기준선에 맞춰 눈대중(±8%)으로 정함 — 새 외형을 추가하면 같은 방식으로 다시 맞춘다
+const FACE_SCALE={ally_sword:.8,ally_shield:.64,liubei:.67,guan:.8,zhao:.8,jang:.9,gong:.7,lulingqi:.95,xiahouyuan:.72,machao:1.05,xuhuang:.65,yan:.78,wen:.95,zhangliao:.9,diao:.9,dian:.68,huang:.78,kong:.68,captain:.78,hua:.74,gao:.72,cao:.83,xia:.64,zhangfei:.9,xun:.93,ally_archer:.72,ally_cav:.92,mage:.97,f_xian:.9,f_bing:.97,f_nu:.93,f_ji:1.05,f_qing:1.05,f_hubao:.9,f_bai:.9,f_dan:.85,yuan:.72,sima:.77,xuchu:.6,dong:.83,guo:.72,soldier:.8,archer:.72,shield:.64,cav:.92,emage:.97};
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]||1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
