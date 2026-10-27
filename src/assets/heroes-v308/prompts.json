@@ -121,5 +121,9 @@
   {
     "key": "xun", "name": "순욱형", "file": "xun.png", "frameCount": 56,
     "actions": ["cast", "heal"], "design": "낮은 검은 관모, 단정한 수염, 짙은 보라 관복, 흰 소매와 깃털 부채."
+  },
+  {
+    "key": "hua", "name": "화웅형", "file": "hua.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "검은 투구와 짧은 붉은 술, 장수염, 검붉은 중갑과 망토, 장병 대부."
   }
 ]
