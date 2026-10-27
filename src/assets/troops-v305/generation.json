@@ -1,0 +1,32 @@
+[
+  {
+    "key": "troop_sword",
+    "file": "troop_sword.png",
+    "source": "exec-0c223d4f-7ccb-423d-ba77-1be4edd3aa3c.png"
+  },
+  {
+    "key": "troop_spear",
+    "file": "troop_spear.png",
+    "source": "exec-e0c49a1c-7158-4725-819f-b255775c4e2a.png"
+  },
+  {
+    "key": "troop_sword_shield",
+    "file": "troop_sword_shield.png",
+    "source": "exec-7b655148-b3b9-452d-b86c-f329ea5324d5.png"
+  },
+  {
+    "key": "troop_spear_shield",
+    "file": "troop_spear_shield.png",
+    "source": "exec-7c4e1319-96c6-4eb8-96b8-03ff0d113334.png"
+  },
+  {
+    "key": "f_xian",
+    "file": "f_xian.png",
+    "source": "exec-56ac4d5c-4f0c-44b4-a9f8-52805768e742.png"
+  },
+  {
+    "key": "f_bing",
+    "file": "f_bing.png",
+    "source": "exec-d428a15b-8989-4d3f-a5b9-d8c10034e2eb.png"
+  }
+]

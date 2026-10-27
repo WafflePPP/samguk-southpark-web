@@ -255,7 +255,7 @@ function loadBattleArt() {
   const names=['terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v293',293),manifest('troops-v300',300),manifest('rework-v303',303)]).then(async ([images,reworks,troops,remaining])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v293',293),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,reworks,troops,remaining])=>{
     if(reworks.length!==15||new Set(reworks.map(h=>h.key)).size!==15||HERO_REWORK_KEYS.some(k=>!reworks.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(!complete(troops,TROOP_REWORK_BINDINGS)||!complete(remaining,REMAINING_REWORK_BINDINGS))throw new Error('전체 리워크 외형 누락');
@@ -279,8 +279,8 @@ function loadBattleArt() {
       const model=BATTLE_ART.models.get(h.key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;
     }));
     await Promise.all(troops.map(async h=>{
-      if(![64,72].includes(h.frames.length)||h.actions?.join(',')!=='thrust,slash')throw new Error('병사 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v300/'+h.file,300);
+      if(![56,64,72].includes(h.frames.length)||h.actions?.join(',')!=='thrust,slash')throw new Error('병사 동작 누락: '+h.key);
+      const image=await load('src/assets/troops-v305/'+h.file,305);
       const frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
       installAtlasRework(h,frames,enemy);
     }));

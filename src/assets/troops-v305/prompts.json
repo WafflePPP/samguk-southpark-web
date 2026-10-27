@@ -3,7 +3,7 @@
     "key": "troop_sword",
     "name": "공통 검보병",
     "file": "troop_sword.png",
-    "frameCount": 72,
+    "frameCount": 64,
     "actions": [
       "thrust",
       "slash"
@@ -20,7 +20,7 @@
     "key": "troop_spear",
     "name": "공통 창보병",
     "file": "troop_spear.png",
-    "frameCount": 64,
+    "frameCount": 56,
     "actions": [
       "thrust",
       "slash"
@@ -37,7 +37,7 @@
     "key": "troop_sword_shield",
     "name": "공통 검 방패병",
     "file": "troop_sword_shield.png",
-    "frameCount": 72,
+    "frameCount": 64,
     "actions": [
       "thrust",
       "slash"
@@ -71,7 +71,7 @@
     "key": "f_xian",
     "name": "함진병",
     "file": "f_xian.png",
-    "frameCount": 64,
+    "frameCount": 56,
     "actions": [
       "thrust",
       "slash"
