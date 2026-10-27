@@ -1,0 +1,189 @@
+[
+  {
+    "key": "yuan",
+    "name": "원소",
+    "design": "On foot, gold/yellow helmet with crown crest, yellow-gold lamellar armor, dark brown underclothes, restrained purple cape, short black beard, straight silver sword.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "yuan.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 원소 (yuan). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, gold/yellow helmet with crown crest, yellow-gold lamellar armor, dark brown underclothes, restrained purple cape, short black beard, straight silver sword. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. CRITICAL: Yuan Shao is a WALKING FOOT SOLDIER, show two human boots below his robe, absolutely NO HORSE in ANY cell. Gold/yellow ARMOR, purple cape, gold helmet red plume, sword. EXACT NINE ROWS, keep entire last recovery row.",
+    "edits": []
+  },
+  {
+    "key": "yan",
+    "name": "안량",
+    "design": "Mounted on chestnut brown horse, silver/gray armor, green helmet plume, red cape, black beard, one long spear with single silver tip/red tassel.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "yan.png",
+    "prompt": "FINAL GAME PIXEL ANIMATION ATLAS of 안량 (yan), ORIGINAL character. Image1 Lu Bu is mandatory STYLE/PROPORTION/PIXEL standard, image2 is this character's IDENTITY ONLY. Mounted on chestnut brown horse, silver/gray armor, green helmet plume, red cape, black beard, one long spear with single silver tip/red tassel. Compact squat First Queen IV RPG pixel proportions, readable head comparable to Lu Bu rider, black one-pixel contour, crisp square clusters, restrained 12-20 color palette, simple two-tone shading. NO smooth gradients/realistic anatomy. Exactly 8 COLUMNS x9 ROWS=72 isolated full sprites, portrait1536x2048. Columns EVERY ROW: E,SE,S,SW,W,NW,N,NE, true rear views at NW/N/NE. ROW1 neutral IDLE feet/hooves planted. ROWS2-5 four WALK phases left contact,left passing,right contact,right passing. ROW6 thrust STRIKE (extend weapon straight toward facing direction). ROW7 recover from row6 toward ready grip. ROW8 slash STRIKE (two-hand sweeping slash using original weapon). ROW9 recover from row8 toward idle. Same exact identity, weapon, mounted status and scale ALL72. Complete weapons/plume/cape/feet/horse inside each cell, no clipping, generous transparent gaps between sprites, no touching. ONE character eachcell, no other heroes. TRUE transparent alpha background, no shadow/floor/glow/grid/text/effects. Do not copy Lu Bu costume/horse/halberd; only its style. Final asset directly, no intermediate concept.",
+    "edits": []
+  },
+  {
+    "key": "wen",
+    "name": "문추",
+    "design": "Mounted on near-black horse, dark iron armor, deep red plume and cloak, black beard, one long dark spear with single silver tip/red tassel.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "wen.png",
+    "prompt": "FINAL GAME PIXEL ANIMATION ATLAS of 문추 (wen), ORIGINAL character. Image1 Lu Bu is mandatory STYLE/PROPORTION/PIXEL standard, image2 is this character's IDENTITY ONLY. Mounted on near-black horse, dark iron armor, deep red plume and cloak, black beard, one long dark spear with single silver tip/red tassel. Compact squat First Queen IV RPG pixel proportions, readable head comparable to Lu Bu rider, black one-pixel contour, crisp square clusters, restrained 12-20 color palette, simple two-tone shading. NO smooth gradients/realistic anatomy. Exactly 8 COLUMNS x9 ROWS=72 isolated full sprites, portrait1536x2048. Columns EVERY ROW: E,SE,S,SW,W,NW,N,NE, true rear views at NW/N/NE. ROW1 neutral IDLE feet/hooves planted. ROWS2-5 four WALK phases left contact,left passing,right contact,right passing. ROW6 thrust STRIKE (extend weapon straight toward facing direction). ROW7 recover from row6 toward ready grip. ROW8 slash STRIKE (two-hand sweeping slash using original weapon). ROW9 recover from row8 toward idle. Same exact identity, weapon, mounted status and scale ALL72. Complete weapons/plume/cape/feet/horse inside each cell, no clipping, generous transparent gaps between sprites, no touching. ONE character eachcell, no other heroes. TRUE transparent alpha background, no shadow/floor/glow/grid/text/effects. Do not copy Lu Bu costume/horse/halberd; only its style. Final asset directly, no intermediate concept.",
+    "edits": []
+  },
+  {
+    "key": "gao",
+    "name": "고순",
+    "design": "On foot, black/dark iron armor, dark helmet with tall red crest, black cape, short beard, straight silver sword, restrained bronze edging.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "gao.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 고순 (gao). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, black/dark iron armor, dark helmet with tall red crest, black cape, short beard, straight silver sword, restrained bronze edging. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "cao",
+    "name": "조조",
+    "design": "On foot, black headwear/gold small crown, short black beard, black and gold armor, deep blue cloak, single straight silver sword.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "cao.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 조조 (cao). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, black headwear/gold small crown, short black beard, black and gold armor, deep blue cloak, single straight silver sword. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "xia",
+    "name": "하후돈",
+    "design": "On foot, visibly ONE EYEPATCH, dark purple/iron armor, bronze helmet with small purple crest, blue-purple cape, short beard, single straight sword.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "xia.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 하후돈 (xia). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, visibly ONE EYEPATCH, dark purple/iron armor, bronze helmet with small purple crest, blue-purple cape, short beard, single straight sword. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "xiahouyuan",
+    "name": "하후연",
+    "design": "Mounted on chestnut horse, steel-blue armor and helmet, blue plume/cloak, black moustache/beard, wooden bow and quiver. Keep bow, no lance.",
+    "actions": [
+      "shoot",
+      "slash"
+    ],
+    "file": "xiahouyuan.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 하후연 (xiahouyuan). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. Mounted on chestnut horse, steel-blue armor and helmet, blue plume/cloak, black moustache/beard, wooden bow and quiver. Keep bow, no lance. MOUNTED on the horse specified above in ALL72 sprites. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 SHOOT: draw and release bow toward facing direction; ROW7 SHOOT RECOVERY relax bow arm; ROW8 MELEE: swing original bow as short defensive strike; ROW9 MELEE RECOVERY return ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. MOUNTED on the horse specified above in ALL72 sprites.",
+    "edits": []
+  },
+  {
+    "key": "dian",
+    "name": "전위",
+    "design": "On foot, stocky muscular dark-bearded man, bare forearms, dark brown/black armor and bronze shoulders, red belt, TWO short iron halberd/axe weapons one in each hand.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "dian.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 전위 (dian). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, stocky muscular dark-bearded man, bare forearms, dark brown/black armor and bronze shoulders, red belt, TWO short iron halberd/axe weapons one in each hand. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": [
+      "Edit this FINAL Dian Wei sprite sheet ONLY to correct spacing. Keep exactly EIGHT columns and NINE rows =72 original complete on-foot Dian Wei figures with the same 8directions and 9idle/walk/attack/recovery poses. Currently a few neighboring double-axe sprites TOUCH/OVERLAP at the sides. Make EACH complete figure with both axes 20% SMALLER about its own cell center/baseline, preserving identity, colors, design, positions and all72poses. Need generous 15-20pixel TRUE TRANSPARENT gaps around ALL figures, no touching and no clipped axe/feet/hair. NO horse. Strong black outlines, pixel style unchanged. Preserve alpha transparency, no backdrop/grid/text, all72 cells MUST contain exactly1complete original figure."
+    ]
+  },
+  {
+    "key": "xuchu",
+    "name": "허저",
+    "design": "On foot, stocky powerful man, green head wrap, dark/silver iron armor, green cloak, short black beard, one broad silver sword.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "xuchu.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 허저 (xuchu). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, stocky powerful man, green head wrap, dark/silver iron armor, green cloak, short black beard, one broad silver sword. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "guo",
+    "name": "곽가",
+    "design": "On foot, young clean-shaven male scholar, black hair-cap, muted deep blue robe, pale blue sleeves, small bronze trim, pale feather fan.",
+    "actions": [
+      "cast",
+      "heal"
+    ],
+    "file": "guo.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 곽가 (guo). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, young clean-shaven male scholar, black hair-cap, muted deep blue robe, pale blue sleeves, small bronze trim, pale feather fan. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 CAST: thrust feather fan forward with casting gesture; ROW7 CAST RECOVERY draws fan to torso; ROW8 SUPPORT CAST: fan raised with free hand extended; ROW9 SUPPORT RECOVERY returns to idle. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "sima",
+    "name": "사마의",
+    "design": "On foot, mature black-bearded male scholar, tall dark court hat, dark purple/gray robe, pale gray cape/sleeves, pale feather fan.",
+    "actions": [
+      "cast",
+      "heal"
+    ],
+    "file": "sima.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 사마의 (sima). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, mature black-bearded male scholar, tall dark court hat, dark purple/gray robe, pale gray cape/sleeves, pale feather fan. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 CAST: thrust feather fan forward with casting gesture; ROW7 CAST RECOVERY draws fan to torso; ROW8 SUPPORT CAST: fan raised with free hand extended; ROW9 SUPPORT RECOVERY returns to idle. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "liubei",
+    "name": "유비",
+    "design": "On foot, black hair with small gold crown, neat black beard, muted red-brown/orange royal robe, green cloak accents, one straight silver sword.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "liubei.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 유비 (liubei). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, black hair with small gold crown, neat black beard, muted red-brown/orange royal robe, green cloak accents, one straight silver sword. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": []
+  },
+  {
+    "key": "guan",
+    "name": "관우",
+    "design": "On foot, red face, LONG BLACK BEARD, green headwrap and green robe/armor, bronze trim, LONG POLEARM QINGLONG YANYUE DAO with broad curved crescent silver blade on a long dark shaft. NOT a short scimitar/sword.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "guan.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 관우 (guan). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, red face, LONG BLACK BEARD, green headwrap and green robe/armor, bronze trim, LONG POLEARM QINGLONG YANYUE DAO with broad curved crescent silver blade on a long dark shaft. NOT a short scimitar/sword. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": [
+      "Edit this Guan Yu final atlas to fix spacing ONLY. Preserve exactly EIGHT COLUMNS x NINE ROWS =72 complete original Guan Yu sprites, on foot, red face,long black beard,green robe/headwrap and LONG SHAFT crescent-bladed polearm. Preserve all existing9row idle/walk/thrust/recovery/sweep/recovery actions and all8directions. A pair of adjacent polearms currently TOUCH. Reduce EVERY complete figure with its entire polearm by20% within its own cell about baseline, giving at least15px transparent gap on ALL sides, no touching/clipping. Keep crisp pixel style/colors/identity, all72 MUST be separate. True transparent background, no text/grid/shadows.",
+      "TARGETED CORRECTION ONLY: this exact8column9row72sprite Guan Yu atlas has TWO figures touching in ROW EIGHT, COLUMNS SEVEN and EIGHT (north and northeast sweeping attack, second row from bottom, rightmost two sprites). Their long polearms overlap/touch horizontally. Edit ONLY THESE TWO CELLS so each remains a COMPLETE separate Guan Yu figure with its OWN whole polearm. Keep body/head/feet scale and position unchanged; angle/shorten the ON-SCREEN polearm reach slightly inward so ALL body+weapon pixels stay within each own cell, with a clear20px TRANSPARENT GAP between the two complete sprites. Do NOT draw a connecting line/blade between them. Keep green robe/red face/long black beard, long shaft crescent blade, same attack identity, all other70sprites EXACTLY unchanged. Preserve exact8x9 positions and transparent alpha. No backdrop/shadow/grid/text."
+    ]
+  },
+  {
+    "key": "kong",
+    "name": "제갈량",
+    "design": "On foot, mature scholar with neat black beard, black scholar hat, muted blue/cream robes, wide pale sleeves, large white feather fan.",
+    "actions": [
+      "cast",
+      "heal"
+    ],
+    "file": "kong.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 제갈량 (kong). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. On foot, mature scholar with neat black beard, black scholar hat, muted blue/cream robes, wide pale sleeves, large white feather fan. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 CAST: thrust feather fan forward with casting gesture; ROW7 CAST RECOVERY draws fan to torso; ROW8 SUPPORT CAST: fan raised with free hand extended; ROW9 SUPPORT RECOVERY returns to idle. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. ON FOOT in ALL72 sprites. TWO HUMAN LEGS/BOOTS. NO HORSE, NO MOUNT, NO SADDLE, NO ANIMAL. DO NOT copy Lu Bu horse.",
+    "edits": [
+      "Correct this Zhuge Liang atlas from EIGHT ROWS to EXACTLY NINE ROWS x EIGHT COLUMNS =72 complete isolated on-foot scholar sprites. Preserve identity/style/colors: black scholar hat,black beard,blue/cream robes,white feather fan. Current atlas omitted the FOURTH WALK row. New layout: ROW1 idle; ROWS2,3,4,5 four consecutive WALK phases contact-left,passing-left,contact-right,passing-right. ROW6 fan-forward CAST; ROW7 cast recovery; ROW8 raised-fan support gesture; ROW9 support recovery. Columns EACHROW E,SE,S,SW,W,NW,N,NE. EXACT9ROWS include all4walkrows. Same scale/body/face/feet baseline, fullfan/hat/cape/feet within cells generous transparent gaps, no clipping/touching. Portrait1536x2048 with TRUE TRANSPARENT alpha, no text/grid/shadow/glow, crisp FirstQueen4 pixel style unchanged."
+    ]
+  },
+  {
+    "key": "zhao",
+    "name": "조운",
+    "design": "Mounted on white horse, silver helmet with long white plume, silver/teal armor, muted teal cloak, youthful clean-shaven face, one long silver spear with blue tassel.",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "file": "zhao.png",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS of 조운 (zhao). Reference1 is THIS HERO identity/costume only; reference2 Lu Bu provides pixel STYLE only. IGNORE both reference sheet grids. Mounted on white horse, silver helmet with long white plume, silver/teal armor, muted teal cloak, youthful clean-shaven face, one long silver spear with blue tassel. MOUNTED on the horse specified above in ALL72 sprites. Match Lu Bu compact First Queen4 proportions, similar face/head scale and dark outline thickness, clearly square pixel clusters, muted palette/simple two-tone shading, no painterly gradients/realistic anatomy/gloss. Exact EIGHT COLUMNS and NINE ROWS =72 FULL ISOLATED FIGURES, portrait1536x2048. Eachcell must have exactly1 whole character, complete weapon/hair/cape/feet or horse inside, generous transparent gap/no clipping/touching. Column directions EVERY ROW: E,SE,S,SW,W,NW,N,NE; genuine rear views in last3 columns. ROW1 IDLE ready grip/feet still. ROWS2,3,4,5 WALK four distinct contact/passing/opposite contact/opposite passing phases. ROW6 THRUST STRIKE extends original weapon toward facing direction; ROW7 THRUST RECOVERY draws weapon to torso; ROW8 SWEEP/SLASH original weapon across front with torso turn; ROW9 SWEEP RECOVERY returns ready. SAME character, proportions, weapon and mounted status ALL72. Count all9 rows, MUST NOT OMIT any row. TRUE TRANSPARENT alpha, NO shadow/backdrop/glow/text/grid/effects. Final game asset directly, no concept stage. MOUNTED on the horse specified above in ALL72 sprites.",
+    "edits": []
+  }
+]

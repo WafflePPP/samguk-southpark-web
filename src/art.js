@@ -232,8 +232,9 @@ STYLES.zhangliao={...STYLES.jang};
 for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
 const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
 const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
+const HERO_REWORK_KEYS=['yuan','yan','wen','gao','cao','xia','xiahouyuan','dian','xuchu','guo','sima','liubei','guan','kong','zhao'];
 function extractBattleSprite(image,b,tint=false,cutoff=128) {
-  const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
+  const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
   const pixels=g.getImageData(0,0,b.w,b.h),d=pixels.data,seen=new Uint8Array(b.w*b.h),queue=new Int32Array(b.w*b.h);let head=0,tail=1;const seed=(b.sy-b.y)*b.w+b.sx-b.x;queue[0]=seed;seen[seed]=1;
   if(seed<0||seed>=seen.length||d[seed*4+3]<cutoff)throw new Error('스프라이트 투명 경계 오류');
   // 같은 사각형에 걸친 이웃의 무기를 제거하고 이 스프라이트의 연결된 알파만 사용한다.
@@ -250,14 +251,16 @@ function loadBattleArt() {
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
   const names=[...BATTLE_ATLASES.map(s=>s.file),'terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
-  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),fetch('src/assets/heroes-v277/layout.json?v=277&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 방향 목록 로드 실패');return r.json();}),fetch('src/assets/hero-idle-v280/layout.json?v=280&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 대기 목록 로드 실패');return r.json();})]).then(async ([images,heroes,idleSheets])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),fetch('src/assets/heroes-v277/layout.json?v=277&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 방향 목록 로드 실패');return r.json();}),fetch('src/assets/hero-idle-v280/layout.json?v=280&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 대기 목록 로드 실패');return r.json();}),fetch('src/assets/heroes-v293/layout.json?v=293&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 리워크 목록 로드 실패');return r.json();})]).then(async ([images,heroes,idleSheets,reworks])=>{
+    if(reworks.length!==15||new Set(reworks.map(h=>h.key)).size!==15||HERO_REWORK_KEYS.some(k=>!reworks.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
+    const replaced=new Set(reworks.map(h=>h.key));
     BATTLE_ATLASES.forEach((sheet,si)=>sheet.keys.forEach((key,i)=>{const row=Math.floor(i/3),col=(i%3)*2,bs=[sheet.frames[row*6+col],sheet.frames[row*6+col+1]],model=BATTLE_ART.models.get(key)||{},back=sheet.view==='back';model[back?'back':'frames']=bs.map(b=>extractBattleSprite(images[si],b));if(key.startsWith('f_'))model[back?'enemyBack':'enemy']=bs.map(b=>extractBattleSprite(images[si],b,true));BATTLE_ART.models.set(key,model);}));
     for(const model of BATTLE_ART.models.values())if(!model.frames||!model.back)throw new Error('캐릭터 방향 이미지 누락');
     const n=BATTLE_ATLASES.length;BATTLE_ART.terrain=images[n];BATTLE_ART.reference=images[n+1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[n],b));
     if(heroes.length!==27||new Set(heroes.map(h=>h.key)).size!==27)throw new Error('장수 방향 목록 누락');
-    await Promise.all(heroes.map(async h=>{const image=await load('src/assets/heroes-v277/'+h.file),model=BATTLE_ART.models.get(h.key);if(!model||h.frames.length!==32)throw new Error('장수 8방향 이미지 누락: '+h.key);model.directions=Array.from({length:8},(_,d)=>h.frames.slice(d*4,d*4+4).map(b=>extractBattleSprite(image,b)));model.directionHeight=Math.max(...h.frames.map(b=>b.h));}));
+    await Promise.all(heroes.filter(h=>!replaced.has(h.key)).map(async h=>{const image=await load('src/assets/heroes-v277/'+h.file),model=BATTLE_ART.models.get(h.key);if(!model||h.frames.length!==32)throw new Error('장수 8방향 이미지 누락: '+h.key);model.directions=Array.from({length:8},(_,d)=>h.frames.slice(d*4,d*4+4).map(b=>extractBattleSprite(image,b)));model.directionHeight=Math.max(...h.frames.map(b=>b.h));}));
     const idleKeys=idleSheets.flatMap(s=>s.keys);if(idleKeys.length!==27||new Set(idleKeys).size!==27||heroes.some(h=>!idleKeys.includes(h.key)))throw new Error('장수 대기 외형 누락');
-    await Promise.all(idleSheets.map(async sheet=>{if(sheet.frames.length!==sheet.keys.length*8)throw new Error('장수 대기 방향 누락');const image=await load('src/assets/hero-idle-v280/'+sheet.file,280);sheet.keys.forEach((key,i)=>{const model=BATTLE_ART.models.get(key);model.idle=sheet.frames.slice(i*8,i*8+8).map(b=>extractBattleSprite(image,b,false,200));const walk=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b),idle=model.idle.map(c=>c.bodyHeight).sort((a,b)=>a-b);model.idleHeight=model.directionHeight*idle[4]/walk[16];});}));
+    await Promise.all(idleSheets.map(async sheet=>{if(sheet.frames.length!==sheet.keys.length*8)throw new Error('장수 대기 방향 누락');const image=await load('src/assets/hero-idle-v280/'+sheet.file,280);sheet.keys.forEach((key,i)=>{if(replaced.has(key))return;const model=BATTLE_ART.models.get(key);model.idle=sheet.frames.slice(i*8,i*8+8).map(b=>extractBattleSprite(image,b,false,200));const walk=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b),idle=model.idle.map(c=>c.bodyHeight).sort((a,b)=>a-b);model.idleHeight=model.directionHeight*idle[4]/walk[16];});}));
     const update=await fetch('src/assets/lubu-v284/layout.json?v=284&try='+attempt).then(r=>{if(!r.ok)throw new Error('여포 아트 목록 로드 실패');return r.json();});
     const sheets=await Promise.all(update.map(async sheet=>{const image=await load('src/assets/lubu-v284/'+sheet.file,284);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     installLubuRework(sheets);
@@ -267,7 +270,13 @@ function loadBattleArt() {
     installLubuRework(jangSheets,'zhangliao');
     const diao=await fetch('src/assets/diao-v289/layout.json?v=289&try='+attempt).then(r=>{if(!r.ok)throw new Error('초선 아트 목록 로드 실패');return r.json();});
     const diaoSheets=await Promise.all(diao.map(async sheet=>{const image=await load('src/assets/diao-v289/'+sheet.file,289);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
-    installDiaoRework(diaoSheets);BATTLE_ART.ready=true;
+    installDiaoRework(diaoSheets);
+    await Promise.all(reworks.map(async h=>{
+      if(h.frames.length!==72||!Array.isArray(h.actions)||h.actions.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('장수 리워크 동작 누락: '+h.key);
+      const image=await load('src/assets/heroes-v293/'+h.file,293),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      installLubuRework([{kind:'idle',frames:frames.slice(0,8)},{kind:'walk',frames:frames.slice(8,40)},{kind:'attack',frames:frames.slice(40)}],h.key,h.actions);
+      const model=BATTLE_ART.models.get(h.key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;
+    }));BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
 // 여포의 기수·얼굴 비율에 맞춘 외형 배율이며 전투 반경은 바꾸지 않는다.
@@ -281,12 +290,12 @@ function installDiaoRework(sheets){
   model.bodyRatio=body(walk)/model.directionHeight;model.idleHeight=body(idle)/model.bodyRatio;model.reworked=true;
 }
 function battleDirection(face){return ((Math.round(face/(Math.PI/4))%8)+8)%8;}
-function installLubuRework(sheets,key='lubu') {
+function installLubuRework(sheets,key='lubu',actions=['thrust','slash']) {
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,attack=sheets.find(s=>s.kind==='attack')?.frames;
   if(sheets.length!==3||idle?.length!==8||walk?.length!==32||attack?.length!==32)throw new Error(key+' 방향/동작 이미지 누락');
   const model=BATTLE_ART.models.get(key);if(!model)throw new Error(key+' 기본 모델 누락');
   model.idle=idle;model.directions=Array.from({length:8},(_,d)=>Array.from({length:4},(_,f)=>walk[f*8+d]));
-  model.attacks={thrust:Array.from({length:8},(_,d)=>[attack[d],attack[8+d]]),slash:Array.from({length:8},(_,d)=>[attack[16+d],attack[24+d]])};
+  model.attacks=Object.fromEntries(actions.map((kind,i)=>[kind,Array.from({length:8},(_,d)=>[attack[i*16+d],attack[i*16+8+d]])]));
   model.directionHeight=Math.max(...walk.map(c=>c.height));
   const body=a=>a.map(c=>c.bodyHeight).sort((a,b)=>a-b)[Math.floor(a.length/2)],ref=body(walk);
   model.idleHeight=model.directionHeight*body(idle)/ref;model.attackHeight=model.directionHeight*body(attack)/ref;model.reworked=true;
@@ -357,7 +366,7 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
     const p=l.pose,m=battleHeroMotion(p,l.face,r),d=battleDirection(m.face),idle=p.state==='idle'||model.reworked&&['guard','hurt','cast','heal','bless'].includes(p.state);
     const walking=['move','dash'].includes(p.state),f=walking?p.walkFrame??Math.floor((o.t||0)*8)%4:p.trail>0?Math.min(3,Math.floor((p.progress||0)*4)):0;
     let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
-    const kind=model.attacks&&(['thrust','dash'].includes(p.state)?'thrust':['slash','spin'].includes(p.state)?'slash':null);
+    const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state,kind=model.attacks?.[action]?action:null;
     if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
     if(model.bodyRatio&&image.bodyHeight>0)height=image.bodyHeight/model.bodyRatio;
     return {...l,m,image,height};
