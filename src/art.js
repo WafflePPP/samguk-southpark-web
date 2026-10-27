@@ -199,13 +199,14 @@ function heroPose(u, s, t) {
 // 로비·전략·상세도 전투와 같은 캐릭터 이미지를 사용한다.
 function drawBody(g,x,y,r,face,s,o={}){drawBattleBody(g,x,y,r,face,s,o);}
 
-// 지정한 UI 칸에 원본 비율과 발 기준을 유지하며 전투 대기 그림을 맞춘다.
+// UI에서도 병과별 몸체 높이를 유지하며, 무기·말 전체가 칸 안에 들어가게 한다.
 function drawBattlePortrait(g,x,y,w,h,s,o={}){
   if(!BATTLE_ART.ready)return;
-  const model=BATTLE_ART.models.get(battleModelKey(s,o.team)),image=model?.idle?.[2]||model?.frames?.[0];if(!image)return;
-  const ref=model.bodyRatio?image.bodyHeight/model.bodyRatio:model.idleHeight||image.height,scale=Math.min(w/image.width,h/image.height);
+  const model=BATTLE_ART.models.get(battleModelKey(s,o.team)),image=model?.idle?.[1]||model?.frames?.[0];if(!image)return;
+  const ref=battleFrameHeight(image),foot=image.footX??image.width/2;
+  const scale=Math.min(battleSpriteHeight(Math.min(w/6,h/5.4),s)/ref,Math.max(0,w/2-2)/Math.max(foot,image.width-foot),Math.max(0,h-4)/image.height);
   g.save();g.beginPath();g.rect(x,y,w,h);g.clip();
-  drawBattleBody(g,x+(image.footX??image.width/2)*scale+(w-image.width*scale)/2,y+h,scale*ref/battleSpriteHeight(1,s),Math.PI/2,s,{...o,pose:{state:'idle'}});
+  drawBattleBody(g,x+w/2,y+h-2,scale*ref/battleSpriteHeight(1,s),Math.PI/4,s,{...o,pose:{state:'idle'}});
   g.restore();
 }
 
@@ -287,8 +288,10 @@ function loadBattleArt() {
     }));BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
-// 여포의 기수·얼굴 비율에 맞춘 외형 배율이며 전투 반경은 바꾸지 않는다.
-function battleSpriteHeight(r,s){return r*(s.battleStyle==='diao'?4.7:s.battleStyle==='zhangliao'?4.4:s.battleStyle==='f_xian'?4.8:s.horse?4.8:3.6);}
+// 시뮬레이션의 판정 반경과 독립된 공통 외형 크기. 기병은 말까지 포함한다.
+const BATTLE_UNIT_RADIUS=8.5;
+function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6);}
+function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
   if(sheets.length!==2||idle?.length!==8||walk?.length!==32||!model)throw new Error('초선 방향/동작 이미지 누락');
@@ -383,8 +386,8 @@ function drawBattleBody(g,x,y,r,face,s,o={}) {
   const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,face,r):null,view=motion?motion.face:face,back=Math.sin(view)<-.25;
   const directional=!!model.directions,frame=directional?(pose&&['move','dash'].includes(pose.state)||!pose&&o.moving?pose?.walkFrame??Math.floor((o.t||0)*8)%4:phase>0?Math.min(3,Math.floor((pose.progress||0)*4)):0):motion?motion.frame:o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0;
   const frames=directional?model.directions[battleDirection(view)]:back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
-  if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
-  const scale=battleSpriteHeight(r,s)/(directional?model.directionHeight:image.height),h=image.height*scale,w=image.width*scale;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
+  if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;white.bodyHeight=image.bodyHeight;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
+  const scale=battleSpriteHeight(r,s)/battleFrameHeight(image),h=image.height*scale,w=image.width*scale;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+(motion?.x||0)),Math.round(y+(motion?motion.y:o.moving&&frame?-1:0)));if(motion?.turn)g.rotate(motion.turn);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if(!directional&&(Math.cos(view)<-.25)!==sourceLeft)g.scale(-1,1);
   g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round(h),Math.round(w),Math.round(h));g.restore();
   drawBattleMeleeTrail(g,x,y,r,face,pose,!!s.horse);
@@ -394,11 +397,10 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
   const samples=layers.map(l=>{
     const p=l.pose,m=battleHeroMotion(p,l.face,r),d=battleDirection(m.face),idle=p.state==='idle'||model.reworked&&['guard','hurt','cast','heal','bless'].includes(p.state);
     const walking=['move','dash'].includes(p.state),f=walking?p.walkFrame??Math.floor((o.t||0)*8)%4:p.trail>0?Math.min(3,Math.floor((p.progress||0)*4)):0;
-    let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
+    let image=idle?model.idle[d]:model.directions[d][f];
     const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state,kind=model.attacks?.[action]?action:null;
-    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
-    if(model.bodyRatio&&image.bodyHeight>0)height=image.bodyHeight/model.bodyRatio;
-    return {...l,m,image,height};
+    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];}
+    return {...l,m,image,height:battleFrameHeight(image)};
   });
   const motion={x:0,y:0,turn:0,stretch:0};for(const l of samples)for(const k of Object.keys(motion))motion[k]+=l.m[k]*l.weight;
   const l=samples[0];let image=l.image;
@@ -416,7 +418,7 @@ function drawBattleEffect(g, f, t) {
   g.save(); g.globalAlpha*=1-p;
   if(f.kind==='fall') {
     const e=1-(1-p)**2;g.translate(Math.round(f.x+Math.cos(f.ang)*14*e),Math.round(f.y+Math.sin(f.ang)*8*e));g.rotate(p>0.25?(Math.cos(f.ang)>=0?1:-1)*Math.PI/2:0);
-    drawBattleBody(g,0,0,f.r*1.15,f.face,{...STYLES[f.style],weapon:null},{flash:p<0.15,t});g.restore();return;
+    drawBattleBody(g,0,0,BATTLE_UNIT_RADIUS,f.face,{...STYLES[f.style],weapon:null},{flash:p<0.15,t});g.restore();return;
   }
   g.translate(Math.round(f.x/2)*2,Math.round(f.y/2)*2);g.scale(2,2);
   const line=(x,y,xx,yy,col=f.col||'#ffe8a0',w=1)=>pixelLine(g,x,y,xx,yy,col,w), rect=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(Math.round(x),Math.round(y),w,h);};
