@@ -1,0 +1,103 @@
+[
+  {
+    "key": "troop_sword",
+    "name": "공통 검보병",
+    "file": "troop_sword.png",
+    "frameCount": 72,
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "originalFile": "src/assets/troops-v300/troop_sword.png",
+    "references": [
+      "src/assets/troops-v300/troop_sword.png",
+      "src/assets/rework-v303/troop_archer.png",
+      "src/assets/lubu-v284/idle.png"
+    ],
+    "prompt": "IMAGE1 is the edit target: REDRAW ALL its figures as COARSE CLUSTERED PIXEL ART with ADULT SD anatomy. Do not merely scale the old figures. The old atlas has oversized bobble helmets, squat round bodies, tiny legs and smooth plastic metallic highlights; REMOVE those traits. Make head and helmet about25-28% of standing human height (3.5head adult SD), helmet narrower than shoulder span, slimmer straight torso, clearly visible waist/knees, longer legs occupying45% of human height, compact normal hands/boots. Preserve identity and equipment, but REDRAW anatomy and shading in ALL poses. IMAGE2 is body/pixel rendering reference only, IMAGE3 if present is Lu Bu shared-world reference only, NEVER copy reference weapons, crowns, feathers or mounts. Crisp square pixel clusters, limited muted palette with TWO or THREE deliberate flat shades per material, near-black thin stepped outline. NO smooth gradients, airbrush, antialias haze, shiny plastic, oversized face, toy proportions, painterly texture, glow. Native character should read as a 32x48-ish pixel game figure enlarged nearest-neighbor, not a high-res cartoon. True transparent alpha, no scenery, shadow, text, grid or detached pieces. Preserve 8 direction columns E/SE/S/SW/W/NW/N/NE with visibly distinct real rear views. Every weapon attached to a hand and visible in front/rear poses. All figures same anatomical scale and feet on a common baseline. Keep entire weapons inside own column with20pxtransparentgutters, no touching/cropping. CHARACTER MUST REMAIN: On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean young face no beard. One short straight silver double-edged sword in right hand, free left hand. NO shield, NO spear, NO cape, NO horse, NO crown. Show both human legs. EXACTLY8COLUMNS x9ROWS =72 complete isolated sprites. Row1IDLE ready grip; next4ROWS WALK only, clearly alternating human/horse legs; final4ROWS THRUST strike, THRUST return, SLASH strike, SLASH return. Do not put attack poses in walking rows. Keep target costume muted navy/steel palette; NO BOW or QUIVER in this model. ON FOOT with TWO HUMAN LEGS, NO HORSE anywhere. Do not copy the mounted Lu Bu pose. Return final production atlas, no concept sheet."
+  },
+  {
+    "key": "troop_spear",
+    "name": "공통 창보병",
+    "file": "troop_spear.png",
+    "frameCount": 64,
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "originalFile": "src/assets/troops-v300/troop_spear.png",
+    "references": [
+      "src/assets/troops-v300/troop_spear.png",
+      "src/assets/rework-v303/troop_archer.png",
+      "src/assets/lubu-v284/idle.png"
+    ],
+    "prompt": "IMAGE1 is the edit target: REDRAW ALL its figures as COARSE CLUSTERED PIXEL ART with ADULT SD anatomy. Do not merely scale the old figures. The old atlas has oversized bobble helmets, squat round bodies, tiny legs and smooth plastic metallic highlights; REMOVE those traits. Make head and helmet about25-28% of standing human height (3.5head adult SD), helmet narrower than shoulder span, slimmer straight torso, clearly visible waist/knees, longer legs occupying45% of human height, compact normal hands/boots. Preserve identity and equipment, but REDRAW anatomy and shading in ALL poses. IMAGE2 is body/pixel rendering reference only, IMAGE3 if present is Lu Bu shared-world reference only, NEVER copy reference weapons, crowns, feathers or mounts. Crisp square pixel clusters, limited muted palette with TWO or THREE deliberate flat shades per material, near-black thin stepped outline. NO smooth gradients, airbrush, antialias haze, shiny plastic, oversized face, toy proportions, painterly texture, glow. Native character should read as a 32x48-ish pixel game figure enlarged nearest-neighbor, not a high-res cartoon. True transparent alpha, no scenery, shadow, text, grid or detached pieces. Preserve 8 direction columns E/SE/S/SW/W/NW/N/NE with visibly distinct real rear views. Every weapon attached to a hand and visible in front/rear poses. All figures same anatomical scale and feet on a common baseline. Keep entire weapons inside own column with20pxtransparentgutters, no touching/cropping. CHARACTER MUST REMAIN: On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean young face no beard. One long brown shaft spear with single small silver spearhead, held with BOTH hands. NO shield, NO sword, NO cape, NO horse, NO crown. Keep entire spear in each cell, shaft attached to hands. Show both human legs. EXACTLY8COLUMNS x8ROWS =64 complete isolated sprites. Row1IDLE ready grip; next3ROWS WALK only, clearly alternating human/horse legs; final4ROWS THRUST strike, THRUST return, SLASH strike, SLASH return. Do not put attack poses in walking rows. Keep target costume muted navy/steel palette; NO BOW or QUIVER in this model. ON FOOT with TWO HUMAN LEGS, NO HORSE anywhere. Do not copy the mounted Lu Bu pose. Return final production atlas, no concept sheet."
+  },
+  {
+    "key": "troop_sword_shield",
+    "name": "공통 검 방패병",
+    "file": "troop_sword_shield.png",
+    "frameCount": 72,
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "originalFile": "src/assets/troops-v300/troop_sword_shield.png",
+    "references": [
+      "src/assets/troops-v300/troop_sword_shield.png",
+      "src/assets/rework-v303/troop_archer.png",
+      "src/assets/lubu-v284/idle.png"
+    ],
+    "prompt": "IMAGE1 is the edit target: REDRAW ALL its figures as COARSE CLUSTERED PIXEL ART with ADULT SD anatomy. Do not merely scale the old figures. The old atlas has oversized bobble helmets, squat round bodies, tiny legs and smooth plastic metallic highlights; REMOVE those traits. Make head and helmet about25-28% of standing human height (3.5head adult SD), helmet narrower than shoulder span, slimmer straight torso, clearly visible waist/knees, longer legs occupying45% of human height, compact normal hands/boots. Preserve identity and equipment, but REDRAW anatomy and shading in ALL poses. IMAGE2 is body/pixel rendering reference only, IMAGE3 if present is Lu Bu shared-world reference only, NEVER copy reference weapons, crowns, feathers or mounts. Crisp square pixel clusters, limited muted palette with TWO or THREE deliberate flat shades per material, near-black thin stepped outline. NO smooth gradients, airbrush, antialias haze, shiny plastic, oversized face, toy proportions, painterly texture, glow. Native character should read as a 32x48-ish pixel game figure enlarged nearest-neighbor, not a high-res cartoon. True transparent alpha, no scenery, shadow, text, grid or detached pieces. Preserve 8 direction columns E/SE/S/SW/W/NW/N/NE with visibly distinct real rear views. Every weapon attached to a hand and visible in front/rear poses. All figures same anatomical scale and feet on a common baseline. Keep entire weapons inside own column with20pxtransparentgutters, no touching/cropping. CHARACTER MUST REMAIN: On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean face no beard. One short silver straight sword in RIGHT hand plus medium oval gray steel-rimmed wooden shield in LEFT hand. Shield must remain visible from appropriate front/side views and behind body from rear. NO spear, NO axe, NO cape, NO horse, NO crown. Show both human legs. EXACTLY8COLUMNS x9ROWS =72 complete isolated sprites. Row1IDLE ready grip; next4ROWS WALK only, clearly alternating human/horse legs; final4ROWS THRUST strike, THRUST return, SLASH strike, SLASH return. Do not put attack poses in walking rows. Keep target costume muted navy/steel palette; NO BOW or QUIVER in this model. ON FOOT with TWO HUMAN LEGS, NO HORSE anywhere. Do not copy the mounted Lu Bu pose. Return final production atlas, no concept sheet."
+  },
+  {
+    "key": "troop_spear_shield",
+    "name": "공통 창 방패병",
+    "file": "troop_spear_shield.png",
+    "frameCount": 64,
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "originalFile": "src/assets/troops-v300/troop_spear_shield.png",
+    "references": [
+      "src/assets/troops-v300/troop_spear_shield.png",
+      "src/assets/rework-v303/troop_archer.png",
+      "src/assets/lubu-v284/idle.png"
+    ],
+    "prompt": "IMAGE1 is the edit target: REDRAW ALL its figures as COARSE CLUSTERED PIXEL ART with ADULT SD anatomy. Do not merely scale the old figures. The old atlas has oversized bobble helmets, squat round bodies, tiny legs and smooth plastic metallic highlights; REMOVE those traits. Make head and helmet about25-28% of standing human height (3.5head adult SD), helmet narrower than shoulder span, slimmer straight torso, clearly visible waist/knees, longer legs occupying45% of human height, compact normal hands/boots. Preserve identity and equipment, but REDRAW anatomy and shading in ALL poses. IMAGE2 is body/pixel rendering reference only, IMAGE3 if present is Lu Bu shared-world reference only, NEVER copy reference weapons, crowns, feathers or mounts. Crisp square pixel clusters, limited muted palette with TWO or THREE deliberate flat shades per material, near-black thin stepped outline. NO smooth gradients, airbrush, antialias haze, shiny plastic, oversized face, toy proportions, painterly texture, glow. Native character should read as a 32x48-ish pixel game figure enlarged nearest-neighbor, not a high-res cartoon. True transparent alpha, no scenery, shadow, text, grid or detached pieces. Preserve 8 direction columns E/SE/S/SW/W/NW/N/NE with visibly distinct real rear views. Every weapon attached to a hand and visible in front/rear poses. All figures same anatomical scale and feet on a common baseline. Keep entire weapons inside own column with20pxtransparentgutters, no touching/cropping. CHARACTER MUST REMAIN: On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean face no beard. One brown shaft spear with single small silver spearhead in RIGHT hand plus medium oval gray steel-rimmed wooden shield in LEFT hand. Shield and full spear remain part of every pose. NO sword, NO axe, NO cape, NO horse, NO crown. Show both human legs. EXACTLY8COLUMNS x8ROWS =64 complete isolated sprites. Row1IDLE ready grip; next3ROWS WALK only, clearly alternating human/horse legs; final4ROWS THRUST strike, THRUST return, SLASH strike, SLASH return. Do not put attack poses in walking rows. Keep target costume muted navy/steel palette; NO BOW or QUIVER in this model. ON FOOT with TWO HUMAN LEGS, NO HORSE anywhere. Do not copy the mounted Lu Bu pose. Return final production atlas, no concept sheet."
+  },
+  {
+    "key": "f_xian",
+    "name": "함진병",
+    "file": "f_xian.png",
+    "frameCount": 64,
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "originalFile": "src/assets/troops-v300/f_xian.png",
+    "references": [
+      "src/assets/troops-v300/f_xian.png",
+      "src/assets/rework-v303/f_ji.png",
+      "src/assets/lubu-v284/idle.png"
+    ],
+    "prompt": "IMAGE1 is the edit target: REDRAW ALL its figures as COARSE CLUSTERED PIXEL ART with ADULT SD anatomy. Do not merely scale the old figures. The old atlas has oversized bobble helmets, squat round bodies, tiny legs and smooth plastic metallic highlights; REMOVE those traits. Make head and helmet about25-28% of standing human height (3.5head adult SD), helmet narrower than shoulder span, slimmer straight torso, clearly visible waist/knees, longer legs occupying45% of human height, compact normal hands/boots. Preserve identity and equipment, but REDRAW anatomy and shading in ALL poses. IMAGE2 is body/pixel rendering reference only, IMAGE3 if present is Lu Bu shared-world reference only, NEVER copy reference weapons, crowns, feathers or mounts. Crisp square pixel clusters, limited muted palette with TWO or THREE deliberate flat shades per material, near-black thin stepped outline. NO smooth gradients, airbrush, antialias haze, shiny plastic, oversized face, toy proportions, painterly texture, glow. Native character should read as a 32x48-ish pixel game figure enlarged nearest-neighbor, not a high-res cartoon. True transparent alpha, no scenery, shadow, text, grid or detached pieces. Preserve 8 direction columns E/SE/S/SW/W/NW/N/NE with visibly distinct real rear views. Every weapon attached to a hand and visible in front/rear poses. All figures same anatomical scale and feet on a common baseline. Keep entire weapons inside own column with20pxtransparentgutters, no touching/cropping. CHARACTER MUST REMAIN: On foot elite heavy infantry. BLACK/charcoal lamellar armor with muted steel-gray plates and pale gray trim, simple black steel helmet with a SHORT white crest (not hero long feathers), heavy shoulder guards, dark boots, clean disciplined face. ONE tall rectangular dark tower shield with pale steel edge in LEFT hand and ONE brown-shaft silver spear in RIGHT. Heavy compact silhouette but not huge hero ornament. NO horse, NO sword, NO cape, NO crown. Entire spear and shield within every cell. EXACTLY8COLUMNS x8ROWS =64 complete isolated sprites. Row1IDLE ready grip; next3ROWS WALK only, clearly alternating human/horse legs; final4ROWS THRUST strike, THRUST return, SLASH strike, SLASH return. Do not put attack poses in walking rows. Keep target costume muted navy/steel palette; NO BOW or QUIVER in this model. ON FOOT with TWO HUMAN LEGS, NO HORSE anywhere. Do not copy the mounted Lu Bu pose. Return final production atlas, no concept sheet."
+  },
+  {
+    "key": "f_bing",
+    "name": "병주 기병",
+    "file": "f_bing.png",
+    "frameCount": 64,
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "originalFile": "src/assets/troops-v300/f_bing.png",
+    "references": [
+      "src/assets/troops-v300/f_bing.png",
+      "src/assets/lubu-v284/idle.png"
+    ],
+    "prompt": "IMAGE1 is the edit target: REDRAW ALL its figures as COARSE CLUSTERED PIXEL ART with ADULT SD anatomy. Do not merely scale the old figures. The old atlas has oversized bobble helmets, squat round bodies, tiny legs and smooth plastic metallic highlights; REMOVE those traits. Make head and helmet about25-28% of standing human height (3.5head adult SD), helmet narrower than shoulder span, slimmer straight torso, clearly visible waist/knees, longer legs occupying45% of human height, compact normal hands/boots. Preserve identity and equipment, but REDRAW anatomy and shading in ALL poses. IMAGE2 is body/pixel rendering reference only, IMAGE3 if present is Lu Bu shared-world reference only, NEVER copy reference weapons, crowns, feathers or mounts. Crisp square pixel clusters, limited muted palette with TWO or THREE deliberate flat shades per material, near-black thin stepped outline. NO smooth gradients, airbrush, antialias haze, shiny plastic, oversized face, toy proportions, painterly texture, glow. Native character should read as a 32x48-ish pixel game figure enlarged nearest-neighbor, not a high-res cartoon. True transparent alpha, no scenery, shadow, text, grid or detached pieces. Preserve 8 direction columns E/SE/S/SW/W/NW/N/NE with visibly distinct real rear views. Every weapon attached to a hand and visible in front/rear poses. All figures same anatomical scale and feet on a common baseline. Keep entire weapons inside own column with20pxtransparentgutters, no touching/cropping. CHARACTER MUST REMAIN: MOUNTED in EVERY cell on the same chestnut brown horse with black mane and simple black/gray tack, complete4horselegs. Ordinary Bingzhou cavalryman with plain light steel helmet and SHORT BLACK feather plume, charcoal/dark navy lamellar armor, pale steel trim. ONE long brown-shaft spear/lance with silver single tip. Simple rider and gear, NO hero crown, NO long double feathers, NO ornate cape, NO sword/shield. Keep rider torso and horse consistent in every pose, all72 fully mounted. The horse walks four true phases, rider remains seated. EXACTLY8COLUMNS x8ROWS =64 complete isolated sprites. Row1IDLE ready grip; next3ROWS WALK only, clearly alternating human/horse legs; final4ROWS THRUST strike, THRUST return, SLASH strike, SLASH return. Do not put attack poses in walking rows. Keep target costume muted navy/steel palette; NO BOW or QUIVER in this model. Mounted rider and horse ONLY; maintain complete brown horse and black crest, rider adult head size matches Lu Bu. Horse legs/neck must be slender and natural, not a round pony toy. Return final production atlas, no concept sheet."
+  }
+]

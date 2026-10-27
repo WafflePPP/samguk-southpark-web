@@ -79,11 +79,11 @@ const ROLE_GROWTH = { '검': [1, 1, 2, 2], '창': [0.9, 1.1, 2, 2], '방패': [0
 const GRADE_MUL = { SS: 4.3, S: 4, A: 3, B: 2, C: 1.5, D: 1.25 };
 const GRADE = {
   lubu: 'SS', guan: 'SS', cao: 'SS', kong: 'SS',
-  zhao: 'S', zhangfei: 'S', machao: 'S', huang: 'S', jang: 'S', guo: 'S', sima: 'S', xun: 'S', pangtong: 'S',
-  gao: 'A', chengong: 'A', fazheng: 'A', xia: 'A', xiahouyuan: 'A', dian: 'A', xuchu: 'A', yan: 'A', wen: 'A', caoren: 'A', xuhuang: 'A', zhanghe: 'A', hua: 'A', yuan: 'A', liubei: 'A', weiyan: 'A',
-  diao: 'B', mizhu: 'B', lady_mi: 'B', haomeng: 'B', yujin: 'B', lulingqi: 'B', caopi: 'B', yuejin: 'B', caohong: 'B', caozhen: 'B', caoxiu: 'B', yanyan: 'B', zangba: 'B', gaolan: 'B', quyi: 'B', jushou: 'B', tianfeng: 'B', shenpei: 'B', jiangwei: 'B', zhangmiao: 'B', zhangchao: 'B', zhangyang: 'B', yuanshang: 'B', gaogan: 'B', xinping: 'B', chenlin: 'B', lvweihuang: 'B', lidian: 'B', chengyu: 'B', xunyou: 'B', manchong: 'B', guanping: 'B', zhoucang: 'B',
+  zhao: 'S', yan: 'S', wen: 'S', zhangfei: 'S', machao: 'S', huang: 'S', jang: 'S', guo: 'S', sima: 'S', xun: 'S', pangtong: 'S',
+  gao: 'A', chengong: 'A', fazheng: 'A', xia: 'A', xiahouyuan: 'A', dian: 'A', xuchu: 'A', caoren: 'A', xuhuang: 'A', zhanghe: 'A', hua: 'A', yuan: 'A', liubei: 'A', weiyan: 'A', gong: 'A', tianfeng: 'A',
+  diao: 'B', mizhu: 'B', lady_mi: 'B', haomeng: 'B', yujin: 'B', lulingqi: 'B', caopi: 'B', yuejin: 'B', caohong: 'B', caozhen: 'B', caoxiu: 'B', yanyan: 'B', zangba: 'B', gaolan: 'B', quyi: 'B', jushou: 'B', shenpei: 'B', jiangwei: 'B', zhangmiao: 'B', zhangchao: 'B', zhangyang: 'B', yuanshang: 'B', gaogan: 'B', xinping: 'B', chenlin: 'B', lvweihuang: 'B', lidian: 'B', chengyu: 'B', xunyou: 'B', manchong: 'B', guanping: 'B', zhoucang: 'B',
   caoxing: 'C', yuantan: 'C', yuanxi: 'C', chenglian: 'C', songxian: 'C', weixu: 'C', houcheng: 'C', chunyuqiong: 'C', hanmeng: 'C', jiangyiqu: 'C', guotu: 'C', fengji: 'C', dong: 'C', xuelan: 'C', lifeng_lu: 'C', wangkai: 'C', yinli: 'C', xusi: 'C', lvkuang: 'C', lvxiang: 'C', mayan: 'C', zhangyi_yuan: 'C', jiaochu: 'C', lvyang: 'C', guoyuan: 'C', liuye: 'C', lvqian: 'C', sunqian: 'C', jianyong: 'C',
-  liushan: 'D', mifang: 'D', gong: 'B', lijue: 'D',   // gong(공손찬) D→B 상향 (명세 71: 군주 군단장이 D 등급이면 공손찬 선택 시 약함)
+  liushan: 'D', mifang: 'D', lijue: 'D',   // gong(공손찬) D→B 상향 (명세 71: 군주 군단장이 D 등급이면 공손찬 선택 시 약함)
   // 100명 세력 편성용 보강 장수. 등급은 기존 B·C급 중심의 설계값이다.
   yangchou: 'C', dongzhao: 'B', yangfeng: 'B', tiankai: 'C', yangang: 'C', gongsunxu: 'C', guanjing: 'B', gongsunfan: 'C', gongsundu: 'B', gongsunkang: 'C', gongsungong: 'C', gongsunyuan: 'C',   // 명세 71 신규 12명(장양·공손찬·공손도 세력, 등급은 설계값)
   xuyou: 'B', xunchen: 'B', xinpi: 'B', chenzhen: 'C', gaorou: 'C', qianzhao: 'B', hanjuzi: 'C', suiyuanjin: 'C', zhaorui: 'C', zhangnan_yuan: 'C', lifu: 'C', yinkui: 'C', shenrong: 'C', jiaxu: 'A', caoang: 'B', caozhi: 'C', simalang: 'C', haozhao: 'B', wenpin: 'B',
@@ -94,7 +94,7 @@ const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
   gong: ['jang', '공손찬'], yuan: ['hua', '원소'], cao: ['hua', '조조'], dong: ['hua', '동탁'], zhanghe: ['hua', '장합'],
   xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
-  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['guan', '유비'], zhangfei: ['hua', '장비'], caopi: ['hua', '조비'], liushan: ['guan', '유선'], yuantan: ['hua', '원담'],
+  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['hua', '유비'], zhangfei: ['hua', '장비'], caopi: ['hua', '조비'], liushan: ['hua', '유선'], yuantan: ['hua', '원담'],
   machao: ['jang', '마초'], pangtong: ['xun', '방통'], jiangwei: ['jang', '강유'], weiyan: ['hua', '위연'],
   fazheng: ['xun', '법정'], xiahouyuan: ['huang', '하후연'], caoren: ['hua', '조인'], mizhu: ['xun', '미축'], lady_mi: ['diao', '미씨'], haomeng: ['hua', '학맹'], yujin: ['hua', '우금'],
   yuejin: ['hua', '악진'], caohong: ['hua', '조홍'], caozhen: ['hua', '조진'], caoxiu: ['jang', '조휴'], yanyan: ['huang', '엄안'], zangba: ['hua', '장패'], gaolan: ['hua', '고람'], quyi: ['huang', '국의'],
@@ -103,13 +103,14 @@ const CLONES = {
   zhangmiao: ['xun', '장막'], zhangchao: ['hua', '장초'], zhangyang: ['jang', '장양'], xuelan: ['hua', '설란'], lifeng_lu: ['hua', '이봉'], wangkai: ['xun', '왕해'], yinli: ['hua', '윤례'], xusi: ['xun', '허사'],
   yuanshang: ['hua', '원상'], gaogan: ['jang', '고간'], xinping: ['xun', '신평'], chenlin: ['xun', '진림'], lvweihuang: ['hua', '여위황'], lvkuang: ['hua', '여광'], lvxiang: ['hua', '여상'], mayan: ['hua', '마연'], zhangyi_yuan: ['hua', '장의'], jiaochu: ['hua', '초촉'], lvyang: ['hua', '여양'], guoyuan: ['hua', '곽원'],
   lidian: ['hua', '이전'], chengyu: ['xun', '정욱'], xunyou: ['xun', '순유'], manchong: ['xun', '만총'], liuye: ['xun', '유엽'], lvqian: ['hua', '여건'], guanping: ['hua', '관평'], zhoucang: ['hua', '주창'], sunqian: ['xun', '손건'], jianyong: ['xun', '간옹'],
-  yangchou: ['hua', '양추'], dongzhao: ['xun', '동소'], yangfeng: ['guan', '양봉'], tiankai: ['hua', '전해'], yangang: ['guan', '엄강'], gongsunxu: ['hua', '공손속'], guanjing: ['xun', '관정'], gongsunfan: ['jang', '공손범'],
-  gongsundu: ['hua', '공손도'], gongsunkang: ['guan', '공손강'], gongsungong: ['hua', '공손공'], gongsunyuan: ['jang', '공손연'],   // 명세 71: 외형은 기존 모델 공유(전용 외형 없음)
+  yangchou: ['hua', '양추'], dongzhao: ['xun', '동소'], yangfeng: ['hua', '양봉'], tiankai: ['hua', '전해'], yangang: ['hua', '엄강'], gongsunxu: ['hua', '공손속'], guanjing: ['xun', '관정'], gongsunfan: ['jang', '공손범'],
+  gongsundu: ['hua', '공손도'], gongsunkang: ['hua', '공손강'], gongsungong: ['hua', '공손공'], gongsunyuan: ['jang', '공손연'],   // 명세 71: 외형은 기존 모델 공유(전용 외형 없음)
   xuyou: ['xun', '허유'], xunchen: ['xun', '순심'], xinpi: ['xun', '신비'], chenzhen: ['xun', '진진'], gaorou: ['xun', '고유'], qianzhao: ['jang', '견초'], hanjuzi: ['jang', '한거자'], suiyuanjin: ['hua', '수원진'], zhaorui: ['hua', '조예'], zhangnan_yuan: ['hua', '장남'], lifu: ['xun', '이부'], yinkui: ['xun', '음기'], shenrong: ['hua', '심영'], jiaxu: ['xun', '가후'], caoang: ['jang', '조앙'], caozhi: ['xun', '조식'], simalang: ['xun', '사마랑'], haozhao: ['hua', '학소'], wenpin: ['hua', '문빙'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
 for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo', 'gong']) U[k].style = k;
 U.liushan.style = 'ally_sword';
+for (const k of ['liubei', 'liushan', 'yangfeng', 'yangang', 'gongsunkang']) delete U[k].fanatic;   // 관우 외형은 관우 전용: 기반을 hua 로 바꾸되 예전(guan 기반) 동작인 퇴각 가능을 유지
 U.jang.style = 'zhangliao';
 for (const k of ['xiahouyuan', 'xuhuang', 'yan', 'wen', 'gong']) Object.assign(U[k], { cls: 'cavalry', sp: 252, cd: 0.8, r: 15, aa: 8, special: 'dash', range: 0 });   // 참조 디자인에서 말에 탑승한 장수는 기병
 for (const k of ['xiahouyuan', 'gong']) Object.assign(U[k], { range: 270, movingShot: true });   // 기마궁병은 이동 중에도 원거리 공격
