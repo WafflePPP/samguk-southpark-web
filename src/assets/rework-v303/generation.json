@@ -1,0 +1,203 @@
+[
+  {
+    "key": "huang",
+    "file": "huang.png",
+    "original": "exec-1abf4b5c-b955-4014-9e75-cc8f8e885daf.png",
+    "source": "exec-1abf4b5c-b955-4014-9e75-cc8f8e885daf.png",
+    "edits": []
+  },
+  {
+    "key": "captain",
+    "file": "captain.png",
+    "original": "exec-6c00cad9-0d6d-4d85-b36a-03ebcee31f86.png",
+    "source": "exec-a319ec84-1986-4d22-8827-9a5e3c51be7e.png",
+    "edits": [
+      {
+        "source": "exec-a319ec84-1986-4d22-8827-9a5e3c51be7e.png",
+        "prompt": "Edit this production atlas only. Preserve transparent background, clean pixel art, body scale and 8direction ordering E,SE,S,SW,W,NW,N,NE. CRITICAL CORRECTION: This is a generic enemy OFFICER, not Lu Bu. REMOVE ALL TWIN PHEASANT FEATHERS and red Lu Bu headband. Replace headwear in ALL64cells with PLAIN DARK STEEL HELMET and ONE SHORT COMPACT RED CREST. No long plumes. Preserve on-foot adult body, burgundy armor, ONE short straight sword and walking/action poses. EXACT8columns8rows64 isolated complete figures, no horses. Transparent20pxgutters; no scenery, shadows, text, grid, detached parts, touching or cropping. Do not change64cells. Return final PNG."
+      }
+    ]
+  },
+  {
+    "key": "hua",
+    "file": "hua.png",
+    "original": "exec-2696752d-06e9-4866-a87e-24785ff70c6f.png",
+    "source": "exec-89243439-4be0-49ea-a00a-d2001a2505ea.png",
+    "edits": [
+      {
+        "source": "exec-89243439-4be0-49ea-a00a-d2001a2505ea.png",
+        "prompt": "Edit this production atlas only. Preserve transparent background, clean pixel art, body scale and 8direction ordering E,SE,S,SW,W,NW,N,NE. CRITICAL CORRECTION: This is HUA XIONG ON FOOT, NOT Lu Bu. REMOVE EVERY HORSE ENTIRELY in all64cells. Put a complete standing/walking adult man with TWO BOOTS planted on the common baseline in every cell. Dark burgundy black armor, stocky but adult body, broad dark beard, plain black iron helmet with ONE SHORT RED PLUME (NO twin pheasant feathers, NO Lu Bu band). Replace all weapons with ONE battle AXE, wide solid crescent AXE HEAD attached to shaft, NOT spear-tip+side-crescents halberd. Rows1idle,2-4walk,5axe jab,6return,7axe chop,8return. Keep EXACT8columns8rows64 separate FULL FOOT FIGURES. Transparent20pxgutters; no scenery, shadows, text, grid, detached parts, touching or cropping. Do not change64cells. Return final PNG."
+      }
+    ]
+  },
+  {
+    "key": "jang",
+    "file": "jang.png",
+    "original": "exec-e8c18e0e-399b-497b-984f-3c0069568c3b.png",
+    "source": "exec-e8c18e0e-399b-497b-984f-3c0069568c3b.png",
+    "edits": []
+  },
+  {
+    "key": "gong",
+    "file": "gong.png",
+    "original": "exec-dc8ca0e1-2d87-41cc-9169-83ac06396c96.png",
+    "source": "exec-dc8ca0e1-2d87-41cc-9169-83ac06396c96.png",
+    "edits": []
+  },
+  {
+    "key": "lulingqi",
+    "file": "lulingqi.png",
+    "original": "exec-49a1a3cf-b344-4ec4-8f5e-ee4b9b427612.png",
+    "source": "exec-72684eb2-8097-4f78-960e-7b9947b81503.png",
+    "edits": [
+      {
+        "source": "exec-72684eb2-8097-4f78-960e-7b9947b81503.png",
+        "prompt": "Edit this exact final sprite atlas, only spacing repair. In ROW5, COLUMN2 and COLUMN3 the extended spear joins neighboring figure. Separate these figures: shorten thrust reach to stay inside its column and slightly reduce character/horse scale about15% in ALL64cells, preserve same leg/body proportions. 8columns8rows must yield64 isolated connected sprites. Keep original character identity/equipment/colors, 8directions and pose row order, existing anatomy and mounted/on-foot state. Transparent20px gutters around every sprite; zero touching, overlap or clipping. Each figure and weapon is complete connected silhouette. Do not delete any sprite or row, do not add labels/shadows/scenery. Preserve transparent alpha."
+      }
+    ]
+  },
+  {
+    "key": "zhangfei",
+    "file": "zhangfei.png",
+    "original": "exec-9bf358e4-c554-45f9-9dd8-619c56d4af62.png",
+    "source": "exec-34793155-cc40-4b42-b927-9338d1a3c423.png",
+    "edits": [
+      {
+        "source": "exec-789be93e-0d52-4870-bd9f-a1e566193c17.png",
+        "prompt": "Edit this exact production atlas. This is ZHANG FEI on FOOT. REMOVE ALL PHEASANT FEATHERS, crown and Lu Bu headband/armor. Replace headwear with PLAIN RED CLOTH HEADWRAP, bare dark hair, WIDE BUSHY BLACK BEARD on mature rugged face. Dark brown bronze armor and black leather, stocky powerful human torso. Replace weapon with ONE LONG BLACK SNAKE SPEAR: narrow undulating pointed spear blade, NO side axe blades, NO crescent wings, NO halberd. Two human boots, no horse. 8cols8rows64. Rows1idle2-4walk5spearstrike6return7spearsweep8return. Preserve pixel cluster style, transparent alpha, 8directions E/SE/S/SW/W/NW/N/NE, same scale, all complete isolated connected silhouettes with transparent20pxgutters, no touching/clipping, detached parts, labels, shadows or scenery. Final atlas only."
+      },
+      {
+        "source": "exec-f06dffd1-9137-415c-a6bf-0ab59074474b.png",
+        "prompt": "SPACING AND ANIMATION ORDER REPAIR ONLY. Keep current red cloth headwrap, dark broad beard, brown armor and BLACK SNAKE SPEAR, on foot. DO NOT add any Lu Bu feathers or horse. Current7rows56 has a spear touching a neighboring figure. Keep7rows56 and separate every spear from neighbor. Shrink ALL figures25% inside their cells while preserving original anatomy; shorten attack reach so NO weapon crosses column boundary. GENEROUS30px fully transparent gutters. Every figure and attached weapon stays complete and separate. EXACTLY8COLUMNS x7ROWS =56FIGURES. Row1IDLE, row2WALKcontact, row3WALKpassing(opposite leg), row4ACTION1strike, row5ACTION1return, row6ACTION2strike, row7ACTION2return. Remove any duplicate attack pose instead of adding more. Same8direction columns as current, same pixelstyle and identity. NO background, text, grid, shadows, detached weapons, touching or clipping. Output transparent game atlas."
+      },
+      {
+        "source": "exec-34793155-cc40-4b42-b927-9338d1a3c423.png",
+        "prompt": "Precise final atlas correction, change ONLY ROW5 COLUMN2 and ROW5 COLUMN3 (count top-left row1column1). Those two figures are joined by a spear. Separate their FULL silhouettes with a clearly transparent vertical gutter. In row5column2 SHORTEN the extended spear and angle its tip upward so it stays inside column2. In row5column3 keep the snake spear more UPRIGHT so it stays inside column3. Leave a completely EMPTY transparent strip between them, at least15pixels. No spear, tassel, armor or boot may touch the neighboring figure. Keep both weapons complete attached to hands. Do NOT alter other54sprites or remove either figure. Preserve EXACT8columns7rows56 complete sprites and Zhang Fei design/red headwrap/beard/body scale. No horse, pheasant feathers, text, grid or backdrop. Transparent PNG."
+      }
+    ]
+  },
+  {
+    "key": "machao",
+    "file": "machao.png",
+    "original": "exec-fea19c4a-78f8-481b-9be1-6675b294dc18.png",
+    "source": "exec-fea19c4a-78f8-481b-9be1-6675b294dc18.png",
+    "edits": []
+  },
+  {
+    "key": "xuhuang",
+    "file": "xuhuang.png",
+    "original": "exec-f8d0ee21-6522-400d-86ce-368c7c39133f.png",
+    "source": "exec-0e93e5e0-fe90-4900-9e14-45d414af8ee9.png",
+    "edits": [
+      {
+        "source": "exec-ed9b83d4-a549-46ff-9bf8-be8996693790.png",
+        "prompt": "Edit this exact production atlas. This is XU HUANG mounted AXE general, NOT Lu Bu. Remove ALL pheasant feathers and red headband. Replace with muted bronze iron HELMET and ONE SHORT MAROON PLUME. Give him full dark beard, gray brown lamellar armor, muted maroon short cape. Replace EVERY halberd with ONE BIG BATTLE AXE: WIDE SOLID CRESCENT AXE HEAD on a long shaft, no spear tip and no twin wings. Dark BROWN horse, NOT red. Preserve mounted adult proportions, complete horse legs. 8cols8rows64. Rows1idle2-4walk5axejab6return7axechop8return. Preserve pixel cluster style, transparent alpha, 8directions E/SE/S/SW/W/NW/N/NE, same scale, all complete isolated connected silhouettes with transparent20pxgutters, no touching/clipping, detached parts, labels, shadows or scenery. Final atlas only."
+      },
+      {
+        "source": "exec-0e93e5e0-fe90-4900-9e14-45d414af8ee9.png",
+        "prompt": "SPACING AND ANIMATION ORDER REPAIR ONLY. Keep current bronze helmet maroon plume, full beard, gray armor, big AXE and dark brown horse. Keep mounted. Current8rows has touching axe heads and redundant attack pose. Recompose into EXACT7rows56, no redundant action row. Shrink ALL figures25% inside their cells while preserving original anatomy; shorten attack reach so NO weapon crosses column boundary. GENEROUS30px fully transparent gutters. Every figure and attached weapon stays complete and separate. EXACTLY8COLUMNS x7ROWS =56FIGURES. Row1IDLE, row2WALKcontact, row3WALKpassing(opposite leg), row4ACTION1strike, row5ACTION1return, row6ACTION2strike, row7ACTION2return. Remove any duplicate attack pose instead of adding more. Same8direction columns as current, same pixelstyle and identity. NO background, text, grid, shadows, detached weapons, touching or clipping. Output transparent game atlas."
+      }
+    ]
+  },
+  {
+    "key": "dong",
+    "file": "dong.png",
+    "original": "exec-04310646-080a-4e83-8885-ee6c23a56184.png",
+    "source": "exec-04310646-080a-4e83-8885-ee6c23a56184.png",
+    "edits": []
+  },
+  {
+    "key": "xun",
+    "file": "xun.png",
+    "original": "exec-291a2d88-aa44-49c9-9ec0-190df0b7fb8e.png",
+    "source": "exec-291a2d88-aa44-49c9-9ec0-190df0b7fb8e.png",
+    "edits": []
+  },
+  {
+    "key": "troop_archer",
+    "file": "troop_archer.png",
+    "original": "exec-2462df87-09df-4bb4-b13d-eef2c575cc74.png",
+    "source": "exec-2462df87-09df-4bb4-b13d-eef2c575cc74.png",
+    "edits": []
+  },
+  {
+    "key": "troop_cav",
+    "file": "troop_cav.png",
+    "original": "exec-fe6bbb92-80ea-4c58-aa7a-c673ae394837.png",
+    "source": "exec-fe6bbb92-80ea-4c58-aa7a-c673ae394837.png",
+    "edits": []
+  },
+  {
+    "key": "troop_mage",
+    "file": "troop_mage.png",
+    "original": "exec-256ebbb1-260d-4582-9ae5-4b6f61749f27.png",
+    "source": "exec-80244d47-87d2-4c9f-bf65-052c1ed13f8c.png",
+    "edits": [
+      {
+        "source": "exec-80244d47-87d2-4c9f-bf65-052c1ed13f8c.png",
+        "prompt": "Edit this atlas: REMOVE EVERY HORSE from ALL64 cells. This is an ordinary FOOT mage/healer, NOT a mounted unit. Put one COMPLETE STANDING HUMAN WITH TWO BOOTS on each cell baseline, blue scholar robe with gray sleeves, black plain cloth cap, feather fan, clean young face. Use same adult head size, show legs under robe; no stirrups, saddle, animal parts, mount or horse remaining anywhere. Preserve64 cells8columns8rows, same8direction ordering. Row1idle, rows2-4 human WALK with distinct two human leg poses, row5 fan cast extended, row6return, row7fan heal raised, row8return. ONE fan attached to hand; no detached spell effects. Transparent background, 20pxgutters, clean pixel outlines, same scale allsprites. Return final game-ready atlas."
+      }
+    ]
+  },
+  {
+    "key": "f_nu",
+    "file": "f_nu.png",
+    "original": "exec-91c7203d-6c96-45cd-a03e-74d323e780e8.png",
+    "source": "exec-91c7203d-6c96-45cd-a03e-74d323e780e8.png",
+    "edits": []
+  },
+  {
+    "key": "f_ji",
+    "file": "f_ji.png",
+    "original": "exec-2db2ca08-2165-4d73-87af-be9f24a9bbbb.png",
+    "source": "exec-472a3f77-5113-4486-a479-3257b58b4999.png",
+    "edits": [
+      {
+        "source": "exec-7d14aaa7-fb67-497c-ac70-50d406fdbd77.png",
+        "prompt": "Edit this exact production atlas. This is ordinary elite FOOT HALBERDIER not Lu Bu. Remove ALL pheasant feathers and red headband. Put plain dark iron HELMET WITH ONE SHORT OCHER YELLOW CREST on every figure. Heavy DARK GRAY and muted NAVY armor, small ocher yellow cloth accents. No red cape, no gold hero jewelry, no crown, no horse. Keep ONE long HALBERD with clearly visible SIDE AXE BLADE and spear tip. 8cols8rows64. Rows1idle2-4walk5thrust6return7halberdsweep8return. Preserve pixel cluster style, transparent alpha, 8directions E/SE/S/SW/W/NW/N/NE, same scale, all complete isolated connected silhouettes with transparent20pxgutters, no touching/clipping, detached parts, labels, shadows or scenery. Final atlas only."
+      },
+      {
+        "source": "exec-472a3f77-5113-4486-a479-3257b58b4999.png",
+        "prompt": "SPACING AND ANIMATION ORDER REPAIR ONLY. Keep current plain steel helmet short YELLOW crest, NAVY gray armor, long HALBERD. Keep on foot, NO Lu Bu feathers/crown/red headband. Current8rows has touching halberds and redundant strike pose. Recompose into EXACT7rows56. Shrink ALL figures25% inside their cells while preserving original anatomy; shorten attack reach so NO weapon crosses column boundary. GENEROUS30px fully transparent gutters. Every figure and attached weapon stays complete and separate. EXACTLY8COLUMNS x7ROWS =56FIGURES. Row1IDLE, row2WALKcontact, row3WALKpassing(opposite leg), row4ACTION1strike, row5ACTION1return, row6ACTION2strike, row7ACTION2return. Remove any duplicate attack pose instead of adding more. Same8direction columns as current, same pixelstyle and identity. NO background, text, grid, shadows, detached weapons, touching or clipping. Output transparent game atlas."
+      }
+    ]
+  },
+  {
+    "key": "f_qing",
+    "file": "f_qing.png",
+    "original": "exec-9dd74fbe-c3a7-4608-bc52-e2789ef88b42.png",
+    "source": "exec-9dd74fbe-c3a7-4608-bc52-e2789ef88b42.png",
+    "edits": []
+  },
+  {
+    "key": "f_hubao",
+    "file": "f_hubao.png",
+    "original": "exec-4e6b8611-1fb5-4808-abc6-81bf3b945e00.png",
+    "source": "exec-b492ad21-1f59-488d-8f2d-c89062f4d356.png",
+    "edits": [
+      {
+        "source": "exec-b492ad21-1f59-488d-8f2d-c89062f4d356.png",
+        "prompt": "SPACING AND ANIMATION ORDER REPAIR ONLY. Keep current blue helmet plume, tiger-fur collar, dark iron armor, lance and dark brown horse. Keep mounted. Current8rows puts a thrust among walking poses. Recompose into EXACT7rows56: walking rows must show lance HELD UP in idle grip, horse legs stepping, not attacking. Shrink ALL figures25% inside their cells while preserving original anatomy; shorten attack reach so NO weapon crosses column boundary. GENEROUS30px fully transparent gutters. Every figure and attached weapon stays complete and separate. EXACTLY8COLUMNS x7ROWS =56FIGURES. Row1IDLE, row2WALKcontact, row3WALKpassing(opposite leg), row4ACTION1strike, row5ACTION1return, row6ACTION2strike, row7ACTION2return. Remove any duplicate attack pose instead of adding more. Same8direction columns as current, same pixelstyle and identity. NO background, text, grid, shadows, detached weapons, touching or clipping. Output transparent game atlas."
+      }
+    ]
+  },
+  {
+    "key": "f_bai",
+    "file": "f_bai.png",
+    "original": "exec-5e3194cb-1d37-4277-93d7-969aff15fc45.png",
+    "source": "exec-5e3194cb-1d37-4277-93d7-969aff15fc45.png",
+    "edits": []
+  },
+  {
+    "key": "f_dan",
+    "file": "f_dan.png",
+    "original": "exec-ee691d24-3781-40a8-9217-2f5db5cf56c5.png",
+    "source": "exec-2b4f9552-3642-406a-9954-3cc200eec805.png",
+    "edits": [
+      {
+        "source": "exec-2b4f9552-3642-406a-9954-3cc200eec805.png",
+        "prompt": "Edit this exact final sprite atlas, only spacing repair. In ROW5, COLUMN1 and COLUMN2 the extended spear joins neighboring soldier. Separate these figures: shorten thrust reach to stay inside its column and reduce all soldier figures about15%, preserving proportions. EXACT8columns8rows64 isolated connected sprites. Keep original character identity/equipment/colors, 8directions and pose row order, existing anatomy and mounted/on-foot state. Transparent20px gutters around every sprite; zero touching, overlap or clipping. Each figure and weapon is complete connected silhouette. Do not delete any sprite or row, do not add labels/shadows/scenery. Preserve transparent alpha."
+      }
+    ]
+  }
+]

@@ -1,0 +1,899 @@
+[
+  {
+    "key": "huang",
+    "name": "황충 공유형",
+    "bindings": [
+      "huang"
+    ],
+    "users": [
+      {
+        "key": "huang",
+        "name": "황충",
+        "style": "huang",
+        "generic": false
+      },
+      {
+        "key": "yanyan",
+        "name": "엄안",
+        "style": "huang",
+        "generic": false
+      },
+      {
+        "key": "quyi",
+        "name": "국의",
+        "style": "huang",
+        "generic": false
+      },
+      {
+        "key": "caoxing",
+        "name": "조성",
+        "style": "huang",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "captain",
+    "name": "적 장수 기본형",
+    "bindings": [
+      "captain"
+    ],
+    "users": [
+      {
+        "key": "ecap",
+        "name": "적 장수",
+        "style": "captain",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "hua",
+    "name": "화웅 공유형",
+    "bindings": [
+      "hua"
+    ],
+    "users": [
+      {
+        "key": "hua",
+        "name": "화웅",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zhanghe",
+        "name": "장합",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lijue",
+        "name": "이각",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "caopi",
+        "name": "조비",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yuantan",
+        "name": "원담",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "weiyan",
+        "name": "위연",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "caoren",
+        "name": "조인",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "haomeng",
+        "name": "학맹",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yujin",
+        "name": "우금",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yuejin",
+        "name": "악진",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "caohong",
+        "name": "조홍",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "caozhen",
+        "name": "조진",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zangba",
+        "name": "장패",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "gaolan",
+        "name": "고람",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yuanxi",
+        "name": "원희",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "songxian",
+        "name": "송헌",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "weixu",
+        "name": "위속",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "houcheng",
+        "name": "후성",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "chunyuqiong",
+        "name": "순우경",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "hanmeng",
+        "name": "한맹",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "jiangyiqu",
+        "name": "장의거",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "mifang",
+        "name": "미방",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zhangchao",
+        "name": "장초",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "xuelan",
+        "name": "설란",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lifeng_lu",
+        "name": "이봉",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yinli",
+        "name": "윤례",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yuanshang",
+        "name": "원상",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lvweihuang",
+        "name": "여위황",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lvkuang",
+        "name": "여광",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lvxiang",
+        "name": "여상",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "mayan",
+        "name": "마연",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zhangyi_yuan",
+        "name": "장의",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "jiaochu",
+        "name": "초촉",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lvyang",
+        "name": "여양",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "guoyuan",
+        "name": "곽원",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lidian",
+        "name": "이전",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "lvqian",
+        "name": "여건",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "guanping",
+        "name": "관평",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zhoucang",
+        "name": "주창",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "yangchou",
+        "name": "양추",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "tiankai",
+        "name": "전해",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "gongsunxu",
+        "name": "공손속",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "gongsundu",
+        "name": "공손도",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "gongsungong",
+        "name": "공손공",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "suiyuanjin",
+        "name": "수원진",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zhaorui",
+        "name": "조예",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "zhangnan_yuan",
+        "name": "장남",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "shenrong",
+        "name": "심영",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "haozhao",
+        "name": "학소",
+        "style": "hua",
+        "generic": false
+      },
+      {
+        "key": "wenpin",
+        "name": "문빙",
+        "style": "hua",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "jang",
+    "name": "공유 기마 장수형",
+    "bindings": [
+      "jang"
+    ],
+    "users": [
+      {
+        "key": "jiangwei",
+        "name": "강유",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "caoxiu",
+        "name": "조휴",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "chenglian",
+        "name": "성렴",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "zhangyang",
+        "name": "장양",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "gaogan",
+        "name": "고간",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "gongsunfan",
+        "name": "공손범",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "gongsunyuan",
+        "name": "공손연",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "qianzhao",
+        "name": "견초",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "hanjuzi",
+        "name": "한거자",
+        "style": "jang",
+        "generic": false
+      },
+      {
+        "key": "caoang",
+        "name": "조앙",
+        "style": "jang",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "gong",
+    "name": "공손찬",
+    "bindings": [
+      "gong"
+    ],
+    "users": [
+      {
+        "key": "gong",
+        "name": "공손찬",
+        "style": "gong",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "lulingqi",
+    "name": "여령기",
+    "bindings": [
+      "lulingqi"
+    ],
+    "users": [
+      {
+        "key": "lulingqi",
+        "name": "여령기",
+        "style": "lulingqi",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "zhangfei",
+    "name": "장비",
+    "bindings": [
+      "zhangfei"
+    ],
+    "users": [
+      {
+        "key": "zhangfei",
+        "name": "장비",
+        "style": "zhangfei",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "machao",
+    "name": "마초",
+    "bindings": [
+      "machao"
+    ],
+    "users": [
+      {
+        "key": "machao",
+        "name": "마초",
+        "style": "machao",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "xuhuang",
+    "name": "서황",
+    "bindings": [
+      "xuhuang"
+    ],
+    "users": [
+      {
+        "key": "xuhuang",
+        "name": "서황",
+        "style": "xuhuang",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "dong",
+    "name": "동탁",
+    "bindings": [
+      "dong"
+    ],
+    "users": [
+      {
+        "key": "dong",
+        "name": "동탁",
+        "style": "dong",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "xun",
+    "name": "순욱 공유형",
+    "bindings": [
+      "xun"
+    ],
+    "users": [
+      {
+        "key": "xun",
+        "name": "순욱",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "chengong",
+        "name": "진궁",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "pangtong",
+        "name": "방통",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "fazheng",
+        "name": "법정",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "mizhu",
+        "name": "미축",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "jushou",
+        "name": "저수",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "tianfeng",
+        "name": "전풍",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "shenpei",
+        "name": "심배",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "guotu",
+        "name": "곽도",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "fengji",
+        "name": "봉기",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "zhangmiao",
+        "name": "장막",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "wangkai",
+        "name": "왕해",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "xusi",
+        "name": "허사",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "xinping",
+        "name": "신평",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "chenlin",
+        "name": "진림",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "chengyu",
+        "name": "정욱",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "xunyou",
+        "name": "순유",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "manchong",
+        "name": "만총",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "liuye",
+        "name": "유엽",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "sunqian",
+        "name": "손건",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "jianyong",
+        "name": "간옹",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "dongzhao",
+        "name": "동소",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "guanjing",
+        "name": "관정",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "xuyou",
+        "name": "허유",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "xunchen",
+        "name": "순심",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "xinpi",
+        "name": "신비",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "chenzhen",
+        "name": "진진",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "gaorou",
+        "name": "고유",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "lifu",
+        "name": "이부",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "yinkui",
+        "name": "음기",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "jiaxu",
+        "name": "가후",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "caozhi",
+        "name": "조식",
+        "style": "xun",
+        "generic": false
+      },
+      {
+        "key": "simalang",
+        "name": "사마랑",
+        "style": "xun",
+        "generic": false
+      }
+    ]
+  },
+  {
+    "key": "troop_archer",
+    "name": "공통 궁병",
+    "bindings": [
+      "ally_archer",
+      "archer"
+    ],
+    "users": [
+      {
+        "key": "archer",
+        "name": "궁병",
+        "style": "ally_archer",
+        "generic": true
+      },
+      {
+        "key": "earcher",
+        "name": "적 궁병",
+        "style": "archer",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "troop_cav",
+    "name": "공통 기병",
+    "bindings": [
+      "ally_cav",
+      "cav"
+    ],
+    "users": [
+      {
+        "key": "cav",
+        "name": "기마병",
+        "style": "ally_cav",
+        "generic": true
+      },
+      {
+        "key": "ecav",
+        "name": "적 기마",
+        "style": "cav",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "troop_mage",
+    "name": "공통 법사·회복병",
+    "bindings": [
+      "mage",
+      "emage"
+    ],
+    "users": [
+      {
+        "key": "mage",
+        "name": "법사",
+        "style": "mage",
+        "generic": true
+      },
+      {
+        "key": "emage",
+        "name": "적 법사",
+        "style": "emage",
+        "generic": true
+      },
+      {
+        "key": "esage",
+        "name": "적 군사",
+        "style": "emage",
+        "generic": false
+      },
+      {
+        "key": "healer",
+        "name": "회복병",
+        "style": "mage",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "f_nu",
+    "name": "선등강노병",
+    "bindings": [
+      "f_nu",
+      "f_nu_enemy"
+    ],
+    "users": [
+      {
+        "key": "f_nu",
+        "name": "선등강노병",
+        "style": "f_nu",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "f_ji",
+    "name": "대극사",
+    "bindings": [
+      "f_ji",
+      "f_ji_enemy"
+    ],
+    "users": [
+      {
+        "key": "f_ji",
+        "name": "대극사",
+        "style": "f_ji",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "f_qing",
+    "name": "청주병",
+    "bindings": [
+      "f_qing",
+      "f_qing_enemy"
+    ],
+    "users": [
+      {
+        "key": "f_qing",
+        "name": "청주병",
+        "style": "f_qing",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "f_hubao",
+    "name": "호표기",
+    "bindings": [
+      "f_hubao",
+      "f_hubao_enemy"
+    ],
+    "users": [
+      {
+        "key": "f_hubao",
+        "name": "호표기",
+        "style": "f_hubao",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "f_bai",
+    "name": "백이병",
+    "bindings": [
+      "f_bai",
+      "f_bai_enemy"
+    ],
+    "users": [
+      {
+        "key": "f_bai",
+        "name": "백이병",
+        "style": "f_bai",
+        "generic": true
+      }
+    ]
+  },
+  {
+    "key": "f_dan",
+    "name": "단양병",
+    "bindings": [
+      "f_dan",
+      "f_dan_enemy"
+    ],
+    "users": [
+      {
+        "key": "f_dan",
+        "name": "단양병",
+        "style": "f_dan",
+        "generic": true
+      }
+    ]
+  }
+]

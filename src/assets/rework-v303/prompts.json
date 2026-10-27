@@ -1,0 +1,331 @@
+[
+  {
+    "key": "huang",
+    "name": "황충 공유형",
+    "kind": "hero",
+    "actions": [
+      "shoot",
+      "slash"
+    ],
+    "bindings": [
+      "huang"
+    ],
+    "design": "Elder veteran archer on foot, white beard, muted brass helmet with small red plume, olive gray lamellar armor, dark red short cape, recurved bow and quiver. Secondary slash is bow bash.",
+    "file": "huang.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Elder veteran archer on foot, white beard, muted brass helmet with small red plume, olive gray lamellar armor, dark red short cape, recurved bow and quiver. Secondary slash is bow bash. ACTION1=shoot, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "captain",
+    "name": "적 장수 기본형",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "captain"
+    ],
+    "design": "Officer on foot, compact dark steel helmet red crest, muted burgundy lamellar armor with sparse brass trim, short straight sword. Plain army officer, no crown, no horse.",
+    "file": "captain.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Officer on foot, compact dark steel helmet red crest, muted burgundy lamellar armor with sparse brass trim, short straight sword. Plain army officer, no crown, no horse. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "hua",
+    "name": "화웅 공유형",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "hua"
+    ],
+    "design": "Broad shouldered bearded foot general, dark iron helmet red plume, burgundy black armor and dark red cape, one clearly recognizable long battle AXE. Human body stockier than Lu Bu but head same size, not huge.",
+    "file": "hua.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Broad shouldered bearded foot general, dark iron helmet red plume, burgundy black armor and dark red cape, one clearly recognizable long battle AXE. Human body stockier than Lu Bu but head same size, not huge. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "jang",
+    "name": "공유 기마 장수형",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "jang"
+    ],
+    "design": "Mounted generic veteran general, dark gray armor with bronze trim, purple gray short cape, small steel helmet crest, beard, slender lance with red tassel, dark brown horse. No huge violet plume: distinguish from unique Zhang Liao.",
+    "file": "jang.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Mounted generic veteran general, dark gray armor with bronze trim, purple gray short cape, small steel helmet crest, beard, slender lance with red tassel, dark brown horse. No huge violet plume: distinguish from unique Zhang Liao. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "gong",
+    "name": "공손찬",
+    "kind": "hero",
+    "actions": [
+      "shoot",
+      "thrust"
+    ],
+    "bindings": [
+      "gong"
+    ],
+    "design": "Mounted archer general on WHITE horse, white silver helmet and armor, subdued pale blue trim and cape, mature bearded face, recurved bow and quiver. First action bow shooting, second action short lance thrust. Keep mounted.",
+    "file": "gong.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Mounted archer general on WHITE horse, white silver helmet and armor, subdued pale blue trim and cape, mature bearded face, recurved bow and quiver. First action bow shooting, second action short lance thrust. Keep mounted. ACTION1=shoot, ACTION2=thrust. Final64 production sprites directly."
+  },
+  {
+    "key": "lulingqi",
+    "name": "여령기",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "lulingqi"
+    ],
+    "design": "Female mounted warrior, pale silver lamellar armor, subdued violet trim, tied long dark hair, small silver hair crown without Lu Bu feathers, long spear red tassel, black horse. Adult woman, same head size as Lu Bu, not doll or oversized anime head.",
+    "file": "lulingqi.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Female mounted warrior, pale silver lamellar armor, subdued violet trim, tied long dark hair, small silver hair crown without Lu Bu feathers, long spear red tassel, black horse. Adult woman, same head size as Lu Bu, not doll or oversized anime head. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "zhangfei",
+    "name": "장비",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "zhangfei"
+    ],
+    "design": "Powerful bearded infantry general, bushy dark beard, red tied headwrap, dark brown and bronze armor, long dark shaft snake blade spear with red tassel. On foot, no horse. Broad torso but human head stays Lu Bu size.",
+    "file": "zhangfei.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Powerful bearded infantry general, bushy dark beard, red tied headwrap, dark brown and bronze armor, long dark shaft snake blade spear with red tassel. On foot, no horse. Broad torso but human head stays Lu Bu size. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "machao",
+    "name": "마초",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "machao"
+    ],
+    "design": "Mounted young white knight, silver helmet with small horns and pale gold crest, silver teal armor, white fur collar and white short cape, lance, WHITE horse. Same horse leg length and adult rider proportions as Lu Bu.",
+    "file": "machao.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Mounted young white knight, silver helmet with small horns and pale gold crest, silver teal armor, white fur collar and white short cape, lance, WHITE horse. Same horse leg length and adult rider proportions as Lu Bu. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "xuhuang",
+    "name": "서황",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "xuhuang"
+    ],
+    "design": "Mounted axe general, bronze iron helmet muted red crest, gray brown lamellar armor, maroon cape, beard, LARGE SINGLE BATTLE AXE, dark brown horse. Axe thrust then axe sweeping cut.",
+    "file": "xuhuang.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Mounted axe general, bronze iron helmet muted red crest, gray brown lamellar armor, maroon cape, beard, LARGE SINGLE BATTLE AXE, dark brown horse. Axe thrust then axe sweeping cut. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "dong",
+    "name": "동탁",
+    "kind": "hero",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "dong"
+    ],
+    "design": "Heavyset older lord on foot, black purple robes over dark armor, bronze trim, low black court crown, dark broad beard, straight sword. Heavy belly but restrained head size, dark imperial look, no horse.",
+    "file": "dong.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Heavyset older lord on foot, black purple robes over dark armor, bronze trim, low black court crown, dark broad beard, straight sword. Heavy belly but restrained head size, dark imperial look, no horse. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "xun",
+    "name": "순욱 공유형",
+    "kind": "hero",
+    "actions": [
+      "cast",
+      "heal"
+    ],
+    "bindings": [
+      "xun"
+    ],
+    "design": "Civil strategist on foot, muted deep violet scholar robe, pale sleeves, low black scholarly cap with bronze pin, neat beard, feather fan. First action cast with fan extended, second action supportive raised fan. No detached spell effects, no floating particles.",
+    "file": "xun.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Civil strategist on foot, muted deep violet scholar robe, pale sleeves, low black scholarly cap with bronze pin, neat beard, feather fan. First action cast with fan extended, second action supportive raised fan. No detached spell effects, no floating particles. ACTION1=cast, ACTION2=heal. Final64 production sprites directly."
+  },
+  {
+    "key": "troop_archer",
+    "name": "공통 궁병",
+    "kind": "troop",
+    "actions": [
+      "shoot",
+      "slash"
+    ],
+    "bindings": [
+      "ally_archer",
+      "archer"
+    ],
+    "design": "Ordinary FOOT ARCHER. Plain rounded steel helmet, muted navy cloth and small gray breastplate, brown boots, recurve bow and quiver. NO spear, sword, shield, cape or horse. Draw bow shooting then bow bash.",
+    "file": "troop_archer.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Ordinary FOOT ARCHER. Plain rounded steel helmet, muted navy cloth and small gray breastplate, brown boots, recurve bow and quiver. NO spear, sword, shield, cape or horse. Draw bow shooting then bow bash. ACTION1=shoot, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "troop_cav",
+    "name": "공통 기병",
+    "kind": "troop",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "ally_cav",
+      "cav"
+    ],
+    "design": "Ordinary MOUNTED soldier. Plain rounded iron helmet small navy tassel, navy tunic gray simple lamellar armor, long spear, tan BROWN horse. No gold, crown, oversized helmet, large cape or hero decoration. Adult rider and complete four horse legs visible.",
+    "file": "troop_cav.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Ordinary MOUNTED soldier. Plain rounded iron helmet small navy tassel, navy tunic gray simple lamellar armor, long spear, tan BROWN horse. No gold, crown, oversized helmet, large cape or hero decoration. Adult rider and complete four horse legs visible. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "troop_mage",
+    "name": "공통 법사·회복병",
+    "kind": "troop",
+    "actions": [
+      "cast",
+      "heal"
+    ],
+    "bindings": [
+      "mage",
+      "emage"
+    ],
+    "design": "Ordinary FOOT military scholar and healer shared model. Muted blue robe pale gray sleeves, small black cap, plain feather fan, young clean face, dark boots. First action fan cast, second action heal gesture. No detached spell particles or floating symbols.",
+    "file": "troop_mage.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Ordinary FOOT military scholar and healer shared model. Muted blue robe pale gray sleeves, small black cap, plain feather fan, young clean face, dark boots. First action fan cast, second action heal gesture. No detached spell particles or floating symbols. ACTION1=cast, ACTION2=heal. Final64 production sprites directly."
+  },
+  {
+    "key": "f_nu",
+    "name": "선등강노병",
+    "kind": "troop",
+    "actions": [
+      "shoot",
+      "slash"
+    ],
+    "bindings": [
+      "f_nu",
+      "f_nu_enemy"
+    ],
+    "design": "Elite FOOT CROSSBOWMAN. Muted navy gray armor, small ocher yellow helmet plume, solid wooden CROSSBOW with horizontal steel arms, compact quiver bolts. No long spear, no bow, no horse. Shoot crossbow then stock bash.",
+    "file": "f_nu.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Elite FOOT CROSSBOWMAN. Muted navy gray armor, small ocher yellow helmet plume, solid wooden CROSSBOW with horizontal steel arms, compact quiver bolts. No long spear, no bow, no horse. Shoot crossbow then stock bash. ACTION1=shoot, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "f_ji",
+    "name": "대극사",
+    "kind": "troop",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "f_ji",
+      "f_ji_enemy"
+    ],
+    "design": "Elite FOOT HALBERDIER. Heavy dark iron lamellar armor muted ocher yellow accents and short yellow helmet crest. Long halberd with unmistakable SIDE AXE BLADE and spear tip. No shield, no horse. Thrust then halberd sweep.",
+    "file": "f_ji.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Elite FOOT HALBERDIER. Heavy dark iron lamellar armor muted ocher yellow accents and short yellow helmet crest. Long halberd with unmistakable SIDE AXE BLADE and spear tip. No shield, no horse. Thrust then halberd sweep. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "f_qing",
+    "name": "청주병",
+    "kind": "troop",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "f_qing",
+      "f_qing_enemy"
+    ],
+    "design": "Lean hardened FOOT SPEARMAN, blue tied headwrap instead of helmet, muted navy cloth, pale gray small chestplate, brown leather belt, long spear. No horse, no shield, no large crown.",
+    "file": "f_qing.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Lean hardened FOOT SPEARMAN, blue tied headwrap instead of helmet, muted navy cloth, pale gray small chestplate, brown leather belt, long spear. No horse, no shield, no large crown. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "f_hubao",
+    "name": "호표기",
+    "kind": "troop",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "f_hubao",
+      "f_hubao_enemy"
+    ],
+    "design": "Elite MOUNTED tiger leopard cavalry. Dark steel helmet small blue plume, heavy gray armor and muted brown tiger fur collar, subtle brown orange stripe details, long lance, dark brown armored horse. Small tiger ear helmet accents, NOT actual animal head. Rider head same size as Lu Bu.",
+    "file": "f_hubao.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Elite MOUNTED tiger leopard cavalry. Dark steel helmet small blue plume, heavy gray armor and muted brown tiger fur collar, subtle brown orange stripe details, long lance, dark brown armored horse. Small tiger ear helmet accents, NOT actual animal head. Rider head same size as Lu Bu. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "f_bai",
+    "name": "백이병",
+    "kind": "troop",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "f_bai",
+      "f_bai_enemy"
+    ],
+    "design": "Elite FOOT SPEARMAN. White silver helmet, small green plume, white gray armor and muted green short cape, long spear, dark boots. No horse, no shield. Maintain white helmet and green distinguishing accents.",
+    "file": "f_bai.png",
+    "frameCount": 56,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Elite FOOT SPEARMAN. White silver helmet, small green plume, white gray armor and muted green short cape, long spear, dark boots. No horse, no shield. Maintain white helmet and green distinguishing accents. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  },
+  {
+    "key": "f_dan",
+    "name": "단양병",
+    "kind": "troop",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "bindings": [
+      "f_dan",
+      "f_dan_enemy"
+    ],
+    "design": "Rugged FOOT SPEARMAN. Small natural straw hat with green headband, muted gray leather armor green sleeves, brown belt, long spear, dark boots. No horse, no steel helmet, no shield. Adult head not enlarged by straw hat.",
+    "file": "f_dan.png",
+    "frameCount": 64,
+    "prompt": "FINAL PRODUCTION PIXEL SPRITE ATLAS, not concept art. Use attached Lu Bu ONLY as strict pixel style and ANATOMY reference. Match its restrained adult SD head/body ratio (about 3 to 3.5 heads for standing human), small head, slim practical torso, leg length, helmet size, dense square pixel clusters, dark one-pixel outlines, muted 2-3 shade ramps. Mounted rider body and horse anatomy must match Lu Bu, not giant toy horse or bobblehead. Foot soldiers must have same human head size as rider, NOT an oversized chibi head or fat short torso. Clear weapons and hands visible in every direction including front/rear. 8 COLUMNS x 8 ROWS EXACTLY 64 SEPARATE COMPLETE SPRITES. Portrait canvas. True transparent background, generous transparent 20px gutters, every entire weapon/horse inside each cell. No touching figures, no cropped weapons, no detached pieces, labels, text, grid, shadows, scenery, glows or particles. Each column consistent direction E,SE,S,SW,W,NW,N,NE; last3 are REAL REAR views, do not duplicate adjacent directions. Row1 IDLE both feet planted ready grip; rows2,3,4 WALK contact/passing/opposite contact, genuinely different leg/horse poses; rows5,6 ACTION1 strike/recovery; rows7,8 ACTION2 strike/recovery. Exactly all8rows, 8figures per row. Preserve identical costume, body scale, equipment and character identity in all64. Single connected silhouette per sprite, attach weapon to hands. No extra stored weapon of same type during strike: ONE weapon only. CHARACTER: Rugged FOOT SPEARMAN. Small natural straw hat with green headband, muted gray leather armor green sleeves, brown belt, long spear, dark boots. No horse, no steel helmet, no shield. Adult head not enlarged by straw hat. ACTION1=thrust, ACTION2=slash. Final64 production sprites directly."
+  }
+]

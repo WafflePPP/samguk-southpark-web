@@ -235,6 +235,7 @@ const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378}
 const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
 const HERO_REWORK_KEYS=['yuan','yan','wen','gao','cao','xia','xiahouyuan','dian','xuchu','guo','sima','liubei','guan','kong','zhao'];
 const TROOP_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],f_bing:['f_bing','f_bing_enemy']};
+const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 function extractBattleSprite(image,b,tint=false,cutoff=128) {
   const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
   const pixels=g.getImageData(0,0,b.w,b.h),d=pixels.data,seen=new Uint8Array(b.w*b.h),queue=new Int32Array(b.w*b.h);let head=0,tail=1;const seed=(b.sy-b.y)*b.w+b.sx-b.x;queue[0]=seed;seen[seed]=1;
@@ -251,19 +252,16 @@ function extractBattleSprite(image,b,tint=false,cutoff=128) {
 function loadBattleArt() {
   if(typeof Image==='undefined')return Promise.resolve();if(BATTLE_ART.loading)return BATTLE_ART.promise;
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
-  const names=[...BATTLE_ATLASES.map(s=>s.file),'terrain.png','approved-reference.png'];
+  const names=['terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
-  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),fetch('src/assets/heroes-v277/layout.json?v=277&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 방향 목록 로드 실패');return r.json();}),fetch('src/assets/hero-idle-v280/layout.json?v=280&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 대기 목록 로드 실패');return r.json();}),fetch('src/assets/heroes-v293/layout.json?v=293&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 리워크 목록 로드 실패');return r.json();}),fetch('src/assets/troops-v300/layout.json?v=300&try='+attempt).then(r=>{if(!r.ok)throw new Error('병사 리워크 목록 로드 실패');return r.json();})]).then(async ([images,heroes,idleSheets,reworks,troops])=>{
+  const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
+  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v293',293),manifest('troops-v300',300),manifest('rework-v303',303)]).then(async ([images,reworks,troops,remaining])=>{
     if(reworks.length!==15||new Set(reworks.map(h=>h.key)).size!==15||HERO_REWORK_KEYS.some(k=>!reworks.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
-    const replaced=new Set(reworks.map(h=>h.key)),troopKeys=new Set(Object.values(TROOP_REWORK_BINDINGS).flat());
-    if(troops.length!==6||new Set(troops.map(h=>h.key)).size!==6||Object.keys(TROOP_REWORK_BINDINGS).some(k=>!troops.some(h=>h.key===k)))throw new Error('병사 리워크 외형 누락');
-    BATTLE_ATLASES.forEach((sheet,si)=>sheet.keys.forEach((key,i)=>{if(troopKeys.has(key)){BATTLE_ART.models.set(key,{frames:[],back:[]});return;}const row=Math.floor(i/3),col=(i%3)*2,bs=[sheet.frames[row*6+col],sheet.frames[row*6+col+1]],model=BATTLE_ART.models.get(key)||{},back=sheet.view==='back';model[back?'back':'frames']=bs.map(b=>extractBattleSprite(images[si],b));if(key.startsWith('f_'))model[back?'enemyBack':'enemy']=bs.map(b=>extractBattleSprite(images[si],b,true));BATTLE_ART.models.set(key,model);}));
-    for(const model of BATTLE_ART.models.values())if(!model.frames||!model.back)throw new Error('캐릭터 방향 이미지 누락');
-    const n=BATTLE_ATLASES.length;BATTLE_ART.terrain=images[n];BATTLE_ART.reference=images[n+1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[n],b));
-    if(heroes.length!==27||new Set(heroes.map(h=>h.key)).size!==27)throw new Error('장수 방향 목록 누락');
-    await Promise.all(heroes.filter(h=>!replaced.has(h.key)).map(async h=>{const image=await load('src/assets/heroes-v277/'+h.file),model=BATTLE_ART.models.get(h.key);if(!model||h.frames.length!==32)throw new Error('장수 8방향 이미지 누락: '+h.key);model.directions=Array.from({length:8},(_,d)=>h.frames.slice(d*4,d*4+4).map(b=>extractBattleSprite(image,b)));model.directionHeight=Math.max(...h.frames.map(b=>b.h));}));
-    const idleKeys=idleSheets.flatMap(s=>s.keys);if(idleKeys.length!==27||new Set(idleKeys).size!==27||heroes.some(h=>!idleKeys.includes(h.key)))throw new Error('장수 대기 외형 누락');
-    await Promise.all(idleSheets.map(async sheet=>{if(sheet.frames.length!==sheet.keys.length*8)throw new Error('장수 대기 방향 누락');const image=await load('src/assets/hero-idle-v280/'+sheet.file,280);sheet.keys.forEach((key,i)=>{if(replaced.has(key))return;const model=BATTLE_ART.models.get(key);model.idle=sheet.frames.slice(i*8,i*8+8).map(b=>extractBattleSprite(image,b,false,200));const walk=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b),idle=model.idle.map(c=>c.bodyHeight).sort((a,b)=>a-b);model.idleHeight=model.directionHeight*idle[4]/walk[16];});}));
+    const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
+    if(!complete(troops,TROOP_REWORK_BINDINGS)||!complete(remaining,REMAINING_REWORK_BINDINGS))throw new Error('전체 리워크 외형 누락');
+    for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
+    // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
+    BATTLE_ART.terrain=images[0];BATTLE_ART.reference=images[1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[0],b));
     const update=await fetch('src/assets/lubu-v284/layout.json?v=284&try='+attempt).then(r=>{if(!r.ok)throw new Error('여포 아트 목록 로드 실패');return r.json();});
     const sheets=await Promise.all(update.map(async sheet=>{const image=await load('src/assets/lubu-v284/'+sheet.file,284);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     installLubuRework(sheets);
@@ -284,14 +282,22 @@ function loadBattleArt() {
       if(![64,72].includes(h.frames.length)||h.actions?.join(',')!=='thrust,slash')throw new Error('병사 동작 누락: '+h.key);
       const image=await load('src/assets/troops-v300/'+h.file,300);
       const frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
-      installTroopRework(h,frames,enemy);
-    }));BATTLE_ART.ready=true;
+      installAtlasRework(h,frames,enemy);
+    }));
+    await Promise.all(remaining.map(async h=>{
+      if(![56,64,72].includes(h.frames.length)||h.actions?.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('추가 리워크 동작 누락: '+h.key);
+      const image=await load('src/assets/rework-v303/'+h.file,303),keys=REMAINING_REWORK_BINDINGS[h.key],frames=h.frames.map(b=>extractTroopSprite(image,b,false));
+      const enemy=keys.length===2?h.frames.map(b=>extractTroopSprite(image,b,true)):frames;
+      installAtlasRework(h,frames,enemy,keys);
+    }));
+    for(const [key,model]of BATTLE_ART.models)if(model.idle?.length!==8||model.directions?.length!==8)throw new Error('캐릭터 리워크 연결 누락: '+key);
+    BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
 // 시뮬레이션의 판정 반경과 독립된 공통 외형 크기. 기병은 말까지 포함한다.
 const BATTLE_UNIT_RADIUS=8.5;
 // 여포의 기수·말을 기준으로 원본마다 다른 머리/갑옷 비중을 시각 보정한다.
-const BATTLE_STYLE_SCALE={lubu:1.2,zhangliao:1.15,ally_sword:.85,soldier:.85,ally_spear:.85,enemy_spear:.85,ally_shield:.85,shield:.85,ally_shield_spear:.85,shield_sword:.85,ally_archer:.85,archer:.85,ally_cav:.85,cav:.85,f_xian:.9,f_xian_enemy:.9,f_bing:.95,f_bing_enemy:.95};
+const BATTLE_STYLE_SCALE={lubu:1.2,zhangliao:1.15,ally_sword:.85,soldier:.85,ally_spear:.85,enemy_spear:.85,ally_shield:.85,shield:.85,ally_shield_spear:.85,shield_sword:.85,ally_archer:.85,archer:.85,ally_cav:.85,cav:.85,f_xian:.9,f_xian_enemy:.9,f_bing:.95,f_bing_enemy:.95,f_nu:.85,f_nu_enemy:.85,f_ji:.85,f_ji_enemy:.85,f_qing:.85,f_qing_enemy:.85,f_hubao:.95,f_hubao_enemy:.95,f_bai:.85,f_bai_enemy:.85,f_dan:.85,f_dan_enemy:.85};
 function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6)*(BATTLE_STYLE_SCALE[s.battleStyle]||1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
@@ -320,16 +326,16 @@ function extractTroopSprite(image,b,enemy) {
   const g=canvas.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(source,0,0,canvas.width,canvas.height);
   canvas.footX=source.footX*canvas.width/source.width;canvas.bodyHeight=source.bodyHeight*canvas.height/source.height;return canvas;
 }
-function installTroopRework(spec,frames,enemyFrames) {
-  const keys=TROOP_REWORK_BINDINGS[spec.key];
-  if(!keys||![64,72].includes(frames.length)||enemyFrames.length!==frames.length)throw new Error('병사 방향/동작 누락: '+spec.key);
-  [frames,enemyFrames].forEach((all,i)=>{
-    const key=keys[i];BATTLE_ART.models.set(key,{frames:[],back:[]});
+function installAtlasRework(spec,frames,enemyFrames,keys=TROOP_REWORK_BINDINGS[spec.key]) {
+  if(!keys||![56,64,72].includes(frames.length)||enemyFrames.length!==frames.length)throw new Error('병사 방향/동작 누락: '+spec.key);
+  keys.forEach((key,i)=>{
+    const all=i?enemyFrames:frames;BATTLE_ART.models.set(key,{frames:[],back:[]});
     const attackStart=all.length-32,walk=all.slice(8,attackStart);
     // 3자세 보행은 접지→통과→반대 접지→통과의 왕복 주기로 연결한다.
     if(walk.length===24)walk.push(...walk.slice(8,16));
+    if(walk.length===16)walk.push(...walk);
     installLubuRework([{kind:'idle',frames:all.slice(0,8)},{kind:'walk',frames:walk},{kind:'attack',frames:all.slice(attackStart)}],key,spec.actions);
-    const model=BATTLE_ART.models.get(key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;model.troop=true;
+    const model=BATTLE_ART.models.get(key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;model.troop=keys.length===2;
   });
 }
 function battleActionWeight(p){p=Math.max(0,Math.min(1,p||0));const k=p<.2?p/.2:(1-p)/.8;return k*k*(3-2*k);}
@@ -377,7 +383,7 @@ function battleModelKey(s,team){
   if(key==='ally_shield'&&s.weapon==='spear')key='ally_shield_spear';if(key==='shield'&&s.weapon==='sword')key='shield_sword';
   if(team==='player')key=({soldier:'ally_sword',enemy_spear:'ally_spear',shield:'ally_shield_spear',shield_sword:'ally_shield'})[key]||key;
   const enemy=team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
-  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield_sword',ally_shield_spear:'shield',ally_cav:'cav',mage:'emage',f_xian:'f_xian_enemy',f_bing:'f_bing_enemy'})[key]||key;
+  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield_sword',ally_shield_spear:'shield',ally_cav:'cav',mage:'emage',f_xian:'f_xian_enemy',f_bing:'f_bing_enemy',f_nu:'f_nu_enemy',f_ji:'f_ji_enemy',f_qing:'f_qing_enemy',f_hubao:'f_hubao_enemy',f_bai:'f_bai_enemy',f_dan:'f_dan_enemy'})[key]||key;
   return key;
 }
 function drawBattleBody(g,x,y,r,face,s,o={}) {
