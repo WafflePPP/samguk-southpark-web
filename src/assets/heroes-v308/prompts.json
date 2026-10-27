@@ -1,0 +1,125 @@
+[
+  {
+    "key": "gao",
+    "name": "고순",
+    "file": "gao.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "보병 장수. 짧은 붉은 술의 흑철 투구, 검정·청동 중갑, 짧은 수염, 직검."
+  },
+  {
+    "key": "yuan",
+    "name": "원소",
+    "file": "yuan.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "황금 관식 투구와 황금 찰갑, 절제된 보라 망토, 직검."
+  },
+  {
+    "key": "cao",
+    "name": "조조",
+    "file": "cao.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "작은 금장 관, 검정·금색 갑옷, 짙은 파란 망토, 직검."
+  },
+  {
+    "key": "xia",
+    "name": "하후돈",
+    "file": "xia.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "한쪽 안대, 청동 투구와 보라색 술, 자색 철갑과 망토, 직검."
+  },
+  {
+    "key": "dian",
+    "name": "전위",
+    "file": "dian.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "작은 머리의 장사, 흑갈색 갑옷과 청동 견갑, 양손 단극 한 쌍."
+  },
+  {
+    "key": "yan", "name": "안량", "file": "yan.png", "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "밤색 말, 은회색 갑옷, 초록 투구 술, 붉은 망토, 장창."
+  },
+  {
+    "key": "wen", "name": "문추", "file": "wen.png", "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "흑마, 흑철 갑옷, 짙은 붉은 술과 망토, 장창."
+  },
+  {
+    "key": "xiahouyuan", "name": "하후연", "file": "xiahouyuan.png", "frameCount": 56,
+    "actions": ["shoot", "slash"],
+    "design": "밤색 말, 청색 철갑과 망토, 목궁과 화살통."
+  },
+  {
+    "key": "xuchu", "name": "허저", "file": "xuchu.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "초록 두건, 은회색 중갑, 초록 망토, 대도."
+  },
+  {
+    "key": "guo", "name": "곽가", "file": "guo.png", "frameCount": 56,
+    "actions": ["cast", "heal"], "design": "검은 문관모, 짙은 파랑 도포, 옅은 소매, 백우선."
+  },
+  {
+    "key": "sima", "name": "사마의", "file": "sima.png", "frameCount": 56,
+    "actions": ["cast", "heal"], "design": "높은 검은 관모, 짙은 자색 도포, 회백색 망토, 백우선."
+  },
+  {
+    "key": "liubei", "name": "유비", "file": "liubei.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "작은 금관, 적갈색 갑옷과 녹색 망토, 직검."
+  },
+  {
+    "key": "guan", "name": "관우", "file": "guan.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "붉은 얼굴·긴 검은 수염, 녹색 두건과 갑주, 청룡언월도."
+  },
+  {
+    "key": "kong", "name": "제갈량", "file": "kong.png", "frameCount": 56,
+    "actions": ["cast", "heal"], "design": "검은 학자모, 청백색 도포, 백우선."
+  },
+  {
+    "key": "zhao", "name": "조운", "file": "zhao.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "백마, 은청색 갑옷, 흰 술 투구, 청색 망토, 장창."
+  },
+  {
+    "key": "diao", "name": "초선형", "file": "diao.png", "frameCount": 56,
+    "actions": ["cast", "heal"], "design": "작은 머리와 장식 머리, 분홍·적갈색 한복식 장포, 접선."
+  },
+  {
+    "key": "huang", "name": "황충형", "file": "huang.png", "frameCount": 56,
+    "actions": ["shoot", "slash"], "design": "백수염 노장, 청동 투구와 적색 술, 올리브 회색 갑옷, 활."
+  },
+  {
+    "key": "captain", "name": "기본 적 장수", "file": "captain.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "붉은 술 흑철 투구, 적갈색 찰갑, 직검."
+  },
+  {
+    "key": "jang", "name": "공유 기마 장수", "file": "jang.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "암갈색 말, 회흑색 갑옷, 회자색 망토, 장창."
+  },
+  {
+    "key": "gong", "name": "공손찬", "file": "gong.png", "frameCount": 56,
+    "actions": ["shoot", "thrust"], "design": "백마, 은백색 갑옷, 옅은 파랑 망토, 활과 단창."
+  },
+  {
+    "key": "zhangfei", "name": "장비", "file": "zhangfei.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "붉은 두건, 검은 장수염, 흑갈색 갑옷, 장팔사모."
+  },
+  {
+    "key": "machao", "name": "마초", "file": "machao.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "백마, 은청색 갑옷, 흰 모피와 망토, 장창."
+  },
+  {
+    "key": "xuhuang", "name": "서황", "file": "xuhuang.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "암갈색 말, 회갈색 갑옷과 적갈색 망토, 대부."
+  },
+  {
+    "key": "dong", "name": "동탁", "file": "dong.png", "frameCount": 56,
+    "actions": ["thrust", "slash"], "design": "검은 관, 흑자색 장포와 갑옷, 장수염, 직검."
+  },
+  {
+    "key": "xun", "name": "순욱형", "file": "xun.png", "frameCount": 56,
+    "actions": ["cast", "heal"], "design": "낮은 검은 관모, 단정한 수염, 짙은 보라 관복, 흰 소매와 깃털 부채."
+  }
+]

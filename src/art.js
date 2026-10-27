@@ -233,7 +233,7 @@ STYLES.zhangliao={...STYLES.jang};
 for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
 const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
 const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
-const HERO_REWORK_KEYS=['yuan','yan','wen','gao','cao','xia','xiahouyuan','dian','xuchu','guo','sima','liubei','guan','kong','zhao'];
+const HERO_REWORK_KEYS=['gao','yuan','cao','xia','dian','yan','wen','xiahouyuan','xuchu','guo','sima','liubei','guan','kong','zhao','diao','huang','captain','jang','gong','zhangfei','machao','xuhuang','dong','xun'];
 const TROOP_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],f_bing:['f_bing','f_bing_enemy']};
 const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 function extractBattleSprite(image,b,tint=false,cutoff=128) {
@@ -255,9 +255,9 @@ function loadBattleArt() {
   const names=['terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v293',293),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,reworks,troops,remaining])=>{
-    if(reworks.length!==15||new Set(reworks.map(h=>h.key)).size!==15||HERO_REWORK_KEYS.some(k=>!reworks.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
+  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v308',308),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,heroes,troops,remaining])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
+    if(heroes.length!==HERO_REWORK_KEYS.length||new Set(heroes.map(h=>h.key)).size!==heroes.length||HERO_REWORK_KEYS.some(k=>!heroes.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
     if(!complete(troops,TROOP_REWORK_BINDINGS)||!complete(remaining,REMAINING_REWORK_BINDINGS))throw new Error('전체 리워크 외형 누락');
     for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
     // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
@@ -269,14 +269,10 @@ function loadBattleArt() {
     const jangSheets=await Promise.all(jang.map(async sheet=>{const image=await load('src/assets/zhangliao-v287/'+sheet.file,287);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     BATTLE_ART.models.set('zhangliao',{...BATTLE_ART.models.get('jang')});
     installLubuRework(jangSheets,'zhangliao');
-    const diao=await fetch('src/assets/diao-v289/layout.json?v=289&try='+attempt).then(r=>{if(!r.ok)throw new Error('초선 아트 목록 로드 실패');return r.json();});
-    const diaoSheets=await Promise.all(diao.map(async sheet=>{const image=await load('src/assets/diao-v289/'+sheet.file,289);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
-    installDiaoRework(diaoSheets);
-    await Promise.all(reworks.map(async h=>{
-      if(h.frames.length!==72||!Array.isArray(h.actions)||h.actions.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('장수 리워크 동작 누락: '+h.key);
-      const image=await load('src/assets/heroes-v293/'+h.file,293),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installLubuRework([{kind:'idle',frames:frames.slice(0,8)},{kind:'walk',frames:frames.slice(8,40)},{kind:'attack',frames:frames.slice(40)}],h.key,h.actions);
-      const model=BATTLE_ART.models.get(h.key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;
+    await Promise.all(heroes.map(async h=>{
+      if(h.frames.length!==56||h.actions?.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('장수 리워크 동작 누락: '+h.key);
+      const image=await load('src/assets/heroes-v308/'+h.file,308),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      installAtlasRework(h,frames,frames,[h.key]);
     }));
     await Promise.all(troops.map(async h=>{
       if(![56,64,72].includes(h.frames.length)||h.actions?.join(',')!=='thrust,slash')throw new Error('병사 동작 누락: '+h.key);
@@ -284,7 +280,7 @@ function loadBattleArt() {
       const frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
       installAtlasRework(h,frames,enemy);
     }));
-    await Promise.all(remaining.map(async h=>{
+    await Promise.all(remaining.filter(h=>!HERO_REWORK_KEYS.includes(h.key)).map(async h=>{
       if(![56,64,72].includes(h.frames.length)||h.actions?.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('추가 리워크 동작 누락: '+h.key);
       const image=await load('src/assets/rework-v303/'+h.file,303),keys=REMAINING_REWORK_BINDINGS[h.key],frames=h.frames.map(b=>extractTroopSprite(image,b,false));
       const enemy=keys.length===2?h.frames.map(b=>extractTroopSprite(image,b,true)):frames;
