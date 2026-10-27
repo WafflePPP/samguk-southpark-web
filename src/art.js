@@ -298,7 +298,7 @@ function loadBattleArt() {
 const BATTLE_UNIT_RADIUS=8.5;
 // 여포의 기수·말을 기준으로 원본마다 다른 머리/갑옷 비중을 시각 보정한다.
 const BATTLE_STYLE_SCALE={lubu:1.2,zhangliao:1.15,ally_sword:.85,soldier:.85,ally_spear:.85,enemy_spear:.85,ally_shield:.85,shield:.85,ally_shield_spear:.85,shield_sword:.85,ally_archer:.85,archer:.85,ally_cav:.85,cav:.85,f_xian:.9,f_xian_enemy:.9,f_bing:.95,f_bing_enemy:.95,f_nu:.85,f_nu_enemy:.85,f_ji:.85,f_ji_enemy:.85,f_qing:.85,f_qing_enemy:.85,f_hubao:.95,f_hubao_enemy:.95,f_bai:.85,f_bai_enemy:.85,f_dan:.85,f_dan_enemy:.85};
-function battleSpriteHeight(r,s){return r*(s.horse?4.8:3.6)*(BATTLE_STYLE_SCALE[s.battleStyle]||1);}
+function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(BATTLE_STYLE_SCALE[s.battleStyle]||1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
