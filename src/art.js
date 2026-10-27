@@ -233,6 +233,7 @@ for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
 const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
 const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
 const HERO_REWORK_KEYS=['yuan','yan','wen','gao','cao','xia','xiahouyuan','dian','xuchu','guo','sima','liubei','guan','kong','zhao'];
+const TROOP_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],f_bing:['f_bing','f_bing_enemy']};
 function extractBattleSprite(image,b,tint=false,cutoff=128) {
   const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
   const pixels=g.getImageData(0,0,b.w,b.h),d=pixels.data,seen=new Uint8Array(b.w*b.h),queue=new Int32Array(b.w*b.h);let head=0,tail=1;const seed=(b.sy-b.y)*b.w+b.sx-b.x;queue[0]=seed;seen[seed]=1;
@@ -251,10 +252,11 @@ function loadBattleArt() {
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
   const names=[...BATTLE_ATLASES.map(s=>s.file),'terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
-  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),fetch('src/assets/heroes-v277/layout.json?v=277&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 방향 목록 로드 실패');return r.json();}),fetch('src/assets/hero-idle-v280/layout.json?v=280&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 대기 목록 로드 실패');return r.json();}),fetch('src/assets/heroes-v293/layout.json?v=293&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 리워크 목록 로드 실패');return r.json();})]).then(async ([images,heroes,idleSheets,reworks])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),fetch('src/assets/heroes-v277/layout.json?v=277&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 방향 목록 로드 실패');return r.json();}),fetch('src/assets/hero-idle-v280/layout.json?v=280&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 대기 목록 로드 실패');return r.json();}),fetch('src/assets/heroes-v293/layout.json?v=293&try='+attempt).then(r=>{if(!r.ok)throw new Error('장수 리워크 목록 로드 실패');return r.json();}),fetch('src/assets/troops-v300/layout.json?v=300&try='+attempt).then(r=>{if(!r.ok)throw new Error('병사 리워크 목록 로드 실패');return r.json();})]).then(async ([images,heroes,idleSheets,reworks,troops])=>{
     if(reworks.length!==15||new Set(reworks.map(h=>h.key)).size!==15||HERO_REWORK_KEYS.some(k=>!reworks.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
-    const replaced=new Set(reworks.map(h=>h.key));
-    BATTLE_ATLASES.forEach((sheet,si)=>sheet.keys.forEach((key,i)=>{const row=Math.floor(i/3),col=(i%3)*2,bs=[sheet.frames[row*6+col],sheet.frames[row*6+col+1]],model=BATTLE_ART.models.get(key)||{},back=sheet.view==='back';model[back?'back':'frames']=bs.map(b=>extractBattleSprite(images[si],b));if(key.startsWith('f_'))model[back?'enemyBack':'enemy']=bs.map(b=>extractBattleSprite(images[si],b,true));BATTLE_ART.models.set(key,model);}));
+    const replaced=new Set(reworks.map(h=>h.key)),troopKeys=new Set(Object.values(TROOP_REWORK_BINDINGS).flat());
+    if(troops.length!==6||new Set(troops.map(h=>h.key)).size!==6||Object.keys(TROOP_REWORK_BINDINGS).some(k=>!troops.some(h=>h.key===k)))throw new Error('병사 리워크 외형 누락');
+    BATTLE_ATLASES.forEach((sheet,si)=>sheet.keys.forEach((key,i)=>{if(troopKeys.has(key)){BATTLE_ART.models.set(key,{frames:[],back:[]});return;}const row=Math.floor(i/3),col=(i%3)*2,bs=[sheet.frames[row*6+col],sheet.frames[row*6+col+1]],model=BATTLE_ART.models.get(key)||{},back=sheet.view==='back';model[back?'back':'frames']=bs.map(b=>extractBattleSprite(images[si],b));if(key.startsWith('f_'))model[back?'enemyBack':'enemy']=bs.map(b=>extractBattleSprite(images[si],b,true));BATTLE_ART.models.set(key,model);}));
     for(const model of BATTLE_ART.models.values())if(!model.frames||!model.back)throw new Error('캐릭터 방향 이미지 누락');
     const n=BATTLE_ATLASES.length;BATTLE_ART.terrain=images[n];BATTLE_ART.reference=images[n+1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[n],b));
     if(heroes.length!==27||new Set(heroes.map(h=>h.key)).size!==27)throw new Error('장수 방향 목록 누락');
@@ -276,11 +278,17 @@ function loadBattleArt() {
       const image=await load('src/assets/heroes-v293/'+h.file,293),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installLubuRework([{kind:'idle',frames:frames.slice(0,8)},{kind:'walk',frames:frames.slice(8,40)},{kind:'attack',frames:frames.slice(40)}],h.key,h.actions);
       const model=BATTLE_ART.models.get(h.key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;
+    }));
+    await Promise.all(troops.map(async h=>{
+      if(![64,72].includes(h.frames.length)||h.actions?.join(',')!=='thrust,slash')throw new Error('병사 동작 누락: '+h.key);
+      const image=await load('src/assets/troops-v300/'+h.file,300);
+      const frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
+      installTroopRework(h,frames,enemy);
     }));BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
 }
 // 여포의 기수·얼굴 비율에 맞춘 외형 배율이며 전투 반경은 바꾸지 않는다.
-function battleSpriteHeight(r,s){return r*(s.battleStyle==='diao'?4.7:s.battleStyle==='zhangliao'?4.4:s.horse?4.8:3.6);}
+function battleSpriteHeight(r,s){return r*(s.battleStyle==='diao'?4.7:s.battleStyle==='zhangliao'?4.4:s.battleStyle==='f_xian'?4.8:s.horse?4.8:3.6);}
 function installDiaoRework(sheets){
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
   if(sheets.length!==2||idle?.length!==8||walk?.length!==32||!model)throw new Error('초선 방향/동작 이미지 누락');
@@ -299,6 +307,25 @@ function installLubuRework(sheets,key='lubu',actions=['thrust','slash']) {
   model.directionHeight=Math.max(...walk.map(c=>c.height));
   const body=a=>a.map(c=>c.bodyHeight).sort((a,b)=>a-b)[Math.floor(a.length/2)],ref=body(walk);
   model.idleHeight=model.directionHeight*body(idle)/ref;model.attackHeight=model.directionHeight*body(attack)/ref;model.reworked=true;
+}
+function extractTroopSprite(image,b,enemy) {
+  const source=extractBattleSprite(image,b,enemy,200),scale=Math.min(1,128/source.height);
+  if(scale===1)return source;
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(source.width*scale));canvas.height=Math.max(1,Math.round(source.height*scale));
+  const g=canvas.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(source,0,0,canvas.width,canvas.height);
+  canvas.footX=source.footX*canvas.width/source.width;canvas.bodyHeight=source.bodyHeight*canvas.height/source.height;return canvas;
+}
+function installTroopRework(spec,frames,enemyFrames) {
+  const keys=TROOP_REWORK_BINDINGS[spec.key];
+  if(!keys||![64,72].includes(frames.length)||enemyFrames.length!==frames.length)throw new Error('병사 방향/동작 누락: '+spec.key);
+  [frames,enemyFrames].forEach((all,i)=>{
+    const key=keys[i];BATTLE_ART.models.set(key,{frames:[],back:[]});
+    const attackStart=all.length-32,walk=all.slice(8,attackStart);
+    // 3자세 보행은 접지→통과→반대 접지→통과의 왕복 주기로 연결한다.
+    if(walk.length===24)walk.push(...walk.slice(8,16));
+    installLubuRework([{kind:'idle',frames:all.slice(0,8)},{kind:'walk',frames:walk},{kind:'attack',frames:all.slice(attackStart)}],key,spec.actions);
+    const model=BATTLE_ART.models.get(key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;model.troop=true;
+  });
 }
 function battleActionWeight(p){p=Math.max(0,Math.min(1,p||0));const k=p<.2?p/.2:(1-p)/.8;return k*k*(3-2*k);}
 // 기존 타이머를 읽어 대기 자세에서 동작을 거쳐 같은 기준점으로 복귀한다.
@@ -342,8 +369,10 @@ function drawBattleMeleeTrail(g,x,y,r,face,pose,horse=false) {
 }
 function battleModelKey(s,team){
   let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
+  if(key==='ally_shield'&&s.weapon==='spear')key='ally_shield_spear';if(key==='shield'&&s.weapon==='sword')key='shield_sword';
+  if(team==='player')key=({soldier:'ally_sword',enemy_spear:'ally_spear',shield:'ally_shield_spear',shield_sword:'ally_shield'})[key]||key;
   const enemy=team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
-  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield',ally_cav:'cav',mage:'emage'})[key]||key;
+  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield_sword',ally_shield_spear:'shield',ally_cav:'cav',mage:'emage',f_xian:'f_xian_enemy',f_bing:'f_bing_enemy'})[key]||key;
   return key;
 }
 function drawBattleBody(g,x,y,r,face,s,o={}) {

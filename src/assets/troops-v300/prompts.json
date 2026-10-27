@@ -1,0 +1,93 @@
+[
+  {
+    "key": "troop_sword",
+    "name": "공통 검보병",
+    "file": "troop_sword.png",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "design": "On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean young face no beard. One short straight silver double-edged sword in right hand, free left hand. NO shield, NO spear, NO cape, NO horse, NO crown. Show both human legs.",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS, stylized-concept. Reference1 Lu Bu is PIXEL STYLE ONLY, reference2 Gao Shun is 8-column/9-row LAYOUT and pixel proportion reference ONLY. Make a normal low-rank Three Kingdoms soldier, NOT either hero. Compact First Queen4 SD proportions, dark crisp pixel outline, clearly square pixel clusters, muted steel and cloth with 2-3 tone shading, same world as Lu Bu. EXACTLY EIGHT COLUMNS and NINE ROWS = 72 FULL ISOLATED FIGURES on a PORTRAIT canvas. Generous TRUE TRANSPARENT alpha gaps, no clipping/touching or detached floating weapons. Every cell exactly ONE whole unit including weapon, two boots or complete horse. No labels/text/grid/backdrop/ground shadow/glow/effects. Same costume, equipment, anatomy and scale all72. Direction columns every row: E,SE,S,SW,W,NW,N,NE with genuine rear views in last3 columns. Row1 IDLE ready grip with both feet planted. Rows2,3,4,5 WALK four distinct phases: contact, passing, opposite contact, opposite passing. Row6 THRUST STRIKE with weapon extended toward facing; row7 THRUST RECOVERY to ready; row8 SLASH/SWEEP with torso turn; row9 SLASH RECOVERY to ready. Count all9rows and8columns, do not omit last row. Direct final game sprite sheet, no concept draft. On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean young face no beard. One short straight silver double-edged sword in right hand, free left hand. NO shield, NO spear, NO cape, NO horse, NO crown. Show both human legs. CRITICAL CANVAS: tall portrait1536x2048 (3:4). Exactly NINE complete horizontal rows. Row1IDLE, row2WALK1, row3WALK2, row4WALK3, row5WALK4, row6THRUST, row7THRUST-RECOVERY, row8SLASH, row9SLASH-RECOVERY. Do not collapse the FOUR WALK rows into three. Must deliver72complete figures, not64.",
+    "edits": [
+      "64컷 생성으로 누락 보행1행을 추가하는 편집 요청",
+      "9행 보완 편집 결과 중 형태/간격을 비교하여 최종 72컷 채택. 64컷 시트는 보행3자세 왕복4박 재생."
+    ],
+    "frameCount": 72
+  },
+  {
+    "key": "troop_spear",
+    "name": "공통 창보병",
+    "file": "troop_spear.png",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "design": "On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean young face no beard. One long brown shaft spear with single small silver spearhead, held with BOTH hands. NO shield, NO sword, NO cape, NO horse, NO crown. Keep entire spear in each cell, shaft attached to hands. Show both human legs.",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS, stylized-concept. Reference1 Lu Bu is PIXEL STYLE ONLY, reference2 Gao Shun is 8-column/9-row LAYOUT and pixel proportion reference ONLY. Make a normal low-rank Three Kingdoms soldier, NOT either hero. Compact First Queen4 SD proportions, dark crisp pixel outline, clearly square pixel clusters, muted steel and cloth with 2-3 tone shading, same world as Lu Bu. EXACTLY EIGHT COLUMNS and NINE ROWS = 72 FULL ISOLATED FIGURES on a PORTRAIT canvas. Generous TRUE TRANSPARENT alpha gaps, no clipping/touching or detached floating weapons. Every cell exactly ONE whole unit including weapon, two boots or complete horse. No labels/text/grid/backdrop/ground shadow/glow/effects. Same costume, equipment, anatomy and scale all72. Direction columns every row: E,SE,S,SW,W,NW,N,NE with genuine rear views in last3 columns. Row1 IDLE ready grip with both feet planted. Rows2,3,4,5 WALK four distinct phases: contact, passing, opposite contact, opposite passing. Row6 THRUST STRIKE with weapon extended toward facing; row7 THRUST RECOVERY to ready; row8 SLASH/SWEEP with torso turn; row9 SLASH RECOVERY to ready. Count all9rows and8columns, do not omit last row. Direct final game sprite sheet, no concept draft. On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean young face no beard. One long brown shaft spear with single small silver spearhead, held with BOTH hands. NO shield, NO sword, NO cape, NO horse, NO crown. Keep entire spear in each cell, shaft attached to hands. Show both human legs. CRITICAL CANVAS: tall portrait1536x2048 (3:4). Exactly NINE complete horizontal rows. Row1IDLE, row2WALK1, row3WALK2, row4WALK3, row5WALK4, row6THRUST, row7THRUST-RECOVERY, row8SLASH, row9SLASH-RECOVERY. Do not collapse the FOUR WALK rows into three. Must deliver72complete figures, not64.",
+    "edits": [
+      "9행 보완 편집 결과 중 형태/간격을 비교하여 최종 64컷 채택. 64컷 시트는 보행3자세 왕복4박 재생."
+    ],
+    "frameCount": 64
+  },
+  {
+    "key": "troop_sword_shield",
+    "name": "공통 검 방패병",
+    "file": "troop_sword_shield.png",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "design": "On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean face no beard. One short silver straight sword in RIGHT hand plus medium oval gray steel-rimmed wooden shield in LEFT hand. Shield must remain visible from appropriate front/side views and behind body from rear. NO spear, NO axe, NO cape, NO horse, NO crown. Show both human legs.",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS, stylized-concept. Reference1 Lu Bu is PIXEL STYLE ONLY, reference2 Gao Shun is 8-column/9-row LAYOUT and pixel proportion reference ONLY. Make a normal low-rank Three Kingdoms soldier, NOT either hero. Compact First Queen4 SD proportions, dark crisp pixel outline, clearly square pixel clusters, muted steel and cloth with 2-3 tone shading, same world as Lu Bu. EXACTLY EIGHT COLUMNS and NINE ROWS = 72 FULL ISOLATED FIGURES on a PORTRAIT canvas. Generous TRUE TRANSPARENT alpha gaps, no clipping/touching or detached floating weapons. Every cell exactly ONE whole unit including weapon, two boots or complete horse. No labels/text/grid/backdrop/ground shadow/glow/effects. Same costume, equipment, anatomy and scale all72. Direction columns every row: E,SE,S,SW,W,NW,N,NE with genuine rear views in last3 columns. Row1 IDLE ready grip with both feet planted. Rows2,3,4,5 WALK four distinct phases: contact, passing, opposite contact, opposite passing. Row6 THRUST STRIKE with weapon extended toward facing; row7 THRUST RECOVERY to ready; row8 SLASH/SWEEP with torso turn; row9 SLASH RECOVERY to ready. Count all9rows and8columns, do not omit last row. Direct final game sprite sheet, no concept draft. On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean face no beard. One short silver straight sword in RIGHT hand plus medium oval gray steel-rimmed wooden shield in LEFT hand. Shield must remain visible from appropriate front/side views and behind body from rear. NO spear, NO axe, NO cape, NO horse, NO crown. Show both human legs. CRITICAL CANVAS: tall portrait1536x2048 (3:4). Exactly NINE complete horizontal rows. Row1IDLE, row2WALK1, row3WALK2, row4WALK3, row5WALK4, row6THRUST, row7THRUST-RECOVERY, row8SLASH, row9SLASH-RECOVERY. Do not collapse the FOUR WALK rows into three. Must deliver72complete figures, not64.",
+    "edits": [
+      "9행 보완 편집 결과 중 형태/간격을 비교하여 최종 72컷 채택. 64컷 시트는 보행3자세 왕복4박 재생."
+    ],
+    "frameCount": 72
+  },
+  {
+    "key": "troop_spear_shield",
+    "name": "공통 창 방패병",
+    "file": "troop_spear_shield.png",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "design": "On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean face no beard. One brown shaft spear with single small silver spearhead in RIGHT hand plus medium oval gray steel-rimmed wooden shield in LEFT hand. Shield and full spear remain part of every pose. NO sword, NO axe, NO cape, NO horse, NO crown. Show both human legs.",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS, stylized-concept. Reference1 Lu Bu is PIXEL STYLE ONLY, reference2 Gao Shun is 8-column/9-row LAYOUT and pixel proportion reference ONLY. Make a normal low-rank Three Kingdoms soldier, NOT either hero. Compact First Queen4 SD proportions, dark crisp pixel outline, clearly square pixel clusters, muted steel and cloth with 2-3 tone shading, same world as Lu Bu. EXACTLY EIGHT COLUMNS and NINE ROWS = 72 FULL ISOLATED FIGURES on a PORTRAIT canvas. Generous TRUE TRANSPARENT alpha gaps, no clipping/touching or detached floating weapons. Every cell exactly ONE whole unit including weapon, two boots or complete horse. No labels/text/grid/backdrop/ground shadow/glow/effects. Same costume, equipment, anatomy and scale all72. Direction columns every row: E,SE,S,SW,W,NW,N,NE with genuine rear views in last3 columns. Row1 IDLE ready grip with both feet planted. Rows2,3,4,5 WALK four distinct phases: contact, passing, opposite contact, opposite passing. Row6 THRUST STRIKE with weapon extended toward facing; row7 THRUST RECOVERY to ready; row8 SLASH/SWEEP with torso turn; row9 SLASH RECOVERY to ready. Count all9rows and8columns, do not omit last row. Direct final game sprite sheet, no concept draft. On foot, plain rounded steel helmet without plume, muted NAVY BLUE tunic, simple gray lamellar breastplate, brown belt, dark boots, clean face no beard. One brown shaft spear with single small silver spearhead in RIGHT hand plus medium oval gray steel-rimmed wooden shield in LEFT hand. Shield and full spear remain part of every pose. NO sword, NO axe, NO cape, NO horse, NO crown. Show both human legs. CRITICAL CANVAS: tall portrait1536x2048 (3:4). Exactly NINE complete horizontal rows. Row1IDLE, row2WALK1, row3WALK2, row4WALK3, row5WALK4, row6THRUST, row7THRUST-RECOVERY, row8SLASH, row9SLASH-RECOVERY. Do not collapse the FOUR WALK rows into three. Must deliver72complete figures, not64.",
+    "edits": [
+      "9행 보완 편집 결과 중 형태/간격을 비교하여 최종 64컷 채택. 64컷 시트는 보행3자세 왕복4박 재생."
+    ],
+    "frameCount": 64
+  },
+  {
+    "key": "f_xian",
+    "name": "함진병",
+    "file": "f_xian.png",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "design": "On foot elite heavy infantry. BLACK/charcoal lamellar armor with muted steel-gray plates and pale gray trim, simple black steel helmet with a SHORT white crest (not hero long feathers), heavy shoulder guards, dark boots, clean disciplined face. ONE tall rectangular dark tower shield with pale steel edge in LEFT hand and ONE brown-shaft silver spear in RIGHT. Heavy compact silhouette but not huge hero ornament. NO horse, NO sword, NO cape, NO crown. Entire spear and shield within every cell.",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS, stylized-concept. Reference1 Lu Bu is PIXEL STYLE ONLY, reference2 Gao Shun is 8-column/9-row LAYOUT and pixel proportion reference ONLY. Make a normal low-rank Three Kingdoms soldier, NOT either hero. Compact First Queen4 SD proportions, dark crisp pixel outline, clearly square pixel clusters, muted steel and cloth with 2-3 tone shading, same world as Lu Bu. EXACTLY EIGHT COLUMNS and NINE ROWS = 72 FULL ISOLATED FIGURES on a PORTRAIT canvas. Generous TRUE TRANSPARENT alpha gaps, no clipping/touching or detached floating weapons. Every cell exactly ONE whole unit including weapon, two boots or complete horse. No labels/text/grid/backdrop/ground shadow/glow/effects. Same costume, equipment, anatomy and scale all72. Direction columns every row: E,SE,S,SW,W,NW,N,NE with genuine rear views in last3 columns. Row1 IDLE ready grip with both feet planted. Rows2,3,4,5 WALK four distinct phases: contact, passing, opposite contact, opposite passing. Row6 THRUST STRIKE with weapon extended toward facing; row7 THRUST RECOVERY to ready; row8 SLASH/SWEEP with torso turn; row9 SLASH RECOVERY to ready. Count all9rows and8columns, do not omit last row. Direct final game sprite sheet, no concept draft. On foot elite heavy infantry. BLACK/charcoal lamellar armor with muted steel-gray plates and pale gray trim, simple black steel helmet with a SHORT white crest (not hero long feathers), heavy shoulder guards, dark boots, clean disciplined face. ONE tall rectangular dark tower shield with pale steel edge in LEFT hand and ONE brown-shaft silver spear in RIGHT. Heavy compact silhouette but not huge hero ornament. NO horse, NO sword, NO cape, NO crown. Entire spear and shield within every cell. CRITICAL CANVAS: tall portrait1536x2048 (3:4). Exactly NINE complete horizontal rows. Row1IDLE, row2WALK1, row3WALK2, row4WALK3, row5WALK4, row6THRUST, row7THRUST-RECOVERY, row8SLASH, row9SLASH-RECOVERY. Do not collapse the FOUR WALK rows into three. Must deliver72complete figures, not64.",
+    "edits": [
+      "9행 보완 편집 결과 중 형태/간격을 비교하여 최종 64컷 채택. 64컷 시트는 보행3자세 왕복4박 재생."
+    ],
+    "frameCount": 64
+  },
+  {
+    "key": "f_bing",
+    "name": "병주 기병",
+    "file": "f_bing.png",
+    "actions": [
+      "thrust",
+      "slash"
+    ],
+    "design": "MOUNTED in EVERY cell on the same chestnut brown horse with black mane and simple black/gray tack, complete4horselegs. Ordinary Bingzhou cavalryman with plain light steel helmet and SHORT BLACK feather plume, charcoal/dark navy lamellar armor, pale steel trim. ONE long brown-shaft spear/lance with silver single tip. Simple rider and gear, NO hero crown, NO long double feathers, NO ornate cape, NO sword/shield. Keep rider torso and horse consistent in every pose, all72 fully mounted. The horse walks four true phases, rider remains seated.",
+    "prompt": "FINAL PRODUCTION PIXEL GAME ATLAS, stylized-concept. Reference1 Lu Bu is PIXEL STYLE ONLY, reference2 Gao Shun is 8-column/9-row LAYOUT and pixel proportion reference ONLY. Make a normal low-rank Three Kingdoms soldier, NOT either hero. Compact First Queen4 SD proportions, dark crisp pixel outline, clearly square pixel clusters, muted steel and cloth with 2-3 tone shading, same world as Lu Bu. EXACTLY EIGHT COLUMNS and NINE ROWS = 72 FULL ISOLATED FIGURES on a PORTRAIT canvas. Generous TRUE TRANSPARENT alpha gaps, no clipping/touching or detached floating weapons. Every cell exactly ONE whole unit including weapon, two boots or complete horse. No labels/text/grid/backdrop/ground shadow/glow/effects. Same costume, equipment, anatomy and scale all72. Direction columns every row: E,SE,S,SW,W,NW,N,NE with genuine rear views in last3 columns. Row1 IDLE ready grip with both feet planted. Rows2,3,4,5 WALK four distinct phases: contact, passing, opposite contact, opposite passing. Row6 THRUST STRIKE with weapon extended toward facing; row7 THRUST RECOVERY to ready; row8 SLASH/SWEEP with torso turn; row9 SLASH RECOVERY to ready. Count all9rows and8columns, do not omit last row. Direct final game sprite sheet, no concept draft. MOUNTED in EVERY cell on the same chestnut brown horse with black mane and simple black/gray tack, complete4horselegs. Ordinary Bingzhou cavalryman with plain light steel helmet and SHORT BLACK feather plume, charcoal/dark navy lamellar armor, pale steel trim. ONE long brown-shaft spear/lance with silver single tip. Simple rider and gear, NO hero crown, NO long double feathers, NO ornate cape, NO sword/shield. Keep rider torso and horse consistent in every pose, all72 fully mounted. The horse walks four true phases, rider remains seated. CRITICAL CANVAS: tall portrait1536x2048 (3:4). Exactly NINE complete horizontal rows. Row1IDLE, row2WALK1, row3WALK2, row4WALK3, row5WALK4, row6THRUST, row7THRUST-RECOVERY, row8SLASH, row9SLASH-RECOVERY. Do not collapse the FOUR WALK rows into three. Must deliver72complete figures, not64.",
+    "edits": [
+      "9행 보완 편집 결과 중 형태/간격을 비교하여 최종 64컷 채택. 64컷 시트는 보행3자세 왕복4박 재생."
+    ],
+    "frameCount": 64
+  }
+]
