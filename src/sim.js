@@ -4,7 +4,7 @@
 // 이동은 정사각형 타일 격자: 한 칸에는 한 명만 설 수 있고, 한 번에 한 칸씩(8방향) 걸어간다. 이동 중에는 출발·도착 두 칸을 모두 점유한다.
 // 유닛은 명령이 없으면 시야 안의 적과 알아서 싸운다. 피로도·레벨업·방패 방어·번개 잠금·대장 전사 시 도주를 갖는다.
 const Sim = (() => {
-const TILE = 32, MW = 64, MH = 40, WW = MW * TILE, WH = MH * TILE;
+const TILE = 32, MW = 40, MH = 64, WW = MW * TILE, WH = MH * TILE;
 const GRASS = 0, FOREST = 1, ROCK = 2, WATER = 3, ROAD = 4;
 const SOLDIER_HP = 1.25;   // 일반 병사 HP 누적 배율 정리: 물리 교전이 20~45초 안에 끝나도록 조정
 const FRONTLINE_HP = 1.5;  // 보병·방패병은 같은 HP, 방패병 생존력은 DF·AD·정면 방패로 확보
@@ -220,18 +220,18 @@ const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, ((TITLE_EFFECT[u.subc
 // 군단 편성. 한 군단은 18명·3분대까지 가능하며, squads 를 지정하지 않으면 기존 편성 전체를 대장 1명의 1분대로 해석한다.
 // at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
 const ARMIES = [
-  { team: 'player', name: '1분대', at: [5, 18], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'player', name: '2분대', at: [5, 25], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
-  { team: 'enemy', name: '조조군', at: [37, 19], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '전위군', at: [53, 20], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '하후돈군', at: [45, 7], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '유비군', at: [37, 11], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '순욱군', at: [37, 27], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
-  { team: 'enemy', name: '관우군', at: [45, 14], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '조운군', at: [45, 27], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
-  { team: 'enemy', name: '황충군', at: [53, 13], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'enemy', name: '제갈량군', at: [53, 27], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
-  { team: 'player', name: '3분대', at: [5, 11], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
+  { team: 'player', name: '1분대', at: [18, 58], leader: 'lubu', units: ['lubu', 'cav', 'cav', 'cav', 'cav', 'cav'] },
+  { team: 'player', name: '2분대', at: [25, 58], leader: 'jang', units: ['jang', 'cav', 'cav', 'cav', 'cav', 'cav'] },
+  { team: 'enemy', name: '조조군', at: [19, 26], leader: 'cao', units: ['cao', 'ecap', 'esword', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '전위군', at: [20, 10], leader: 'dian', commander: true, units: ['dian', 'eshield', 'ecap', 'esword', 'eshield'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '하후돈군', at: [7, 18], leader: 'xia', units: ['xia', 'ecap', 'esword', 'ecap', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '유비군', at: [11, 26], leader: 'liubei', units: ['liubei', 'earcher', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '순욱군', at: [27, 26], leader: 'xun', units: ['xun', 'emage', 'ecap', 'esword', 'eshield'], trig: { near: 15, t: 25 } },
+  { team: 'enemy', name: '관우군', at: [14, 18], leader: 'guan', units: ['guan', 'ecap', 'ecap', 'esword', 'eshield'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '조운군', at: [27, 18], leader: 'zhao', units: ['zhao'], trig: { near: 14, t: 70 } },
+  { team: 'enemy', name: '황충군', at: [13, 10], leader: 'huang', units: ['huang'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'enemy', name: '제갈량군', at: [27, 10], leader: 'kong', units: ['kong'], trig: { near: 13, t: 110, after: 2 } },
+  { team: 'player', name: '3분대', at: [11, 58], leader: 'diao', units: ['diao', 'sword', 'shield', 'sword', 'shield', 'mage'] },   // 아군 3분대 (적 군단 인덱스가 밀리지 않게 맨 끝)
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // 모든 장수·군단장급 유닛은 등급 HP를 보존하되 같은 병종 일반 병사보다 최소 50% 높다.
@@ -276,8 +276,8 @@ const corpsPower = (keys, team = 'player', growth = []) => keys.reduce((n, k, i)
 const battlePower = A => A.units.filter(u => !u.dead && !u.fled).reduce((n, u) => n + statPower({ ...u, maxHp: u.hp }), 0);
 
 // ---------- 지형 / 격자 ----------
-function genMap(seed = 7, armies = ARMIES, theme = 'riverside', wideRiver = false) {
-  let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+function genMap(seed = 7, armies = ARMIES, theme = 'riverside', wideRiver = false) {   // 명세 69: 옛 가로 맵(64x40)을 만든 뒤 (x,y)→(y,63-x) 로 전치한다 — 난수 순서·지형 통계 보존
+  const MW = 64, MH = 40; let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const m = new Uint8Array(MW * MH), set = (x, y, t) => { if (x >= 0 && y >= 0 && x < MW && y < MH) m[y * MW + x] = t; };
   const forests = theme === 'plains' ? 8 : theme === 'mountain' ? 16 : theme === 'fortress' ? 6 : 22;
   for (let i = 0; i < forests; i++) {   // 숲
@@ -293,9 +293,10 @@ function genMap(seed = 7, armies = ARMIES, theme = 'riverside', wideRiver = fals
   if (theme === 'fortress') for (const x of [38, 39]) for (let y = 2; y < MH - 2; y++) set(x, y, (y >= 5 && y <= 14) || (y >= 24 && y <= 34) ? ROAD : ROCK);
   const rocks = theme === 'mountain' ? 130 : theme === 'plains' ? 12 : theme === 'fortress' ? 24 : 40;
   for (let i = 0; i < rocks; i++) { const x = 8 + Math.floor(rnd() * 54), y = Math.floor(rnd() * MH); if (m[y * MW + x] === GRASS || m[y * MW + x] === FOREST) set(x, y, ROCK); }
-  for (const a of armies) for (let y = -4; y <= 4; y++) for (let x = -5; x <= 5; x++) { const tx = a.at[0] + x, ty = a.at[1] + y; if (tx >= 0 && ty >= 0 && tx < MW && ty < MH && m[ty * MW + tx] !== WATER && m[ty * MW + tx] !== ROAD) m[ty * MW + tx] = GRASS; }
+  for (const a of armies) for (let y = -4; y <= 4; y++) for (let x = -5; x <= 5; x++) { const tx = 63 - a.at[1] + x, ty = a.at[0] + y; if (tx >= 0 && ty >= 0 && tx < MW && ty < MH && m[ty * MW + tx] !== WATER && m[ty * MW + tx] !== ROAD) m[ty * MW + tx] = GRASS; }
   for (let y = 0; y < MH; y++) for (const x of [0, 1, MW - 2, MW - 1]) if (m[y * MW + x] === ROCK) m[y * MW + x] = GRASS;
-  return m;
+  const out = new Uint8Array(MW * MH); for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) out[(63 - x) * MH + y] = m[y * MW + x];
+  return out;
 }
 const ti = (tx, ty) => ty * MW + tx;
 const inMap = (tx, ty) => tx >= 0 && ty >= 0 && tx < MW && ty < MH;
@@ -344,8 +345,8 @@ function createBattle(seed = 1, opts = {}) {
   const sourceDefs = opts.armies || ARMIES, teamOrder = { player: 0, enemy: 0 };
   const armyDefs = opts.attackingTeam ? sourceDefs.map(d => {
     const n = teamOrder[d.team]++, rank = Math.floor(n / 6), attack = d.team === opts.attackingTeam;
-    const tx = d.team === 'player' ? (attack ? 5 : 14) + rank * 5 : (attack ? 58 : 49) - rank * 5;
-    return { ...d, at: [tx, 4 + (n % 6) * 6], role: attack ? 'attack' : 'defense' };
+    const ty = d.team === 'player' ? 63 - (attack ? 5 : 14) - rank * 5 : (attack ? 5 : 14) + rank * 5;
+    return { ...d, at: [4 + (n % 6) * 6, ty], role: attack ? 'attack' : 'defense' };
   }) : sourceDefs;
   const unique = new Set();
   for (const d of armyDefs) for (const key of d.units) {
@@ -376,12 +377,12 @@ function createBattle(seed = 1, opts = {}) {
     S.armies.push(A);
     keys.forEach(({ key, squad, growth, rosterSlot }, i) => {
       const T = U[key], G = growth || {}, sgn = d.team === 'player' ? 1 : -1; cnt[key] = (cnt[key] || 0) + 1;
-      const tx = d.at[0] - sgn * Math.floor(i / 4), ty = d.at[1] + (i % 4) - 1;   // 4행 × 3열, 한 칸에 한 명
+      const tx = d.at[0] + (i % 4) - 1, ty = d.at[1] + sgn * Math.floor(i / 4);   // 가로 4행 × 세로 깊이(아군은 아래쪽 뒤), 한 칸에 한 명
       const baseHp = baseMaxHp(key, d.team);
       const u = { id: S.nextId++, key, name: T.name + (T.generic ? cnt[key] : ''), cls: T.cls, category: unitCategory(key), subclass: unitSubclass(key), team: d.team, army: A, tx, ty, x: tcx(tx), y: tcy(ty), mv: null,
         hp: G.maxHp ?? baseHp, maxHp: G.maxHp ?? baseHp, mp: G.maxMp ?? (T.mp || 0), maxMp: G.maxMp ?? (T.mp || 0), lv: T.generic ? 1 : G.lv || 1, xp: T.generic ? 0 : G.xp || 0, ft: 0, atk: G.atk ?? T.atk, df: G.df ?? T.df, ad: G.ad ?? T.ad, md: G.md ?? T.md, sp: G.sp ?? T.sp, cd: T.cd, cdT: rnd(), range: T.range || 0, r: T.r * SIZE, style: T.style,
         aa: G.aa ?? T.aa, hr: G.hr ?? T.hr, ar: G.ar ?? 100, dr: G.dr ?? 100, item: !T.generic && ITEMS[G.item] && (!ITEMS[G.item].owner || ITEMS[G.item].owner === key) ? G.item : null, named: !T.generic && !T.name.startsWith('적 '), generic: !!T.generic, sg: T.generic ? validGrade(G.sg) : null, rosterSlot, originTeam: d.team, forceId: d.forceId, surrenderChecked: false, lastHurt: -99, shield: !!T.shield, special: T.special || (T.cls === 'cavalry' ? 'dash' : null), spT: 0, spells: T.spells || [], fanatic: !!(T.fanatic || d.commander), isLeader: key === leaderKey, squad: A.squads[squad],
-        face: d.team === 'player' ? 0 : Math.PI, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, attackT: -1e9, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
+        face: d.team === 'player' ? -Math.PI / 2 : Math.PI / 2, order: { type: 'idle' }, slot: { dx: tx - d.at[0], dy: ty - d.at[1] }, claim: -1, claimT: 0, repathT: 0, path: null, pathGoal: -1, waitT: 0, stuck: 0, thinkT: rnd() * 0.3, flash: 0, anim: 0, stun: 0, dashQ: null, knockQ: null, passT: 0, attackT: -1e9, atkBuffT: 0, guardBuffT: 0, ftDebuffT: 0, ironwallUsed: false, dead: false, out: reserve, reserve, retreated: false, fled: false, moving: false, autoCharge: false, manual: false };
       if (u.item) for (const k of ITEM_STATS) u[k] += itemOf(u.item)[k] || 0;
       u.spellSel = 0; u.ctrlIn = null; u.root = 0; u.hitT = 0; u.hitAng = 0; u.hitMag = 1;
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); u.squad.units.push(u); if (u.isLeader) A.leader = u;
@@ -554,7 +555,7 @@ function surrender(S, u) {
   if (old.leader === u) { old.leader = null; old.routed = true; }
   if (u.squad) { const si = u.squad.units.indexOf(u); if (si >= 0) u.squad.units.splice(si, 1); }
   const squad = A.squads[0] || (A.squads[0] = { id: 0, units: [] });
-  u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = 0;
+  u.team = 'player'; u.army = A; u.squad = squad; u.isLeader = false; u.order = { type: 'idle' }; u.path = null; u.face = -Math.PI / 2;
   A.units.push(u); squad.units.push(u); if (!A.ctrl) A.ctrl = u; if (A.support) A.state = 'player'; setFormation(A, A.formation); S.surrenderSlots--;
   S.stats.surrendered = (S.stats.surrendered || 0) + 1; return true;   // 일반 병사 투항은 팝업 없이 전투 결과 화면에서 정리
 }
@@ -729,17 +730,17 @@ function stepToward(S, u, gx, gy) {   // 목표 칸 쪽으로 한 칸 내딛는�
   return 'moving';
 }
 const retreating = u => !!u.order && (u.order.type === 'retreat' || u.order.type === 'flee');   // 후퇴·도주 중: 다른 행동(공격·특수기·마법·이동 입력·집중 공격)을 할 수 없다
-function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 가장자리로 철수, 쪽은 고정 / 적: 오른쪽 가장자리 도주) — 도착하면 필드에서 사라진다
-  if (u.team === 'player' && !u.order.side) u.order.side = u.tx < MW / 2 ? -1 : 1;   // 쪽은 명령 객체에 저장 → 새 명령이면 다시 정한다
+function leave(S, u) {   // 후퇴(아군: 출발 시점에 가까운 위·아래 가장자리로 철수, 쪽은 고정 / 적: 위쪽 가장자리 도주) — 도착하면 필드에서 사라진다
+  if (u.team === 'player' && !u.order.side) u.order.side = u.ty < MH / 2 ? -1 : 1;   // 쪽은 명령 객체에 저장 → 새 명령이면 다시 정한다
   const side = u.order.side;   // 되돌리려면 이 줄을 -1 고정으로
-  const gx = u.team === 'player' ? (side < 0 ? 1 : MW - 2) : MW - 2;
-  if (u.team === 'player' ? (side < 0 ? u.tx <= 1 : u.tx >= MW - 2) : u.tx >= MW - 2) {
+  const gy = u.team === 'player' ? (side < 0 ? 1 : MH - 2) : 1;
+  if (u.team === 'player' ? (side < 0 ? u.ty <= 1 : u.ty >= MH - 2) : u.ty <= 1) {
     release(S, u); u.out = true; u.moving = false;
     if (u.team === 'player') { u.retreated = true; u.hp = u.maxHp; u.mp = u.maxMp; u.ft = 0; u.order = { type: 'idle' }; text(S, u.x, u.y, u.name + ' 철수', '#cfd3e6'); } else { u.fled = true; S.stats.fled++; }
     return;
   }
   u.passT = Math.max(u.passT, 0.3);   // 후퇴는 (아군·적군 모든 군단) 앞을 막은 대상이 있어도 넘어 지나가 이동할 수 있다
-  stepToward(S, u, gx, u.ty);
+  stepToward(S, u, u.tx, gy);
 }
 function unitRetreat(S, u) {   // 개인 후퇴: 이 장수 한 명만 가장자리로 철수한다. 다시 누르면 취소
   if (!u || !live(u) || u.team !== 'player') return false;
@@ -801,10 +802,10 @@ function setFormation(A, type) {
   if (!FORMATION_NAME[type]) return false; A.formation = type;
   const sgn = A.team === 'player' ? 1 : -1, mid = Math.floor((A.units.length - 1) / 2);
   A.units.forEach((u, i) => {
-    if (type === 'line') u.slot = { dx: 0, dy: i - mid };
-    else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: -sgn * row, dy: i ? (i % 2 ? -row : row) : 0 }; }
-    else if (type === 'guard') { const n = A.units.filter(v => !v.isLeader).indexOf(u); u.slot = u.isLeader ? { dx: -sgn, dy: 0 } : { dx: -sgn * Math.floor(n / 4), dy: (n % 4) - 1 }; }
-    else u.slot = { dx: -sgn * Math.floor(i / 4), dy: (i % 4) - 1 };
+    if (type === 'line') u.slot = { dx: i - mid, dy: 0 };
+    else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: i ? (i % 2 ? -row : row) : 0, dy: sgn * row }; }
+    else if (type === 'guard') { const n = A.units.filter(v => !v.isLeader).indexOf(u); u.slot = u.isLeader ? { dx: 0, dy: sgn } : { dx: (n % 4) - 1, dy: sgn * Math.floor(n / 4) }; }
+    else u.slot = { dx: (i % 4) - 1, dy: sgn * Math.floor(i / 4) };
     u.path = null;
   });
   return true;
@@ -813,7 +814,7 @@ function setFormation(A, type) {
 function anchorOf(A) {
   if (A.team === 'player') return A.ctrl && live(A.ctrl) ? A.ctrl : null;
   if (A.leader && live(A.leader)) return A.leader;
-  let b = null; for (const v of A.units) if (live(v) && (!b || v.slot.dx < b.slot.dx)) b = v; return b;
+  let b = null; for (const v of A.units) if (live(v) && (!b || v.slot.dy > b.slot.dy)) b = v; return b;
 }
 function homeOf(S, u) {
   const a = anchorOf(u.army); if (!a || a === u) return null;
@@ -1089,7 +1090,7 @@ function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.c
 function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 아직 참전하지 않은 지원군만 출진할 수 있다.
   if (!u.out || u.retreated || u.fled || u.dead || u.team !== 'player') return false;
   for (let k = 0; k < 80; k++) {
-    const tx = 3 + Math.floor(S.rnd() * 4), ty = 14 + Math.floor(S.rnd() * 14);
+    const ty = MH - 4 - Math.floor(S.rnd() * 4), tx = 14 + Math.floor(S.rnd() * 14);
     if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === directCtrl ? 'stop' : u.army.order }; u.path = null; text(S, u.x, u.y - 40, u.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
   }
   return false;
@@ -1107,7 +1108,7 @@ function deployArmy(S, A, directCtrl = A.ctrl, quiet = false) {
     for (const u of A.units) {
       if (!u.out || u.dead || u.fled) continue;
       for (let k = 0; k < 120; k++) {
-        const tx = MW - 4 - Math.floor(S.rnd() * 4), ty = 3 + Math.floor(S.rnd() * (MH - 6));
+        const ty = 3 + Math.floor(S.rnd() * 4), tx = 3 + Math.floor(S.rnd() * (MW - 6));
         if (!okTile(S, tx, ty) || S.occ[ti(tx, ty)]) continue;
         u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.reserve = false; u.order = { type: 'charge' }; u.path = null; count++; break;
       }
