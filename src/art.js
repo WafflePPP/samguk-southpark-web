@@ -456,8 +456,9 @@ function drawBattleRing(g,x,y,rx,ry,col,dashed=false) {
 function buildTerrain(map,MW,MH,TILE) {
   const c=document.createElement('canvas');c.width=MW*TILE;c.height=MH*TILE;c.battleAtlasReady=!!BATTLE_ART.terrain;
   if(!BATTLE_ART.ready||!BATTLE_ART.terrain||!BATTLE_ART.ground)return c;
-  const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.filter='saturate(68%) brightness(82%)';
-  g.drawImage(BATTLE_ART.ground,0,0,c.width,c.height);g.filter='none';
+  const g=c.getContext('2d'),ground=document.createElement('canvas');g.imageSmoothingEnabled=false;ground.width=ground.height=512;
+  const gg=ground.getContext('2d');gg.imageSmoothingEnabled=false;gg.drawImage(BATTLE_ART.ground,0,0,512,512);
+  g.filter='saturate(70%) brightness(86%)';g.fillStyle=g.createPattern(ground,'repeat');g.fillRect(0,0,c.width,c.height);g.filter='none';
   let seed=12345;const rnd=()=>((seed=seed*16807%2147483647)/2147483647),atlas=BATTLE_ART.terrain;
   const tile=(index,x,y)=>{const col=index%4,row=Math.floor(index/4),sx=Math.floor(col*atlas.width/4)+6,sy=Math.floor(row*atlas.height/3)+6,sw=Math.floor((col+1)*atlas.width/4)-sx-6,sh=Math.floor((row+1)*atlas.height/3)-sy-6;g.drawImage(atlas,sx,sy,sw,sh,x,y,TILE,TILE);};
   g.filter='saturate(55%) brightness(82%)';
@@ -467,7 +468,7 @@ function buildTerrain(map,MW,MH,TILE) {
   }
   g.filter='none';
   // 수풀·바위는 투명 이미지를 겹쳐 타일의 사각 테두리가 드러나지 않게 한다.
-  const covered=new Set();g.filter='saturate(68%) brightness(82%)';
+  const covered=new Set();g.filter='saturate(78%) brightness(92%)';
   for(let ty=0;ty<MH;ty++)for(let tx=0;tx<MW;tx++){
     const index=ty*MW+tx,t=map[index];if(t!==1&&t!==2||covered.has(index))continue;
     const group=t===1&&tx+1<MW&&ty+1<MH&&[index+1,index+MW,index+MW+1].every(i=>map[i]===1&&!covered.has(i));
