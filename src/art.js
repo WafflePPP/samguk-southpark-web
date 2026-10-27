@@ -1,6 +1,6 @@
 'use strict';
 // 그래픽 출처: 삼국 맹장전(TKC) 아트방향.md 팔레트 + 91-render-world.js drawBody/drawHorse 도형 규칙을 이 프로젝트용으로 축약 이식.
-// 이미지 파일 없이 캔버스 도형만 쓴다 (TKC 와 동일 방식).
+// 캐릭터는 전투 PNG를 모든 화면에서 공유하고, 표시·효과는 캔버스로 그린다.
 const TAU = Math.PI * 2;
 const COLORS = {
   ink: '#0a0c14', ink2: '#0c0814', gold: '#ffd34d', goldTrim: '#d4a73a', goldSel: '#ffe9a0',
@@ -196,77 +196,20 @@ function heroPose(u, s, t) {
   return connectHeroPose(u,pose,t);
 }
 
-// TKC drawBody 축약: 타원 몸통 + 원 머리 + 띠, 영웅별 장식 플래그.
-function drawBody(g, x, y, r, face, s, o = {}) {
-  if(BATTLE_ART.ready&&BATTLE_ART.models.get(s.battleStyle)?.reworked){drawBattleBody(g,x,y,r,face,s,o);return;}
-  const pose = o.pose;
-  g.save();
-  if (pose) { g.translate(x, y); g.rotate(pose.lean); g.translate(-x, -y); o = { ...o, weaponAng: pose.angle, bob: pose.bob }; }
-  const cx = Math.cos(face), sy = Math.sin(face), f = o.flash, W = '#fff', bulk = s.bulk || 1;
-  if (s.horse) { drawHorse(g, x, y, r * 1.1, face, f ? W : s.horse, o.t || 0, o.moving); y -= r * 0.6; }
-  const by = y - r * 0.9 - (o.bob || 0), hy = by - r * 1.15;
-  const wp = s.weapon ? { ang: o.weaponAng != null ? o.weaponAng : face + 0.9, len: o.weaponLen || 80 } : null;
-  g.save(); if (o.alpha != null) g.globalAlpha = o.alpha;
-  if (!s.horse) { g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + r * 0.35, r * 1.15, r * 0.55, 0, 0, TAU); g.fill(); }
-  if (pose && !s.horse) { g.strokeStyle = f ? W : '#242332'; g.lineWidth = r * 0.32; g.lineCap = 'round'; for (const side of [-1, 1]) { g.beginPath(); g.moveTo(x + side * r * 0.4, y - r * 0.5); g.lineTo(x + side * r * 0.4 + cx * pose.stride * side * r * 0.45, y + r * 0.25 + sy * pose.stride * side * r * 0.3); g.stroke(); } }
-  if (wp && sy < 0) drawWeapon(g, s.weapon, x + cx * (r * 0.3 + (pose?.reach || 0)), by + r * 0.2 + sy * (pose?.reach || 0), wp.ang, wp.len, r, s.weaponScale ?? 1, s.tassel, pose?.pull || 0);
-  if (s.longHair) { g.fillStyle = f ? W : '#1e1624'; g.beginPath(); g.ellipse(x - cx * r * 0.1, hy + r * 1.0, r * 0.72, r * 1.45, 0, 0, TAU); g.fill(); }
-  g.fillStyle = f ? W : s.body; g.beginPath(); g.ellipse(x, by, r * 0.9 * bulk, r * 1.15, 0, 0, TAU); g.fill();
-  if (s.pauldrons) { g.fillStyle = f ? W : s.trim; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(x + sd * r * 0.82, by - r * 0.45, r * 0.34, r * 0.26, sd * 0.4, 0, TAU); g.fill(); } }
-  if (s.cape) { g.fillStyle = f ? W : s.cape; g.beginPath(); g.moveTo(x - r * 0.9, by - r * 0.3); g.quadraticCurveTo(x - cx * r * 1.4, by + r * 1.6, x, by + r * 1.3); g.quadraticCurveTo(x + cx * r * 1.4, by + r * 1.6, x + r * 0.9, by - r * 0.3); g.fill(); }
-  if (s.armorPlate) { g.fillStyle = f ? W : s.armorPlate; g.beginPath(); g.ellipse(x, by - r * 0.15, r * 0.58 * bulk, r * 0.72, 0, 0, TAU); g.fill(); }
-  if (s.fur) { g.fillStyle = f ? W : '#eee9df'; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(x + sd * r * 0.68, by - r * 0.5, r * 0.45, r * 0.34, sd * 0.35, 0, TAU); g.fill(); } }
-  g.fillStyle = f ? W : s.trim; g.fillRect(x - r * 0.88 * bulk, by + r * 0.05, r * 1.76 * bulk, r * 0.24);
-  if (s.sleeves) { const sw = Math.sin((o.t || 0) * 3) * r * 0.25; g.lineCap = 'round'; for (const sd of [-1, 1]) { g.strokeStyle = f ? W : s.sleeves; g.lineWidth = r * 0.42; g.beginPath(); g.moveTo(x + sd * r * 0.85, by - r * 0.35); g.quadraticCurveTo(x + sd * r * 1.75, by + r * 0.2 + sw * sd, x + sd * r * 1.4, by + r * 1.35 + sw * sd * 0.5); g.stroke(); } }
-  g.fillStyle = f ? W : s.skin; circle(g, x, hy, r * 0.6);
-  if (s.helm) {
-    g.fillStyle = f ? W : (s.helmColor || '#1c1c26'); g.beginPath(); g.arc(x, hy, r * 0.66, Math.PI, TAU); g.fill();
-    if (s.plume) { const q = s.plume; g.fillStyle = f ? W : (s.plumeColor || '#c9302c'); g.beginPath(); g.moveTo(x - r * 0.14, hy - r * 0.62); g.quadraticCurveTo(x - r * 0.55 * q, hy - r * 1.05 * q, x + r * 0.02, hy - r * (0.7 + 0.65 * q)); g.quadraticCurveTo(x + r * 0.08, hy - r * 0.95, x + r * 0.16, hy - r * 0.62); g.closePath(); g.fill(); }
-    if (s.feathers) { g.strokeStyle = f ? W : (s.featherColor || '#c9302c'); g.lineWidth = 4; g.beginPath(); g.moveTo(x - r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x - r * 1.2, hy - r * 2.2, x - r * 0.6, hy - r * 2.9); g.moveTo(x + r * 0.3, hy - r * 0.5); g.quadraticCurveTo(x + r * 1.2, hy - r * 2.2, x + r * 0.6, hy - r * 2.9); g.stroke(); }
-    if (s.horns) { g.strokeStyle = f ? W : s.trim; g.lineWidth = r * 0.16; g.beginPath(); g.moveTo(x - r * 0.45, hy - r * 0.45); g.quadraticCurveTo(x - r * 1.05, hy - r * 0.9, x - r * 0.92, hy - r * 1.35); g.moveTo(x + r * 0.45, hy - r * 0.45); g.quadraticCurveTo(x + r * 1.05, hy - r * 0.9, x + r * 0.92, hy - r * 1.35); g.stroke(); }
-  }
-  if (s.stripes) { g.strokeStyle = f ? W : s.stripes; g.lineWidth = Math.max(2, r * 0.2); g.lineCap = 'butt'; g.beginPath(); for (const o of [-0.5, 0, 0.5]) { g.moveTo(x + (o - 0.18) * r, by - r * 0.85); g.lineTo(x + (o + 0.18) * r, by + r * 0.05); } g.stroke(); }
-  if (s.tigerEars) { g.fillStyle = f ? W : s.stripes; g.strokeStyle = '#1c2230'; g.lineWidth = 1.5; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(x + sd * r * 0.2, hy - r * 0.55); g.lineTo(x + sd * r * 0.85, hy - r * 1.35); g.lineTo(x + sd * r * 0.8, hy - r * 0.3); g.closePath(); g.fill(); g.stroke(); } }
-  if (s.strawHat) { g.fillStyle = f ? W : '#d2b06a'; g.strokeStyle = '#1c2230'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, hy - r * 1.55); g.lineTo(x + r * 1.15, hy - r * 0.25); g.lineTo(x - r * 1.15, hy - r * 0.25); g.closePath(); g.fill(); g.stroke(); }
-  if (s.beard) { g.fillStyle = f ? W : (s.beardColor || '#17171b'); g.beginPath(); g.moveTo(x - r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 1.7, x + r * 0.5, hy + r * 0.1); g.quadraticCurveTo(x, hy + r * 0.35, x - r * 0.5, hy + r * 0.1); g.fill(); }
-  if (s.hair) { g.fillStyle = f ? W : '#2b2433'; g.beginPath(); g.arc(x, hy - r * 0.04, r * 0.64, Math.PI, TAU); g.fill(); g.strokeStyle = f ? W : '#2b2433'; g.lineWidth = 3; g.beginPath(); g.moveTo(x - cx * r * 0.2, hy - r * 0.3); g.quadraticCurveTo(x - cx * r * 1.1, hy - r * 0.1, x - cx * r * 1.3, hy + r * 0.7); g.stroke(); }
-  if (s.shield) { g.fillStyle = f ? W : s.trim; g.strokeStyle = '#1c2230'; g.lineWidth = 2; g.beginPath(); if (s.towerShield) g.rect(x + cx * r * 0.95 - r * 0.65, by - r, r * 1.3, r * 2.2); else g.ellipse(x + cx * r * 0.95, by + 2, r * 0.5, r * 1.0, 0, 0, TAU); g.fill(); g.stroke(); }
-  if (s.band) { g.fillStyle = f ? W : '#c9cfd8'; g.fillRect(x - r * 0.62, hy - r * 0.3, r * 1.24, r * 0.15); g.fillStyle = f ? W : (s.bandGem || '#3a8be0'); circle(g, x, hy - r * 0.225, r * 0.1); }
-  if (s.hat) { g.fillStyle = f ? W : '#2a6b44'; g.beginPath(); g.arc(x, hy - r * 0.1, r * 0.64, Math.PI * 1.02, TAU * 0.999); g.fill(); g.fillStyle = f ? W : '#d4a73a'; g.fillRect(x - r * 0.64, hy - r * 0.18, r * 1.28, r * 0.12); }
-  if (s.wrap) { g.fillStyle = f ? W : (s.wrapColor || '#b3281f'); g.beginPath(); g.arc(x, hy - r * 0.08, r * 0.68, Math.PI * 0.98, TAU + 0.04); g.fill(); }
-  if (s.hairCap) { g.fillStyle = f ? W : '#1e1624'; g.beginPath(); g.arc(x, hy - r * 0.04, r * 0.66, Math.PI * 0.95, TAU + 0.05); g.fill(); }
-  if (s.courtHat) { g.fillStyle = f ? W : '#171923'; g.beginPath(); g.moveTo(x - r * 0.5, hy - r * 0.45); g.lineTo(x - r * 0.58, hy - r * 1.38); g.lineTo(x + r * 0.58, hy - r * 1.38); g.lineTo(x + r * 0.5, hy - r * 0.45); g.closePath(); g.fill(); g.strokeStyle = f ? W : s.trim; g.lineWidth = 2; g.stroke(); }
-  if (s.crown) { g.fillStyle = f ? W : COLORS.gold; g.beginPath(); g.moveTo(x - r * 0.5, hy - r * 0.5); g.lineTo(x - r * 0.42, hy - r * 1.0); g.lineTo(x - r * 0.2, hy - r * 0.72); g.lineTo(x, hy - r * 1.14); g.lineTo(x + r * 0.2, hy - r * 0.72); g.lineTo(x + r * 0.42, hy - r * 1.0); g.lineTo(x + r * 0.5, hy - r * 0.5); g.closePath(); g.fill(); }
-  if (s.flower) { g.fillStyle = f ? W : '#ff9ac8'; for (let k = 0; k < 5; k++) { const an = k * TAU / 5 - 1.2; circle(g, x + r * 0.58 + Math.cos(an) * r * 0.2, hy - r * 0.4 + Math.sin(an) * r * 0.2, r * 0.17); } }
-  g.fillStyle = '#111'; for (const sd of [-1, 1]) circle(g, x + sd * r * 0.24 + cx * r * 0.14, hy + sy * r * 0.1 + r * 0.02, r * 0.075);
-  if (s.eyePatch) { g.strokeStyle = f ? W : '#17151a'; g.lineWidth = r * 0.12; g.beginPath(); g.moveTo(x - r * 0.58, hy - r * 0.2); g.lineTo(x + r * 0.56, hy + r * 0.12); g.stroke(); g.fillStyle = f ? W : '#17151a'; circle(g, x - r * 0.2 + cx * r * 0.14, hy + sy * r * 0.1, r * 0.18); }
-  if (wp && sy >= 0) drawWeapon(g, s.weapon, x + cx * (r * 0.3 + (pose?.reach || 0)), by + r * 0.2 + sy * (pose?.reach || 0), wp.ang, wp.len, r, s.weaponScale ?? 1, s.tassel, pose?.pull || 0);
-  if (pose?.glow) {
-    g.save(); g.globalAlpha *= pose.glowAlpha; g.strokeStyle = pose.glow; g.lineWidth = 2;
-    const ex = x + cx * r * 1.3, ey = by + sy * r, radius = r * (1.6 - pose.glowAlpha);
-    g.beginPath(); g.arc(ex, ey, radius, 0, TAU); g.stroke();
-    for (let i = 0; i < 4; i++) { const a = face + i * TAU / 4; g.beginPath(); g.moveTo(ex + Math.cos(a) * radius * 1.2, ey + Math.sin(a) * radius * 1.2); g.lineTo(ex + Math.cos(a) * radius * 1.6, ey + Math.sin(a) * radius * 1.6); g.stroke(); }
-    g.restore();
-  }
-  if (pose && ['guard', 'hurt'].includes(pose.state)) {   // 색 없이도 구분: 방어=방패 마름모(채움+굵은 테두리), 피격=뾰족한 충격 별 (v0.1.264)
-    const guard = pose.state === 'guard', ex = x + cx * r, ey = by + sy * r, k = Math.max(0.6, pose.impact), R = r * (guard ? 1.25 : 1.4);
-    g.save(); g.globalAlpha *= k; g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = '#1c2230'; g.fillStyle = guard ? '#b4e8ff' : '#ffe27a';
-    g.beginPath();
-    if (guard) { g.moveTo(ex, ey - R); g.lineTo(ex + R * 0.8, ey); g.lineTo(ex, ey + R * 1.15); g.lineTo(ex - R * 0.8, ey); g.closePath(); }
-    else { for (let i = 0; i < 16; i++) { const a = face + i * TAU / 16, d = i % 2 ? R * 0.4 : R; i ? g.lineTo(ex + Math.cos(a) * d, ey + Math.sin(a) * d) : g.moveTo(ex + Math.cos(a) * d, ey + Math.sin(a) * d); } g.closePath(); }
-    g.stroke(); g.fill(); g.restore();
-  }
-  if (pose && ['slash', 'thrust', 'dash'].includes(pose.state)) {
-    g.save(); g.globalAlpha *= pose.state === 'dash' ? 0.45 : pose.trail * 0.6; g.strokeStyle = '#ffe9a0'; g.lineWidth = 2; g.beginPath();
-    if (pose.state === 'slash') g.arc(x, by, r * 2, pose.angle - 0.7, pose.angle + 0.3);
-    else { for (const side of [-1, 1]) { const ex = x - sy * side * r, ey = by + cx * side * r; g.moveTo(ex - cx * r * 1.8, ey - sy * r * 1.8); g.lineTo(ex + cx * r * 0.5, ey + sy * r * 0.5); } }
-    g.stroke(); g.restore();
-  }
-  g.restore();
+// 로비·전략·상세도 전투와 같은 캐릭터 이미지를 사용한다.
+function drawBody(g,x,y,r,face,s,o={}){drawBattleBody(g,x,y,r,face,s,o);}
+
+// 지정한 UI 칸에 원본 비율과 발 기준을 유지하며 전투 대기 그림을 맞춘다.
+function drawBattlePortrait(g,x,y,w,h,s,o={}){
+  if(!BATTLE_ART.ready)return;
+  const model=BATTLE_ART.models.get(battleModelKey(s,o.team)),image=model?.idle?.[2]||model?.frames?.[0];if(!image)return;
+  const ref=model.bodyRatio?image.bodyHeight/model.bodyRatio:model.idleHeight||image.height,scale=Math.min(w/image.width,h/image.height);
+  g.save();g.beginPath();g.rect(x,y,w,h);g.clip();
+  drawBattleBody(g,x+(image.footX??image.width/2)*scale+(w-image.width*scale)/2,y+h,scale*ref/battleSpriteHeight(1,s),Math.PI/2,s,{...o,pose:{state:'idle'}});
   g.restore();
 }
 
-// 전투 전용: 정수 픽셀만 칠한다. 기존 drawBody는 타이틀·전략 장수 상세에 유지한다.
+// 효과 선은 정수 픽셀만 칠한다.
 function pixelLine(g, x, y, xx, yy, col, width = 1) {
   x = Math.round(x); y = Math.round(y); xx = Math.round(xx); yy = Math.round(yy);
   const dx = Math.abs(xx - x), dy = -Math.abs(yy - y), sx = x < xx ? 1 : -1, sy = y < yy ? 1 : -1; let err = dx + dy;
@@ -388,11 +331,15 @@ function drawBattleMeleeTrail(g,x,y,r,face,pose,horse=false) {
   }
   g.restore();
 }
+function battleModelKey(s,team){
+  let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
+  const enemy=team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
+  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield',ally_cav:'cav',mage:'emage'})[key]||key;
+  return key;
+}
 function drawBattleBody(g,x,y,r,face,s,o={}) {
   if(!BATTLE_ART.ready||!BATTLE_ART.models.size)return;
-  let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
-  const enemy=o.team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
-  if(enemy)key=({ally_sword:'soldier',ally_spear:'enemy_spear',ally_archer:'archer',ally_shield:'shield',ally_cav:'cav',mage:'emage'})[key]||key;
+  const key=battleModelKey(s,o.team),enemy=o.team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
   const model=BATTLE_ART.models.get(key);if(!model)throw new Error('전투 이미지 누락: '+key);
   if(model.directions&&model.idle){drawConnectedHero(g,x,y,r,face,s,o,model);return;}
   const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,face,r):null,view=motion?motion.face:face,back=Math.sin(view)<-.25;

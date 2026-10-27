@@ -1807,12 +1807,19 @@ function drawEvent(e) {
   } else label(e.text, VW / 2, y + 50, 24, col, 'center');
   label(mobile ? '화면을 탭하여 계속' : '클릭 / Enter', x + w - 16, y + h - 14, 14, '#68645d', 'right');
 }
+function drawArtBackdrop(){
+  ctx.fillStyle='#172b27';ctx.fillRect(0,0,VW,VH);
+  if(BATTLE_ART.ready&&BATTLE_ART.reference){ctx.save();ctx.imageSmoothingEnabled=false;for(let y=0;y<VH;y+=256)for(let x=0;x<VW;x+=256)ctx.drawImage(BATTLE_ART.reference,490,25,256,256,x,y,256,256);ctx.fillStyle='rgba(5,16,20,.78)';ctx.fillRect(0,0,VW,VH);ctx.restore();}
+}
+function drawUnitIcon(key,x,y,w,h,team='player'){
+  const unit=Sim.U[key];if(!unit)return;
+  drawBattlePortrait(ctx,x,y,w,h,styleOf({...unit,key,category:Sim.unitCategory(key),team}),{team});
+}
 function drawTitle() {
-  const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, COLORS.dusk1); g.addColorStop(0.55, COLORS.dusk2); g.addColorStop(1, COLORS.dusk3); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
-  ctx.fillStyle = COLORS.moon; ctx.beginPath(); ctx.arc(1010, 150, 52, 0, TAU); ctx.fill();
-  ctx.fillStyle = COLORS.ink2; ctx.beginPath(); ctx.moveTo(0, VH); ctx.lineTo(0, 620); for (let x = 0; x <= VW; x += 40) ctx.lineTo(x, 620 + 26 * Math.sin(x * 0.006) + 16 * Math.sin(x * 0.02)); ctx.lineTo(VW, VH); ctx.closePath(); ctx.fill();
-  [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['captain', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T, weaponLen: k === 'guan' ? 110 : 130, weaponAng: k === 'guan' ? -0.85 : undefined }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.290', 24, 30, 16, COLORS.silver2);
+  drawArtBackdrop();
+  [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.291', 24, 30, 16, COLORS.silver2);
+  if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
@@ -1821,7 +1828,7 @@ function drawTitle() {
     const py = mb(175, 100), ph = mb(370, 500), by = py + mb(130, 125);
     panel(330, py, 620, ph, COLORS.gold, 3, 'rgba(8,20,25,.98)'); label('시작 세력 선택', 640, py + mb(45, 40), 30, COLORS.gold, 'center');
     label('선택한 세력의 수도와 장수로 전략을 시작합니다.', 640, py + mb(85, 80), 17, COLORS.silver2, 'center', 600);
-    PLAYABLE_FACTIONS.forEach((faction, i) => { const x = 375 + i * 180, capital = stageById(CAPITALS[faction]); button(`start-faction:${faction}`, x, by, 170, tb(90), faction, false, 25); label(`${capital.name} · ${Sim.U[INITIAL_RULERS[faction]].name}`, x + 85, by + tb(90) + mb(30, 28), 15, FACTION_STYLE[faction].light, 'center', 170); });
+    PLAYABLE_FACTIONS.forEach((faction, i) => { const x = 375 + i * 180, capital = stageById(CAPITALS[faction]); button(`start-faction:${faction}`, x, by, 170, tb(90), faction, false, 25); drawUnitIcon(INITIAL_RULERS[faction],x+6,by+6,42,tb(90)-12); label(`${capital.name} · ${Sim.U[INITIAL_RULERS[faction]].name}`, x + 85, by + tb(90) + mb(30, 28), 15, FACTION_STYLE[faction].light, 'center', 170); });
     label(mobile ? '세력을 터치하세요' : '1 여포 · 2 조조 · 3 유비 · Esc 취소', 640, py + mb(290, 296), 16, COLORS.silver, 'center', 600);
     button('start-diff', mb(540, 510), py + mb(310, 330), mb(200, 260), tb(40), '난이도: ' + (AI_PROFILES[startDifficulty] || AI_PROFILES.normal).name, false, 17);
   }
@@ -1889,7 +1896,7 @@ function drawMapMini() {
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(m.x + mcam.x * k, m.y + mcam.y * k, MAP_VW * k, VH * k);
 }
 function drawStageMap() {
-  const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#345d55'); g.addColorStop(0.55, '#66834c'); g.addColorStop(1, '#9a8150'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  drawArtBackdrop();
   const corps = roster[campaign.corps], here = stageById(corps.at), sel = stageById(mapSel) || here, ox = mcam.x, oy = mcam.y;
   const vis = (x, y, m = 70) => x >= ox - m && x <= ox + MAP_VW + m && y >= oy - m && y <= oy + VH + m;
   const stationedAt = s => roster.map((c, i) => ({ c, i })).filter(({ c }) => c.units.some(Boolean) && c.at === s.id);   // 이 도시에 주둔 중인 아군 군단
@@ -1920,10 +1927,10 @@ function drawStageMap() {
     const path = route(c.at, c.target).map(stageById), goal = path[path.length - 1], row = targetRows[c.target] || 0; targetRows[c.target] = row + 1; if (path.length < 2) continue;
     ctx.save(); ctx.strokeStyle = '#75dcff'; ctx.lineWidth = 4; ctx.setLineDash([10, 7]); ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y); for (const s of path.slice(1)) ctx.lineTo(s.x, s.y); ctx.stroke(); ctx.restore();
     const a = path[0], b = path[1], fx = (a.x + b.x) / 2, fy = (a.y + b.y) / 2 - row * 24, commander = Sim.U[c.units[0]]?.name || corpsName(c);
-    drawMapFlag(fx, fy, playerFaction(), String(corpsIndex + 1)); label(commander, fx + 18, fy + 32, 12, FACTION_STYLE[playerFaction()].light, 'center');
+    drawUnitIcon(c.units[0],fx-40,fy-40,36,48);drawMapFlag(fx, fy, playerFaction(), String(corpsIndex + 1)); label(commander, fx + 18, fy + 32, 12, FACTION_STYLE[playerFaction()].light, 'center');
     label('이동 예정', goal.x, goal.y - 42 - row * 16, 13, '#bcecff', 'center');
   }
-  campaign.movement.forEach((m, i) => { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) return; const faction = m.team === 'player' ? playerFaction() : m.faction || a.faction, style = FACTION_STYLE[faction], highlight = i === campaign.movementPage; ctx.strokeStyle = style.light; ctx.lineWidth = highlight ? 11 : 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); const fx = (a.x + b.x) / 2, fy = (a.y + b.y) / 2; drawMapFlag(fx, fy, faction, String(m.team === 'player' ? (m.corpsIndex || 0) + 1 : (m.forceId ?? i) + 1), highlight); label(m.commander, fx + 20, fy + 32, 12, style.light, 'center'); });
+  campaign.movement.forEach((m, i) => { const a = stageById(m.from), b = stageById(m.to); if (!a || !b) return; const faction = m.team === 'player' ? playerFaction() : m.faction || a.faction, style = FACTION_STYLE[faction], highlight = i === campaign.movementPage; ctx.strokeStyle = style.light; ctx.lineWidth = highlight ? 11 : 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); const fx = (a.x + b.x) / 2, fy = (a.y + b.y) / 2; drawUnitIcon(m.team==='player'?roster[m.corpsIndex]?.units[0]:enemyForces.find(f=>f.id===m.forceId)?.army.leader,fx-40,fy-40,36,48,m.team); drawMapFlag(fx, fy, faction, String(m.team === 'player' ? (m.corpsIndex || 0) + 1 : (m.forceId ?? i) + 1), highlight); label(m.commander, fx + 20, fy + 32, 12, style.light, 'center'); });
   const cityBtns = [];
   for (const s of STAGES) {
     if (!vis(s.x, s.y)) continue;   // 화면 밖 도시는 그리지 않고 버튼도 만들지 않는다
@@ -1933,6 +1940,7 @@ function drawStageMap() {
     label(`${isCapital(s) ? '★ ' : ''}${s.name}`, s.x, s.y + (on ? 32 : 26), 15, on ? COLORS.goldSel : '#f3eed8', 'center');
     { const kd = cityKind(s); if (kd.letter && (!mobile || s === sel)) label(kd.letter, s.x - 24, s.y - 16, 13, COLORS.goldSel, 'center'); }   // 도시 유형 글자 (모바일은 선택한 도시만)
     if (stationed.length) drawMapFlag(s.x + 12, s.y - 6, playerFaction(), String(stationed.length), stationed.some(({ i }) => i === campaign.corps));   // 주둔 아군: 깃발 + 군단 수
+    { const own=stationed.find(({i})=>i===campaign.corps)||stationed[0],foe=enemyForces.find(f=>f.active&&f.at===s.id);const key=own?.c.units[0]||foe?.army.leader;if(key)drawUnitIcon(key,s.x-42,s.y-48,36,48,own?'player':'enemy'); }
     if (targeted) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 27, 0, TAU); ctx.stroke(); }
     if (mapTool === 'diplomacy') {   // 외교 도구: 외교 가능한 수도만 강조하고 나머지는 어둡게 눌러 선택할 수 없게 한다
       if (diplomable(s)) { const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 220); ctx.save(); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 4 + pulse * 3; ctx.beginPath(); ctx.arc(s.x, s.y, 32 + pulse * 4, 0, TAU); ctx.stroke(); ctx.restore(); label('외교 가능', s.x, s.y - 40, 14, COLORS.goldSel, 'center'); }
@@ -2128,7 +2136,8 @@ function drawFactionHeroes() {
   list.slice(page * per, page * per + per).forEach((key, i) => {
     const u = Sim.U[key], info = heroInfo(faction, key), st = Sim.levelStats(key, faction === playerFaction() ? 'player' : 'enemy', info.lv), ry = y + ry0 + i * rp, ruler = rulerKey(faction) === key ? ' ★군주' : '';
     if (i % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.035)'; ctx.fillRect(x + 24, ry - rp / 2 + 2, w - 48, rp - 4); }
-    label(`${u.name}${ruler} / ${Sim.GRADE[key]}급`, x + cx[0], ry, 15, ruler ? COLORS.goldSel : FACTION_STYLE[faction].light, 'left', cx[1] - cx[0] - 8);
+    drawUnitIcon(key,x+cx[0],ry-14,26,28,faction===playerFaction()?'player':'enemy');
+    label(`${u.name}${ruler} / ${Sim.GRADE[key]}급`, x + cx[0]+32, ry, 15, ruler ? COLORS.goldSel : FACTION_STYLE[faction].light, 'left', cx[1] - cx[0] - 40);
     label(`${CATEGORY_NAME[Sim.unitCategory(key)]} · ${Sim.unitSubclass(key)}`, x + cx[1], ry, 14, COLORS.silver, 'left', cx[2] - cx[1] - 8);
     label(`Lv${info.lv} HP${st.maxHp} AT${st.atk} DF${st.df}`, x + cx[2], ry, 13, COLORS.silver2, 'left', cx[3] - cx[2] - 8);
     label(info.status, x + cx[3], ry, 13, /전사/.test(info.status) ? COLORS.danger : COLORS.silver, 'left', w - cx[3] - 24);
@@ -2228,7 +2237,7 @@ function autoDisbandEmpty() {   // 장수·병사가 하나도 없는 군단은 
 }
 function drawHeroInfo(key, unit, growth, stats, item) {   // 장수 상세 오른쪽 정보 (모바일은 패널 위치에 맞춰 평행이동)
   ctx.save(); if (mobile) ctx.translate(-22, 16);
-  drawBody(ctx, 500, 236, 28, 0, STYLES[unit.style] || STYLES.captain, { t: T, weaponLen: 95 });
+  drawUnitIcon(key,430,94,140,150);
   const main = CATEGORY_NAME[Sim.unitCategory(key)], sub = Sim.unitSubclass(key), grade = Sim.GRADE[key] || '일반', lv = growth.lv || 1, xp = growth.xp || 0;
   label(unit.name, 590, 130, 30, COLORS.goldSel); label(`LV ${lv} · XP ${lv >= Sim.MAX_LEVEL ? 'MAX' : xp + '/' + Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver, 'left', 640);
   label(`병종 ${main} · 역할 ${Sim.roleOf(key)} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`전투력 ⚔${Sim.statPower(stats)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
@@ -2251,7 +2260,7 @@ function button2(id, x, y, w, h, line1, line2, on, col1 = COLORS.silver, col2 = 
   btns.push({ id, x, y, w, h });
 }
 function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px 이상, 글자 22 가상 px 이상 — 교환 화면은 열(병과·능력치)을 줄이고 분대 단위로 본다
-  ctx.fillStyle = '#0b3036'; ctx.fillRect(0, 0, VW, VH);
+  drawArtBackdrop();
   panel(6, 4, 1268, 98, COLORS.gold, 3, 'rgba(6,17,23,.9)');
   label(rosterMode === 'select' ? '군단 편성 · 교환 선택' : rosterMode === 'equip' ? '군단 편성 · 장비 관리' : rosterMode === 'detail' ? '군단 편성 · 장수 상세' : '군단 편성 · 군단 간 교환', 20, 34, 19, COLORS.gold, 'left', 470);
   label(`보유 ${roster.length} / ${ROSTER_MAX}군단`, 20, 76, 12, COLORS.silver, 'left', 470);
@@ -2271,13 +2280,15 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
       panel(16, y, 588, 100, members.length ? COLORS.silver2 : COLORS.dim, 1, 'rgba(15,44,52,.8)');
       label(`${squad + 1}분대`, 28, y + 20, 16, members.length ? COLORS.gold : COLORS.dim);
       label(members.length ? `⚔${Sim.corpsPower(corps.units.slice(squad * 6, squad * 6 + 6), 'player', corps.growth.slice(squad * 6, squad * 6 + 6))}` : '', 592, y + 20, 15, COLORS.goldSel, 'right');
-      for (let row = 0; row < 2; row++) label(members.length ? members.slice(row * 3, row * 3 + 3).map(k => Sim.U[k].name).join(' · ') : row ? '' : '비어 있음', 28, y + 48 + row * 28, 14, members.length ? COLORS.silver : COLORS.dim, 'left', 560);
+      members.forEach((key,i)=>{drawUnitIcon(key,28+i*94,y+28,80,44);label(Sim.U[key].name,68+i*94,y+86,14,COLORS.silver,'center',90);});
+      if(!members.length)label('비어 있음',28,y+60,14,COLORS.dim);
     }
     panel(626, top, 648, bottom - top, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 640, top + 22, 20, COLORS.gold);
     const N = rosterTargetN(), targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), pages = Math.max(1, Math.ceil(targets.length / N));
     rosterPage = Math.max(0, Math.min(rosterPage, pages - 1));
     targets.slice(rosterPage * N, rosterPage * N + N).forEach(({ c, index }, row) => button2(`roster:target:${index}`, 638, top + 44 + row * 90, 624, TOUCH, `${index + 1}군단  ${corpsName(c)}`, `${c.units.filter(Boolean).length}/18명 · ⚔${corpsPow(c)}`, false));
+    targets.slice(rosterPage*N,rosterPage*N+N).forEach(({c},row)=>drawUnitIcon(c.units[0],1196,top+50+row*90,54,TOUCH-12));
     const fy = bottom - TOUCH - 8;
     button('roster:new', 638, fy, 280, TOUCH, roster.length < ROSTER_MAX ? '새 군단 생성' : '군단 보유 한도 100', false, 16);
     button('roster:page:prev', 930, fy, 160, TOUCH, '◀', false, 18); button('roster:page:next', 1102, fy, 160, TOUCH, '▶', false, 18);
@@ -2306,7 +2317,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
     named.slice(rosterEquipPage * N, rosterEquipPage * N + N).forEach(({ key, slot }, row) => {
       const g = corps.growth[slot] || {}, it = Sim.ITEMS[g.item], ry = top + 130 + row * 94, bonus = it ? Object.entries(it).filter(([, v]) => Number.isFinite(v)).map(([k, v]) => `${k.toUpperCase()}+${v}`).join(' ') : '';
       panel(16, ry, 1244, TOUCH, 'rgba(206,231,224,.25)', 1, 'rgba(15,44,52,.75)');
-      label(String(slot + 1).padStart(2, '0'), 28, ry + TOUCH / 2, 14, COLORS.silver2); label(Sim.U[key].name, 78, ry + TOUCH / 2, 16, COLORS.goldSel, 'left', 200);
+      label(String(slot + 1).padStart(2, '0'), 28, ry + TOUCH / 2, 14, COLORS.silver2);drawUnitIcon(key,66,ry+6,50,TOUCH-12); label(Sim.U[key].name, 124, ry + TOUCH / 2, 16, COLORS.goldSel, 'left', 150);
       button(`roster:item:${slot}:-1`, 290, ry, TOUCH, TOUCH, '◀', false, 16); label(it ? `${it.unique ? '★ ' : ''}${it.name}` : '— 없음 —', 540, ry + TOUCH / 2, 16, it ? COLORS.gold : COLORS.dim, 'center', 240); button(`roster:item:${slot}:1`, 672, ry, TOUCH, TOUCH, '▶', false, 16);
       label(bonus, 780, ry + TOUCH / 2, 15, COLORS.silver, 'left', 470);
     });
@@ -2321,7 +2332,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
       for (let k = 0; k < 6; k++) {
         const slot = squad * 6 + k, key = corps.units[slot], unit = key ? Sim.U[key] : null, cx = x + 12 + (k % 2) * (cw + 8), cy = top + 40 + TOUCH + 10 + Math.floor(k / 2) * 94, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
         panel(cx, cy, cw, TOUCH, selected ? COLORS.goldSel : 'rgba(206,231,224,.4)', selected ? 3 : 1, selected ? 'rgba(117,96,25,.65)' : 'rgba(15,44,52,.8)');
-        label(String(slot + 1).padStart(2, '0'), cx + 10, cy + 24, 13, COLORS.silver2); label(unit ? unit.name : '—', cx + 52, cy + 24, 16, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim, 'left', cw - 52 - 84);
+        label(String(slot + 1).padStart(2, '0'), cx + 10, cy + 24, 13, COLORS.silver2);drawUnitIcon(key,cx+40,cy+4,48,48); label(unit ? unit.name : '—', cx + 96, cy + 24, 16, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim, 'left', cw - 96 - 84);
         if (slot === 0) label('군단장', cx + cw - 10, cy + 24, 14, COLORS.gold, 'right');
         else if (unit && unit.generic) { const sg = Sim.validGrade(corps.growth[slot]?.sg); label(gradeTag(sg), cx + cw - 10, cy + 24, 14, Sim.SOLDIER_GRADE_COLOR[sg], 'right'); }
         if (unit) { const st = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, cx + 10, cy + 60, 14, COLORS.silver2, 'left', cw - 20 - 96); label(`HP${st.maxHp}`, cx + cw - 10, cy + 60, 14, COLORS.silver, 'right'); }
@@ -2335,7 +2346,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
 }
 function drawRoster() {
   if (mobile) { drawRosterMobile(); return; }
-  ctx.fillStyle = '#0b3036'; ctx.fillRect(0, 0, VW, VH);
+  drawArtBackdrop();
   panel(18, 16, 1244, 54, COLORS.gold, 3, 'rgba(6,17,23,.9)');
   label(rosterMode === 'select' ? mobile ? '군단 편성 · 교환 선택' : '군단 편성 · 교환 군단 선택' : rosterMode === 'equip' ? '군단 편성 · 장비 관리' : rosterMode === 'detail' ? '군단 편성 · 장수 상세' : '군단 편성 · 군단 간 교환', 42, 43, mobile ? 19 : 27, COLORS.gold);
   label(`보유 ${roster.length} / ${ROSTER_MAX}군단`, mobile ? 42 : 375, mobile ? 82 : 43, mobile ? 12 : 17, COLORS.silver);
@@ -2355,13 +2366,15 @@ function drawRoster() {
       const members = corps.units.slice(squad * 6, squad * 6 + 6).filter(Boolean);
       panel(52, 326 + squad * 82, 508, 66, members.length ? COLORS.silver2 : COLORS.dim, 1, 'rgba(15,44,52,.8)');
       label(`${squad + 1}분대`, 70, 340 + squad * 82, 16, members.length ? COLORS.gold : COLORS.dim);
-      for (let row = 0; row < 2; row++) label(members.length ? members.slice(row * 3, row * 3 + 3).map(k => Sim.U[k].name).join(' · ') : row ? '' : '비어 있음', 70, 360 + row * 20 + squad * 82, 14, members.length ? COLORS.silver : COLORS.dim);
+      members.forEach((key,i)=>{drawUnitIcon(key,70+i*78,346+squad*82,64,28);label(Sim.U[key].name,102+i*78,384+squad*82,12,COLORS.silver,'center',76);});
+      if(!members.length)label('비어 있음',70,370+squad*82,14,COLORS.dim);
       label(members.length ? `⚔${Sim.corpsPower(corps.units.slice(squad * 6, squad * 6 + 6), 'player', corps.growth.slice(squad * 6, squad * 6 + 6))}` : '', 548, 340 + squad * 82, 15, COLORS.goldSel, 'right');
     }
     panel(622, 94, 630, 536, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 646, 126, 20, COLORS.gold);
     const targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), page = targets.slice(rosterPage * rosterTargetN(), rosterPage * rosterTargetN() + rosterTargetN());
     page.forEach(({ c, index }, row) => button(`roster:target:${index}`, 646, 154 + row * 40, 582, 34, `${index + 1}군단  ${corpsName(c)}  ${c.units.filter(Boolean).length}/18 · ⚔${corpsPow(c)}`, false, 15));
+    page.forEach(({c},row)=>drawUnitIcon(c.units[0],1186,157+row*40,34,28));
     button('roster:new', 646, 564, 280, 42, roster.length < ROSTER_MAX ? '새 군단 생성' : '군단 보유 한도 100', false, 16);
     button('roster:page:prev', 944, 564, 132, 42, '◀', false, 18); button('roster:page:next', 1096, 564, 132, 42, '▶', false, 18);
   } else if (rosterMode === 'detail') {
@@ -2385,7 +2398,7 @@ function drawRoster() {
     named.forEach(({ key, slot }, row) => {
       const g = corps.growth[slot] || {}, it = Sim.ITEMS[g.item], ry = 142 + row * 26, bonus = it ? Object.entries(it).filter(([, v]) => Number.isFinite(v)).map(([k, v]) => `${k.toUpperCase()}+${v}`).join(' ') : '';
       panel(38, ry, 1204, 24, 'rgba(206,231,224,.25)', 1, 'rgba(15,44,52,.75)');
-      label(String(slot + 1).padStart(2, '0'), 50, ry + 12, 13, COLORS.silver2); label(Sim.U[key].name, 100, ry + 12, 15, COLORS.goldSel);
+      label(String(slot + 1).padStart(2, '0'), 50, ry + 12, 13, COLORS.silver2);drawUnitIcon(key,74,ry+1,24,22); label(Sim.U[key].name, 106, ry + 12, 15, COLORS.goldSel);
       button(`roster:item:${slot}:-1`, 420, ry, 40, 24, '◀', false, 14); label(it ? `${it.unique ? '★ ' : ''}${it.name}` : '— 없음 —', 560, ry + 12, 15, it ? COLORS.gold : COLORS.dim, 'center'); button(`roster:item:${slot}:1`, 660, ry, 40, 24, '▶', false, 14);
       label(bonus, 730, ry + 12, 14, COLORS.silver);
     });
@@ -2399,6 +2412,7 @@ function drawRoster() {
         panel(x + 10, ry, 580, 24, selected ? COLORS.goldSel : squadStart ? '#698b94' : 'rgba(206,231,224,.25)', selected ? 2 : 1, selected ? 'rgba(117,96,25,.65)' : squadStart ? 'rgba(23,72,84,.95)' : 'rgba(15,44,52,.75)');
         label(String(slot + 1).padStart(2, '0'), x + 20, ry + 12, 13, COLORS.silver2);
         label(squadStart ? `${slot / 6 + 1}분대` : '', x + 55, ry + 12, 13, COLORS.gold);
+        drawUnitIcon(key,x+98,ry+1,25,22);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
         if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`HP${stats.maxHp} AT${stats.atk} DF${stats.df} AD${stats.ad} MD${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
         label(commander ? '군단장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right'); if (unit && unit.generic) { const sg = Sim.validGrade(corps.growth[slot]?.sg); label(gradeTag(sg), x + 570, ry + 12, 12, Sim.SOLDIER_GRADE_COLOR[sg], 'right'); }
