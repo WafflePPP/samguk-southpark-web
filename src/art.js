@@ -293,7 +293,9 @@ function loadBattleArt() {
 // 시뮬레이션의 판정 반경과 독립된 공통 외형 크기. 기병은 말까지 포함한다.
 const BATTLE_UNIT_RADIUS=8.5;
 // 여포의 기수·말을 기준으로 원본마다 다른 머리/갑옷 비중을 시각 보정한다.
-function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6);}
+// 얼굴 가로폭을 여포(=1) 기준으로 맞춘 배율 = 여포 얼굴/해당 얼굴, 범위 .85~1.15 (정면 눈대중 ±12%). 얼굴이 작은 도트는 1
+const FACE_SCALE={diao:0.85,dian:0.85,captain:0.85,liubei:0.85,zhangfei:0.85,xuchu:0.85,guo:0.85,cao:0.85,gao:0.85,dong:0.85,guan:0.85,hua:0.85,xia:0.85,yuan:0.85,sima:0.9,xun:0.9,huang:0.9,kong:0.9,zhao:0.9,jang:0.85,gong:0.85,lulingqi:0.9,xiahouyuan:0.85,xuhuang:0.85,yan:0.9,wen:0.9,zhangliao:0.9,ally_archer:0.85,archer:0.85,ally_shield:0.85,shield:0.85,ally_cav:0.9,cav:0.9,mage:0.85,emage:0.85,f_xian:0.9,f_nu:0.85,f_ji:1.1,f_qing:0.85,f_hubao:0.85,f_bai:0.9,f_dan:0.85};
+function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]||1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
