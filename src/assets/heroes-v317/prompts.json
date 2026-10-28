@@ -1,0 +1,11 @@
+[
+  {
+    "key": "lubu",
+    "name": "여포",
+    "file": "lubu.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "여령기 계열 화풍을 유지하되 굵은 눈썹·좁고 매서운 눈·각진 턱·짧은 콧수염과 턱수염·넓은 어깨와 흉갑으로 강인한 성인 남성 인상을 강화.",
+    "prompt": "Edit the v316 8x8 Lü Bu atlas without changing its 64-frame layout, directions, horse poses or attacks. Preserve Lü Lingqi-family smooth dense pixel rendering, but make Lü Bu unmistakably masculine and formidable in every frame: wider angular jaw, thick straight eyebrows, narrow stern eyes, short moustache and square chin beard, broad neck and shoulders, deep chest, heavier black iron cuirass and thicker armored forearms. Fill each cell 6-8% more while retaining gutters. No feminine face, round jaw, large eyes, delicate shoulders, touching, cropping, text, grid, shadow or effects."
+  }
+]
