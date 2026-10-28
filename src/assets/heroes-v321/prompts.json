@@ -1,0 +1,11 @@
+[
+  {
+    "key": "lubu",
+    "name": "여포",
+    "file": "lubu.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "여령기의 기수·말 골격, 머리·몸·말 비율과 도트 화풍을 그대로 기준으로 한 무수염 여포. 흑적 중갑·금색 쌍깃·방천화극·적갈색 말을 유지한다.",
+    "prompt": "Rebuild Lü Bu from the v317 target using Lü Lingqi as the strict rider/horse anatomy, footprint, spacing and pixel-style reference. Exact 8x8 transparent 64-sprite atlas with idle, three walk rows, thrust strike/recovery and slash strike/recovery in E,SE,S,SW,W,NW,N,NE order. Preserve red-black armor, silver chest accents, gold double feather crest, red headband, Fangtian halberd and brown-red horse. Remove moustache, beard, goatee and stubble in every frame; keep a masculine stern clean-shaven face with thick eyebrows, narrowed eyes and angular jaw. No oversized rider, horse or feathers, extra objects, text, grid, shadow or effects."
+  }
+]

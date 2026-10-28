@@ -258,7 +258,7 @@ function loadBattleArt() {
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  BATTLE_ART.promise=Promise.all([Promise.all([load('src/assets/battle-v274/terrain.png',274),load('src/assets/battle-v311/ground.png',311),load('src/assets/battle-v311/props.png',311)]),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('heroes-v317',317),manifest('heroes-v318',318),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,heroes,lubuStyle,lulingqiStyle,strongLubu,strongGao,troops,remaining])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all([load('src/assets/battle-v274/terrain.png',274),load('src/assets/battle-v311/ground.png',311),load('src/assets/battle-v311/props.png',311)]),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('heroes-v321',321),manifest('heroes-v318',318),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,heroes,lubuStyle,lulingqiStyle,strongLubu,strongGao,troops,remaining])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(heroes.length!==HERO_REWORK_KEYS.length||new Set(heroes.map(h=>h.key)).size!==heroes.length||HERO_REWORK_KEYS.some(k=>!heroes.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
@@ -290,7 +290,7 @@ function loadBattleArt() {
     }));
     await Promise.all(strongLubu.map(async h=>{
       if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('강인한 여포 동작 누락');
-      const image=await load('src/assets/heroes-v317/'+h.file,317),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      const image=await load('src/assets/heroes-v321/'+h.file,321),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,[h.key]);
     }));
     await Promise.all(strongGao.map(async h=>{
