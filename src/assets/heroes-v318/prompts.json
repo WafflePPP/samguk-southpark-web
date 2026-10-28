@@ -1,0 +1,11 @@
+[
+  {
+    "key": "gao",
+    "name": "고순",
+    "file": "gao.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "여포와 같은 화면 크기·성인 남성 체격. 기병 요소 없이 넓은 어깨, 같은 얼굴 폭과 3~3.5등신 비율의 흑철 중갑 검보병.",
+    "prompt": "Gao Shun only. Exact 8x8 transparent 64-sprite atlas preserving the v316 directions and actions. Match v317 Lu Bu adult male head width, shoulder width, torso mass and 3-3.5-head body ratio while remaining an infantry swordsman: no horse or mount. Preserve Gao Shun's black and dark-red lamellar armor, gold trim, black helmet, short red plume, straight sword, moustache and beard. Match the Lu Lingqi-family pixel rendering, spacing, foot baseline and action continuity. No extra character, shield, bow, text, grid, shadow or effects."
+  }
+]
