@@ -235,6 +235,7 @@ const BATTLE_TERRAIN_OBJECTS=[{"x":66,"y":104,"w":831,"h":419,"sx":450,"sy":320}
 const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,ground:null,attempt:0};
 const HERO_REWORK_KEYS=['gao','yuan','cao','xia','dian','yan','wen','xiahouyuan','xuchu','guo','sima','liubei','guan','kong','zhao','diao','huang','captain','jang','gong','zhangfei','machao','xuhuang','dong','xun','hua'];
 const LUBU_STYLE_KEYS=['gao','yuan','cao','xia','dian','yan'];
+const LULINGQI_STYLE_KEYS=['lubu','gao'];
 const TROOP_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],f_bing:['f_bing','f_bing_enemy']};
 const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 function extractBattleSprite(image,b,tint=false,cutoff=128) {
@@ -255,29 +256,32 @@ function loadBattleArt() {
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  BATTLE_ART.promise=Promise.all([Promise.all([load('src/assets/battle-v274/terrain.png',274),load('src/assets/battle-v311/ground.png',311),load('src/assets/battle-v311/props.png',311)]),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,heroes,lubuStyle,troops,remaining])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all([load('src/assets/battle-v274/terrain.png',274),load('src/assets/battle-v311/ground.png',311),load('src/assets/battle-v311/props.png',311)]),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,heroes,lubuStyle,lulingqiStyle,troops,remaining])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(heroes.length!==HERO_REWORK_KEYS.length||new Set(heroes.map(h=>h.key)).size!==heroes.length||HERO_REWORK_KEYS.some(k=>!heroes.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
+    if(lulingqiStyle.length!==LULINGQI_STYLE_KEYS.length||LULINGQI_STYLE_KEYS.some(k=>!lulingqiStyle.some(h=>h.key===k)))throw new Error('여령기 기준 장수 외형 누락');
     if(!complete(troops,TROOP_REWORK_BINDINGS)||!complete(remaining,REMAINING_REWORK_BINDINGS))throw new Error('전체 리워크 외형 누락');
     for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
     // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
     BATTLE_ART.terrain=images[0];BATTLE_ART.ground=images[1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[2],b));
-    const update=await fetch('src/assets/lubu-v284/layout.json?v=284&try='+attempt).then(r=>{if(!r.ok)throw new Error('여포 아트 목록 로드 실패');return r.json();});
-    const sheets=await Promise.all(update.map(async sheet=>{const image=await load('src/assets/lubu-v284/'+sheet.file,284);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
-    installLubuRework(sheets);
     const jang=await fetch('src/assets/zhangliao-v287/layout.json?v=287&try='+attempt).then(r=>{if(!r.ok)throw new Error('장료 아트 목록 로드 실패');return r.json();});
     const jangSheets=await Promise.all(jang.map(async sheet=>{const image=await load('src/assets/zhangliao-v287/'+sheet.file,287);return {kind:sheet.kind,frames:sheet.frames.map(b=>extractBattleSprite(image,b,false,200))};}));
     BATTLE_ART.models.set('zhangliao',{...BATTLE_ART.models.get('jang')});
     installLubuRework(jangSheets,'zhangliao');
-    await Promise.all(heroes.map(async h=>{
+    await Promise.all(heroes.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)).map(async h=>{
       if(h.frames.length!==56||h.actions?.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('장수 리워크 동작 누락: '+h.key);
       const image=await load('src/assets/heroes-v308/'+h.file,309),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,[h.key]);
     }));
-    await Promise.all(lubuStyle.map(async h=>{
+    await Promise.all(lubuStyle.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)).map(async h=>{
       if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 기준 장수 동작 누락: '+h.key);
       const image=await load('src/assets/heroes-v314/'+h.file,314),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      installAtlasRework(h,frames,frames,[h.key]);
+    }));
+    await Promise.all(lulingqiStyle.map(async h=>{
+      if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('여령기 기준 장수 동작 누락: '+h.key);
+      const image=await load('src/assets/heroes-v316/'+h.file,316),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,[h.key]);
     }));
     await Promise.all(troops.map(async h=>{

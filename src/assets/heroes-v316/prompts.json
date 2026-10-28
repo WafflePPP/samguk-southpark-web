@@ -1,0 +1,20 @@
+[
+  {
+    "key": "lubu",
+    "name": "여포",
+    "file": "lubu.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "여령기와 같은 성인형 SD 머리·몸·말 비율과 매끈한 고밀도 도트. 흑철 갑옷, 절제된 붉은 장식, 짧은 쌍깃, 방천화극, 밤색 말.",
+    "prompt": "Lü Lingqi atlas is the strict style and anatomy reference. Exact 8x8 transparent 64-sprite atlas: idle, three walk rows, thrust strike/recovery, slash strike/recovery; directions E,SE,S,SW,W,NW,N,NE. Preserve Lü Bu identity and equipment only from the old sheet. Match Lü Lingqi mature adult SD head/body and rider/horse proportions, dense smooth pixel clusters, one-pixel dark outline and restrained 2-3 shade ramps. No oversized head, towering feathers, chunky pixels, touching, cropping, text, grid, shadow or effects."
+  },
+  {
+    "key": "gao",
+    "name": "고순",
+    "file": "gao.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "여령기와 같은 머리 크기·성인형 3~3.5등신·매끈한 고밀도 도트. 흑철 투구와 짧은 붉은 술, 흑철·청동 중갑, 직검.",
+    "prompt": "Lü Lingqi atlas is the strict style and anatomy reference. Exact 8x8 transparent 64-sprite atlas: idle, three walk rows, thrust strike/recovery, slash strike/recovery; directions E,SE,S,SW,W,NW,N,NE. Preserve Gao Shun identity and equipment only from the old sheet. Match Lü Lingqi exact human head size, mature 3-3.5-head body ratio, slender practical limbs, dense smooth pixel clusters, one-pixel dark outline and restrained 2-3 shade ramps. No squat fat torso, bobblehead, chunky pixels, touching, cropping, text, grid, shadow or effects."
+  }
+]
