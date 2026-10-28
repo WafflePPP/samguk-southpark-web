@@ -319,7 +319,7 @@ const BATTLE_UNIT_RADIUS=8.5;
 // 여포의 기수·말을 기준으로 원본마다 다른 머리/갑옷 비중을 시각 보정한다.
 // 머리(투구·머리카락 포함) 가로폭을 여포(=1) 기준으로 맞춘 배율. 전투 정면 확대 비교에서 여포 머리 폭 58px 기준선에 맞춰 눈대중(±8%)으로 정함 — 새 외형을 추가하면 같은 방식으로 다시 맞춘다
 const FACE_SCALE={ally_sword:.8,ally_shield:.64,liubei:.67,guan:.8,zhao:.8,jang:.9,gong:.7,lulingqi:.95,xiahouyuan:.72,machao:1.05,xuhuang:.65,yan:1,wen:.95,zhangliao:.9,diao:.9,dian:1,huang:.78,kong:.68,captain:.78,hua:.74,gao:1,cao:1,xia:1,zhangfei:.9,xun:.93,ally_archer:.72,ally_cav:.78,mage:.97,f_xian:.8,f_bing:.97,f_nu:.93,f_ji:1.05,f_qing:1.05,f_hubao:.9,f_bai:.9,f_dan:.85,yuan:1,sima:.77,xuchu:.6,dong:.83,guo:.72,soldier:.8,archer:.72,shield:.64,cav:.78,emage:.97};
-const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=1.05,GAO_SCALE=LUBU_SCALE*4.8/3.6;
+const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=LULINGQI_SCALE;
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
