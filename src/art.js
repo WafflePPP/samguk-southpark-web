@@ -203,7 +203,7 @@ function drawBody(g,x,y,r,face,s,o={}){drawBattleBody(g,x,y,r,face,s,o);}
 function drawBattlePortrait(g,x,y,w,h,s,o={}){
   if(!BATTLE_ART.ready)return;
   const model=BATTLE_ART.models.get(battleModelKey(s,o.team)),image=model?.idle?.[1]||model?.frames?.[0];if(!image)return;
-  const ref=battleFrameHeight(image),foot=image.footX??image.width/2;
+  const ref=battleFrameHeight(image,s),foot=image.footX??image.width/2;
   const scale=Math.min(battleSpriteHeight(Math.min(w/6,h/5.4),s)/ref,Math.max(0,w/2-2)/Math.max(foot,image.width-foot),Math.max(0,h-4)/image.height);
   g.save();g.beginPath();g.rect(x,y,w,h);g.clip();
   drawBattleBody(g,x+w/2,y+h-2,scale*ref/battleSpriteHeight(1,s),Math.PI/4,s,{...o,pose:{state:'idle'}});
@@ -321,7 +321,7 @@ const BATTLE_UNIT_RADIUS=8.5;
 const FACE_SCALE={ally_sword:.8,ally_shield:.64,liubei:.67,guan:.8,zhao:.8,jang:.9,gong:.7,lulingqi:.95,xiahouyuan:.72,machao:1.05,xuhuang:.65,yan:1,wen:.95,zhangliao:.9,diao:.9,dian:1,huang:.78,kong:.68,captain:.78,hua:.74,gao:1,cao:1,xia:1,zhangfei:.9,xun:.93,ally_archer:.72,ally_cav:.78,mage:.97,f_xian:.8,f_bing:.97,f_nu:.93,f_ji:1.05,f_qing:1.05,f_hubao:.9,f_bai:.9,f_dan:.85,yuan:1,sima:.77,xuchu:.6,dong:.83,guo:.72,soldier:.8,archer:.72,shield:.64,cav:.78,emage:.97};
 const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=LULINGQI_SCALE;
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
-function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
+function battleFrameHeight(image,s){return s?.uniformMounted?image.height:image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
   if(sheets.length!==2||idle?.length!==8||walk?.length!==32||!model)throw new Error('초선 방향/동작 이미지 누락');
@@ -417,7 +417,7 @@ function drawBattleBody(g,x,y,r,face,s,o={}) {
   const directional=!!model.directions,frame=directional?(pose&&['move','dash'].includes(pose.state)||!pose&&o.moving?pose?.walkFrame??Math.floor((o.t||0)*8)%4:phase>0?Math.min(3,Math.floor((pose.progress||0)*4)):0):motion?motion.frame:o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0;
   const frames=directional?model.directions[battleDirection(view)]:back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
   if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;white.bodyHeight=image.bodyHeight;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
-  const scale=battleSpriteHeight(r,s)/battleFrameHeight(image),h=image.height*scale,w=image.width*scale;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
+  const scale=battleSpriteHeight(r,s)/battleFrameHeight(image,s),h=image.height*scale,w=image.width*scale;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+(motion?.x||0)),Math.round(y+(motion?motion.y:o.moving&&frame?-1:0)));if(motion?.turn)g.rotate(motion.turn);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if(!directional&&(Math.cos(view)<-.25)!==sourceLeft)g.scale(-1,1);
   g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round(h),Math.round(w),Math.round(h));g.restore();
   drawBattleMeleeTrail(g,x,y,r,face,pose,!!s.horse);
@@ -430,7 +430,7 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
     let image=idle?model.idle[d]:model.directions[d][f];
     const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state,kind=model.attacks?.[action]?action:null;
     if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];}
-    return {...l,m,image,height:battleFrameHeight(image)};
+    return {...l,m,image,height:battleFrameHeight(image,s)};
   });
   const motion={x:0,y:0,turn:0,stretch:0};for(const l of samples)for(const k of Object.keys(motion))motion[k]+=l.m[k]*l.weight;
   const l=samples[0];let image=l.image;
