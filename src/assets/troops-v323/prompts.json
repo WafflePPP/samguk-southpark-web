@@ -1,0 +1,11 @@
+[
+  {
+    "key": "f_bing",
+    "name": "병주 기병",
+    "file": "f_bing.png",
+    "actions": ["thrust", "slash"],
+    "frameCount": 64,
+    "design": "여포의 실제 얼굴 폭과 얼굴 대 기수 몸 비율을 적용한 병주 기병. 투구·깃·창·말은 얼굴 측정에서 제외.",
+    "prompt": "Edit the 8x8 Bingzhou cavalry atlas. Match every rider's actual visible face width, face height, and face-to-human-body proportion to the clean-shaven Lu Bu rider reference at the same native scale. Exclude helmet, plume, spear, horse ears, and ornaments from measurement. Preserve the plain steel helmet, short black plume, charcoal armor, spear, chestnut horse, all 64 directions/actions, transparent gutters, and full weapons. True transparent alpha; no text, grid, background, beard, moustache, long hero feathers, missing or merged sprites."
+  }
+]

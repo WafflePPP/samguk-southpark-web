@@ -239,6 +239,7 @@ const LULINGQI_STYLE_KEYS=['lubu','gao'];
 const STRONG_LUBU_KEYS=['lubu'];
 const STRONG_GAO_KEYS=['gao'];
 const TROOP_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],f_bing:['f_bing','f_bing_enemy']};
+const LUBU_FACE_REWORK_KEYS=['f_bing'];
 const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 function extractBattleSprite(image,b,tint=false,cutoff=128) {
   const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
@@ -258,13 +259,14 @@ function loadBattleArt() {
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  BATTLE_ART.promise=Promise.all([Promise.all([load('src/assets/battle-v274/terrain.png',274),load('src/assets/battle-v311/ground.png',311),load('src/assets/battle-v311/props.png',311)]),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('heroes-v321',321),manifest('heroes-v318',318),manifest('troops-v305',305),manifest('rework-v303',303)]).then(async ([images,heroes,lubuStyle,lulingqiStyle,strongLubu,strongGao,troops,remaining])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all([load('src/assets/battle-v274/terrain.png',274),load('src/assets/battle-v311/ground.png',311),load('src/assets/battle-v311/props.png',311)]),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('heroes-v321',321),manifest('heroes-v318',318),manifest('troops-v305',305),manifest('rework-v303',303),manifest('troops-v323',323)]).then(async ([images,heroes,lubuStyle,lulingqiStyle,strongLubu,strongGao,troops,remaining,lubuFaceTroops])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(heroes.length!==HERO_REWORK_KEYS.length||new Set(heroes.map(h=>h.key)).size!==heroes.length||HERO_REWORK_KEYS.some(k=>!heroes.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
     if(lulingqiStyle.length!==LULINGQI_STYLE_KEYS.length||LULINGQI_STYLE_KEYS.some(k=>!lulingqiStyle.some(h=>h.key===k)))throw new Error('여령기 기준 장수 외형 누락');
     if(strongLubu.length!==STRONG_LUBU_KEYS.length||STRONG_LUBU_KEYS.some(k=>!strongLubu.some(h=>h.key===k)))throw new Error('강인한 여포 외형 누락');
     if(strongGao.length!==STRONG_GAO_KEYS.length||STRONG_GAO_KEYS.some(k=>!strongGao.some(h=>h.key===k)))throw new Error('여포 체격 고순 외형 누락');
+    if(lubuFaceTroops.length!==LUBU_FACE_REWORK_KEYS.length||LUBU_FACE_REWORK_KEYS.some(k=>!lubuFaceTroops.some(h=>h.key===k)))throw new Error('여포 얼굴 기준 병종 누락');
     if(!complete(troops,TROOP_REWORK_BINDINGS)||!complete(remaining,REMAINING_REWORK_BINDINGS))throw new Error('전체 리워크 외형 누락');
     for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
     // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
@@ -304,6 +306,11 @@ function loadBattleArt() {
       const frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
       installAtlasRework(h,frames,enemy);
     }));
+    await Promise.all(lubuFaceTroops.map(async h=>{
+      if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('여포 얼굴 기준 병종 동작 누락: '+h.key);
+      const image=await load('src/assets/troops-v323/'+h.file,323),frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
+      installAtlasRework(h,frames,enemy,TROOP_REWORK_BINDINGS[h.key]);
+    }));
     await Promise.all(remaining.filter(h=>!HERO_REWORK_KEYS.includes(h.key)).map(async h=>{
       if(![56,64,72].includes(h.frames.length)||h.actions?.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('추가 리워크 동작 누락: '+h.key);
       const image=await load('src/assets/rework-v303/'+h.file,303),keys=REMAINING_REWORK_BINDINGS[h.key],frames=h.frames.map(b=>extractTroopSprite(image,b,false));
@@ -320,8 +327,8 @@ const BATTLE_UNIT_RADIUS=8.5;
 // 머리(투구·머리카락 포함) 가로폭을 여포(=1) 기준으로 맞춘 배율. 전투 정면 확대 비교에서 여포 머리 폭 58px 기준선에 맞춰 눈대중(±8%)으로 정함 — 새 외형을 추가하면 같은 방식으로 다시 맞춘다
 const FACE_SCALE={ally_sword:.8,ally_shield:.64,liubei:.67,guan:.8,zhao:.8,jang:.9,gong:.7,lulingqi:.95,xiahouyuan:.72,machao:1.05,xuhuang:.65,yan:1,wen:.95,zhangliao:.9,diao:.9,dian:1,huang:.78,kong:.68,captain:.78,hua:.74,gao:1,cao:1,xia:1,zhangfei:.9,xun:.93,ally_archer:.72,ally_cav:.78,mage:.97,f_xian:.8,f_bing:.97,f_nu:.93,f_ji:1.05,f_qing:1.05,f_hubao:.9,f_bai:.9,f_dan:.85,yuan:1,sima:.77,xuchu:.6,dong:.83,guo:.72,soldier:.8,archer:.72,shield:.64,cav:.78,emage:.97};
 const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=1.03;
-// 정면 얼굴·머리 폭(쌍깃·무기 제외)과 얼굴 아래 몸체 길이 기준: 여포30/123, 장료31/111, 여령기27/103, 병주기병31/121px.
-const LUBU_MOUNTED_FACE_SCALE={lubu:LUBU_SCALE,jang:.9,lulingqi:LULINGQI_SCALE,f_bing:.97};
+// 보병 높이(3.6)는 기마(4.8)의 75%라 여포와 같은 얼굴 크기로 보이도록 역보정한다.
+const LUBU_FACE_SCALE={lubu:LUBU_SCALE,jang:.9,diao:FACE_SCALE.diao*LUBU_SCALE*4/3,gao:FACE_SCALE.gao*LUBU_SCALE*4/3,chengong:FACE_SCALE.xun*LUBU_SCALE*4/3,lulingqi:LULINGQI_SCALE,f_xian:1.37,f_bing:.97};
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function installDiaoRework(sheets){
