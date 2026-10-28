@@ -1,0 +1,50 @@
+[
+  {
+    "key": "gao",
+    "name": "고순",
+    "file": "gao.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "보병 장수. 짧은 붉은 술의 흑철 투구, 검정·청동 중갑, 짧은 수염, 직검."
+  },
+  {
+    "key": "yuan",
+    "name": "원소",
+    "file": "yuan.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "황금 관식 투구와 황금 찰갑, 절제된 보라 망토, 직검."
+  },
+  {
+    "key": "cao",
+    "name": "조조",
+    "file": "cao.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "작은 금장 관, 검정·금색 갑옷, 짙은 파란 망토, 직검."
+  },
+  {
+    "key": "xia",
+    "name": "하후돈",
+    "file": "xia.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "한쪽 안대, 청동 투구와 보라색 술, 자색 철갑과 망토, 직검."
+  },
+  {
+    "key": "dian",
+    "name": "전위",
+    "file": "dian.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "큰 머리의 장사, 흑갈색 갑옷과 청동 견갑, 양손 단극 한 쌍."
+  },
+  {
+    "key": "yan",
+    "name": "안량",
+    "file": "yan.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "밤색 말, 은회색 갑옷, 초록 투구 술, 붉은 망토, 장창."
+  }
+]
