@@ -492,11 +492,11 @@ const SHOW = { dmg: true, buff: false, pauseSel: true, status: true };   // stat
 try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ } SHOW.buff = false;
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
 // 카메라 거리(줌): PC·모바일 기본 ×1.3. 상단 버튼·[ ] 키로 조절하고 모드별로 기억한다
-const ZOOMS = [[1, '기본'], [1.3, '조금 가까이'], [1.67, '가까이'], [2, '더 가까이'], [2.5, '아주 가까이'], [3, '원작']];   // 거리 ×1.0 이 PC·모바일 공통 기본값 (v0.1.292: 모바일 기본 ×1.3 → ×1.0)
-let zoomIdx = 1;
+const ZOOMS = [...Array(15)].map((_, i) => [Math.round((0.1 + 0.2 * i) * 10) / 10]).concat([[3]]);   // 거리 ×0.1~×3: 0.2 단위 (0.1·0.3·…·2.9) + 최대 ×3   // 거리 ×1.0 이 PC·모바일 공통 기본값 (v0.1.292: 모바일 기본 ×1.3 → ×1.0)
+let zoomIdx = 2;   // 기본 ×0.5
 const Z = () => ZOOMS[zoomIdx][0];
-function loadZoom(on) { zoomIdx = 0; try { const z = localStorage.getItem('sgsp-zoom4-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
-function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom4-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
+function loadZoom(on) { zoomIdx = 2; try { const z = localStorage.getItem('sgsp-zoom5-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
+function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom5-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
 loadZoom(false);
 let worldDraw = false, wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
@@ -1565,7 +1565,7 @@ let look = null, mini = null, miniPtr = -1;   // look: 미니맵으로 잠시 �
 function lookAt(p) { look = { x: (p.x - mini.x) / mini.k, y: (p.y - mini.y) / mini.k, until: T + 4 }; }
 const inMini = p => mini && p.x >= mini.x && p.x < mini.x + mini.w && p.y >= mini.y && p.y < mini.y + mini.h;
 function camTarget() { const u = ctrlOf(), z = Z(); if (look && T < look.until) return [look.x - VPW / z / 2, look.y - vh / z / 2]; return u ? [u.x - VPW / z / 2, u.y - vh / z / 2] : [cam.x, cam.y]; }
-function clampCam() { const z = Z(); cam.x = Math.max(0, Math.min(WW - VPW / z, cam.x)); cam.y = Math.max(0, Math.min(WH - vh / z, cam.y)); }
+function clampCam() { const z = Z(), fit = (c, world, view) => view >= world ? (world - view) / 2 : Math.max(0, Math.min(world - view, c)); cam.x = fit(cam.x, WW, VPW / z); cam.y = fit(cam.y, WH, vh / z); }   // 화면이 맵보다 넓으면(축소) 가운데 정렬
 function snapCam() { const [x, y] = camTarget(); cam.x = x; cam.y = y; clampCam(); }
 const toWorld = (sx, sy) => [(sx - LEFT_W) / Z() + cam.x, (sy - TB_H) / Z() + cam.y];
 const inView = (x, y) => x >= LEFT_W && x < VW && y >= TB_H && y < TB_H + vh;
@@ -1625,7 +1625,7 @@ function drawWorld() {
   if(terrain.battleAtlasReady===false&&BATTLE_ART.ready)terrain=buildTerrain(S.map,Sim.MW,Sim.MH,TILE);
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
   const z = Z(), vw = VPW / z, vhh = vh / z; wz = z; worldDraw = true;
-  ctx.drawImage(terrain, cam.x, cam.y, vw, vhh, LEFT_W, TB_H, VPW, vh);
+  ctx.fillStyle = COLORS.ink; ctx.fillRect(LEFT_W, TB_H, VPW, vh); ctx.drawImage(terrain, cam.x, cam.y, vw, vhh, LEFT_W, TB_H, VPW, vh);
   ctx.translate(LEFT_W, TB_H); ctx.scale(z, z); ctx.translate(-cam.x, -cam.y);
   const tileBox = (tx, ty, col, fill) => { if (fill) { ctx.fillStyle = fill; ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE); } ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2); };
   const c = ctrlOf();
@@ -1992,7 +1992,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.326', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.327', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
