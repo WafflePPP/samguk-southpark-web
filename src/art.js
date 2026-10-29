@@ -487,30 +487,24 @@ function drawBattleRing(g,x,y,rx,ry,col,dashed=false) {
   g.restore();
 }
 
-// map: 0 풀 1 숲 2 바위 3 강 4 여울. 판정 격자는 유지하고 2px 도트로만 그린다.
-function buildTerrain(map,MW,MH,TILE) {
-  const c=document.createElement('canvas');c.width=MW*TILE;c.height=MH*TILE;c.battleAtlasReady=!!BATTLE_ART.terrain;
-  if(!BATTLE_ART.ready||!BATTLE_ART.terrain||!BATTLE_ART.ground)return c;
-  const g=c.getContext('2d'),ground=document.createElement('canvas');g.imageSmoothingEnabled=false;ground.width=ground.height=512;
-  const gg=ground.getContext('2d');gg.imageSmoothingEnabled=false;gg.drawImage(BATTLE_ART.ground,0,0,512,512);
-  g.filter='saturate(70%) brightness(86%)';g.fillStyle=g.createPattern(ground,'repeat');g.fillRect(0,0,c.width,c.height);g.filter='none';
-  let seed=12345;const rnd=()=>((seed=seed*16807%2147483647)/2147483647),atlas=BATTLE_ART.terrain;
-  const tile=(index,x,y)=>{const col=index%4,row=Math.floor(index/4),sx=Math.floor(col*atlas.width/4)+6,sy=Math.floor(row*atlas.height/3)+6,sw=Math.floor((col+1)*atlas.width/4)-sx-6,sh=Math.floor((row+1)*atlas.height/3)-sy-6;g.drawImage(atlas,sx,sy,sw,sh,x,y,TILE,TILE);};
-  g.filter='saturate(55%) brightness(82%)';
-  for(let ty=0;ty<MH;ty++)for(let tx=0;tx<MW;tx++){
-    const t=map[ty*MW+tx],x=tx*TILE,y=ty*TILE,v=rnd();
-    if(t===3)tile(v<.5?8:9,x,y);else if(t===4)tile(v<.5?3:11,x,y);
+// map: 0 풀 1 숲 2 바위 3 강 4 여울. 도트 이전(v0.1.272) 벡터 지형으로 되돌림.
+function buildTerrain(map, MW, MH, TILE) {
+  const c = document.createElement('canvas'); c.width = MW * TILE; c.height = MH * TILE; const g = c.getContext('2d');
+  let s = 12345; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  g.fillStyle = COLORS.field; g.fillRect(0, 0, c.width, c.height);
+  for (let i = 0; i < MW * MH * 1.2; i++) { g.fillStyle = `rgba(${90 + r() * 60 | 0},${70 + r() * 50 | 0},${40 + r() * 30 | 0},${0.12 + r() * 0.18})`; g.beginPath(); g.ellipse(r() * c.width, r() * c.height, 4 + r() * 16, 2 + r() * 8, 0, 0, TAU); g.fill(); }
+  g.fillStyle = 'rgba(70,110,50,.45)'; g.fillRect(0, 0, c.width, c.height);
+  for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+    const t = map[ty * MW + tx], x = tx * TILE, y = ty * TILE, v = r();
+    g.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.02 + v * 0.09})` : `rgba(255,240,200,${0.012 + (v - 0.5) * 0.07})`; g.fillRect(x, y, TILE, TILE);
+    if (t === 3) { g.fillStyle = '#2f5f8a'; g.fillRect(x, y, TILE, TILE); g.strokeStyle = 'rgba(200,230,255,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 4, y + 10 + v * 8); g.quadraticCurveTo(x + 14, y + 4 + v * 8, x + 26, y + 10 + v * 8); g.stroke(); }
+    else if (t === 4) { g.fillStyle = '#a89a72'; g.fillRect(x, y, TILE, TILE); for (let k = 0; k < 4; k++) { g.fillStyle = 'rgba(90,78,52,.5)'; g.fillRect(x + r() * 28, y + r() * 28, 3, 2); } }
+    else if (t === 1) { g.fillStyle = 'rgba(20,50,25,.55)'; g.fillRect(x, y, TILE, TILE); for (let k = 0; k < 2; k++) { const px = x + 8 + k * 14 + r() * 4, py = y + 12 + r() * 10; g.fillStyle = '#4a3320'; g.fillRect(px - 2, py, 4, 10); g.fillStyle = k ? '#2f6a35' : '#27592d'; g.beginPath(); g.arc(px, py, 11, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.arc(px - 3, py - 3, 5, 0, TAU); g.fill(); } }
+    else if (t === 2) { g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x + 16, y + 24, 15, 6, 0, 0, TAU); g.fill(); g.fillStyle = `rgb(${110 + r() * 25 | 0},${105 + r() * 20 | 0},${95 + r() * 15 | 0})`; g.beginPath(); g.ellipse(x + 16, y + 17, 14, 11, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.ellipse(x + 12, y + 13, 6, 4, 0, 0, TAU); g.fill(); }
   }
-  g.filter='none';
-  // 수풀·바위는 투명 이미지를 겹쳐 타일의 사각 테두리가 드러나지 않게 한다.
-  const covered=new Set();g.filter='saturate(78%) brightness(92%)';
-  for(let ty=0;ty<MH;ty++)for(let tx=0;tx<MW;tx++){
-    const index=ty*MW+tx,t=map[index];if(t!==1&&t!==2||covered.has(index))continue;
-    const group=t===1&&tx+1<MW&&ty+1<MH&&[index+1,index+MW,index+MW+1].every(i=>map[i]===1&&!covered.has(i));
-    if(group)for(const i of [index+1,index+MW,index+MW+1])covered.add(i);
-    const object=BATTLE_ART.terrainObjects[(t===1?0:2)+((tx*7+ty*11)%2)],w=TILE*(t===1?(group?2.5:1.4):1.12),h=w*object.height/object.width;
-    g.drawImage(object,Math.round((tx+(group?1:.5))*TILE-w/2),Math.round((ty+(group?2:1))*TILE-h),Math.round(w),Math.round(h));
-  }
-  g.filter='none';
+  g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath();
+  for (let x = 0; x <= c.width; x += TILE) { g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, c.height); }
+  for (let y = 0; y <= c.height; y += TILE) { g.moveTo(0, y + 0.5); g.lineTo(c.width, y + 0.5); }
+  g.stroke();
   return c;
 }
