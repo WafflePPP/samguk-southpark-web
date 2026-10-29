@@ -357,7 +357,7 @@ function createBattle(seed = 1, opts = {}) {
     if (unique.has(u.name)) throw new Error(u.name + ': 고유 장수는 한 명만 편성할 수 있습니다.');
     unique.add(u.name);
   }
-  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, explore: !!opts.explore, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.065, tactics: opts.tactics ?? AIDEF.tactics, retreatScale: opts.retreatScale ?? AIDEF.retreat, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
+  const S = { t: 0, map: genMap(opts.mapSeed || 7, armyDefs, opts.theme, !!opts.wideRiver), theme: opts.theme || 'riverside', occ: new Int32Array(MW * MH), units: [], armies: [], proj: [], later: [], fx: [], texts: [], events: [], talked: new Set(), over: null, rnd, nextId: 1, auto: !!opts.auto, routChance: opts.routChance ?? 0.065, tactics: opts.tactics ?? AIDEF.tactics, retreatScale: opts.retreatScale ?? AIDEF.retreat, surrenderSlots: opts.surrenderSlots || 0, lock: { player: 0, enemy: 0 }, lockAI: { player: 0, enemy: 0 }, stats: { kills: 0, lost: 0, fled: 0, levelups: 0 } };
   const cnt = {}; let enemyField = 0, reserves = false;
   armyDefs.forEach((d, ai) => {
     const members = [];
@@ -1002,7 +1002,7 @@ function checkEnd(S) {
   }
   if (!mine.length) S.over = 'lose';   // 군단장·군주 전사만으로 즉시 패배하지 않고 생존 병력이 전투를 계속한다
   else if (mine.every(u => u.retreated)) { S.over = 'lose'; S.overWhy = 'retreat'; }   // 살아남은 병력이 모두 후퇴한 군단(후퇴한 장수·병사만 남음)은 패배 처리
-  else if (!S.explore && !S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
+  else if (!S.units.some(u => u.team === 'enemy' && !u.dead && !u.fled)) S.over = 'win';
 }
 function step(S, dt) {
   if (S.over) return;
