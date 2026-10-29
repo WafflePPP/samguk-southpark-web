@@ -1590,7 +1590,8 @@ function button(id, x, y, w, h, text, on, size = 16) {
 }
 const LUBU_ART_KEYS=new Set(['lubu','jang','diao','gao','chengong','lulingqi','f_xian','f_bing']);
 const LUBU_COMMON_ART={sword:'lubu_sword',spear:'lubu_spear',archer:'lubu_archer',mage:'lubu_mage',healer:'lubu_mage'};
-const styleOf = u => { let style = STYLES[u.team==='player'&&playerFaction()==='여포'&&LUBU_COMMON_ART[u.key]||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,sizeScale:LUBU_FACE_SCALE[u.key]};   // 여포 실제 얼굴 기준, 장식·무기 제외
+const lubuFactionUnit=u=>LUBU_ART_KEYS.has(u.key)||u.army?.name?.startsWith('여포군')||u.team==='player'&&playerFaction()==='여포'&&!u.army?.name?.includes('동맹군')||u.team==='enemy'&&enemyForces.some(f=>f.id===u.forceId&&forceFaction(f)==='여포');
+const styleOf = u => { const lubu=lubuFactionUnit(u);let style = STYLES[u.team==='player'&&playerFaction()==='여포'&&LUBU_COMMON_ART[u.key]||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,sizeScale:LUBU_FACE_SCALE[u.key]};if(lubu)style={...style,lubuMotion:true};   // 여포 실제 얼굴 기준, 장식·무기 제외
   return u.key !== 'guan' && !style.fixedWeapon && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
 const stText = u => u.captured ? '포박' : u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
 const hpCol = (p, current = COLORS.ally) => p > 0.3 ? current : p > 0.1 ? '#999999' : COLORS.danger;
@@ -1605,19 +1606,19 @@ const cooldownText = a => a.cd > 0 ? a.cd.toFixed(1) + '초' : a.ready ? '준비
 
 // ---------- 월드 그리기 ----------
 function drawUnit(u) {
-  const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && activePlayerArmies().some(A => A !== army() && A.ctrl === u);
+  const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && activePlayerArmies().some(A => A !== army() && A.ctrl === u),style=styleOf(u);
   ctx.save(); ctx.lineWidth = mine ? 4 : 3; ctx.strokeStyle = mine ? COLORS.gold : ally ? COLORS.ally : COLORS.danger;   // 팀 표시(아트방향 5-5): 아군 청 실선 / 적 주홍 점선 / 조작 중 금
   drawBattleRing(ctx,x,y+u.r*0.35,u.r*1.3,u.r*0.7,ctx.strokeStyle,!ally&&!mine); ctx.restore();
   { const marks = [...(u.buffs || []).map(b => [true, b.col]), [u.ftDebuffT > 0, '#ff9a4a'], ...Object.entries(u.auraOn || {}).filter(([, on]) => on).map(([k]) => [true, Sim.TITLE_EFFECT[k].col])].filter(m => m[0]), pulse = 0.45 + 0.3 * Math.sin(T * 6);   // 효과가 켜져 있는 동안 발밑에 색 고리 (공격 금·방어 청·피로 디버프 주황)
     if (marks.length) { ctx.save(); marks.forEach((m, i) => { ctx.globalAlpha = pulse; drawBattleRing(ctx,x,y+u.r*0.35,u.r*(1.6+i*0.28),u.r*(1.6+i*0.28)*0.55,m[1]); }); ctx.restore(); }
     const TA = (Sim.TITLE_EFFECT[u.subclass] || {}).aura && Sim.TITLE_EFFECT[u.subclass]; if (TA) { ctx.save(); ctx.globalAlpha = 0.16 + 0.06 * Math.sin(T * 3); drawBattleRing(ctx,x,y+u.r*0.35,Sim.AURA_RANGE,Sim.AURA_RANGE*0.55,TA.col,true); ctx.restore(); } }   // 무신(관우 등) 공격·화살·마법 방어 +20%, 간웅(조조) 전 능력 +10% 오라 범위
   const swing = u.anim > 0 ? -1.3 + 2.6 * (1 - u.anim / 0.28) : 0.9;
-  const k = Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))), mag = (u.hitMag || 1) * (u.hitState < 0 ? 1.25 : u.hitState > 0 ? 0.55 : 1), ds = Math.cos(u.hitAng) >= 0 ? 1 : -1, ap = !u.named && u.anim > 0 && u.range === 0 ? Math.sin((1 - u.anim / 0.28) * Math.PI) : 0;   // 상성 우세는 짧은 방어 반응, 불리는 강한 경직
+  const k = Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))), mag = (u.hitMag || 1) * (u.hitState < 0 ? 1.25 : u.hitState > 0 ? 0.55 : 1), ds = Math.cos(u.hitAng) >= 0 ? 1 : -1, ap = !style.lubuMotion && !u.named && u.anim > 0 && u.range === 0 ? Math.sin((1 - u.anim / 0.28) * Math.PI) : 0;   // 상성 우세는 짧은 방어 반응, 불리는 강한 경직
   const ox = Math.cos(u.hitAng) * 7 * mag * k + Math.sin(T * 100) * 2.5 * k + Math.cos(u.face) * 7 * ap, oy = Math.sin(u.hitAng) * 5 * mag * k + Math.sin(u.face) * 4 * ap;
   ctx.save(); ctx.translate(Math.round(ox), Math.round(oy));
-  drawBattleBody(ctx, x, y, BATTLE_UNIT_RADIUS, u.face, styleOf(u), { team:u.team, pose: heroPose(u, styleOf(u), S.t), flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4) });
+  drawBattleBody(ctx, x, y, BATTLE_UNIT_RADIUS, u.face, style, { team:u.team, pose: heroPose(u, style, S.t), flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4) });
   ctx.restore();
-  const style = styleOf(u), top = y - battleSpriteHeight(BATTLE_UNIT_RADIUS,style) - 6, w = u.r * 2.4;
+  const top = y - battleSpriteHeight(BATTLE_UNIT_RADIUS,style) - 6, w = u.r * 2.4;
   if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, hpCol(u.hp / u.maxHp, ally ? COLORS.ally : COLORS.danger)); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); const sk = u.special && Sim.SPECIAL[u.special]; if (sk) { const ready = u.spT <= 0, cy = top + (u.maxMp && ally ? 8 : 5); bar(x - w / 2, cy, w, 2.5, ready ? 1 : 1 - Math.max(0, u.spT) / sk.cd, ready ? COLORS.gold : '#c7822f'); } }   // 특수기(스킬) 쿨타임 바: 차오르는 중 주황, 준비되면 금색 가득
   if (mine || other) { ctx.fillStyle = mine ? COLORS.gold : COLORS.ally; ctx.beginPath(); ctx.moveTo(x - 7, top - 14); ctx.lineTo(x + 7, top - 14); ctx.lineTo(x, top - 4); ctx.closePath(); ctx.fill(); }
   if ((u.named && !Sim.U[u.key].synthetic) || u.isLeader) { const current = u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0'; label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, hpCol(u.hp / u.maxHp, current), 'center'); }   // 이름도 HP 30%·10% 구간을 같이 표시
@@ -1993,7 +1994,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.331', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.332', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
