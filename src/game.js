@@ -492,11 +492,11 @@ const SHOW = { dmg: true, buff: false, pauseSel: true, status: true };   // stat
 try { Object.assign(SHOW, JSON.parse(localStorage.getItem('sgsp-show') || '{}')); } catch (e) { /* 저장소를 못 쓰면 기본값 */ } SHOW.buff = false;
 const saveShow = () => { try { localStorage.setItem('sgsp-show', JSON.stringify(SHOW)); } catch (e) { /* 무시 */ } };
 // 카메라 거리(줌): PC·모바일 기본 ×1.3. 상단 버튼·[ ] 키로 조절하고 모드별로 기억한다
-const ZOOMS = [...Array(15)].map((_, i) => [Math.round((0.1 + 0.2 * i) * 10) / 10]).concat([[3]]);   // 거리 ×0.1~×3: 0.2 단위 (0.1·0.3·…·2.9) + 최대 ×3   // 거리 ×1.0 이 PC·모바일 공통 기본값 (v0.1.292: 모바일 기본 ×1.3 → ×1.0)
-let zoomIdx = 2;   // 기본 ×0.5
+const ZOOMS = [[0.1], [0.5], [1], [1.5], [2], [2.5], [3]];   // 거리 ×0.1(최소)·0.5 단위·×3(최대). 기본 ×1
+let zoomIdx = 2;   // 기본 ×1
 const Z = () => ZOOMS[zoomIdx][0];
-function loadZoom(on) { zoomIdx = 2; try { const z = localStorage.getItem('sgsp-zoom5-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
-function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom5-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
+function loadZoom(on) { zoomIdx = 2; try { const z = localStorage.getItem('sgsp-zoom6-' + (on ? 'mobile' : 'pc')); if (z !== null && +z >= 0 && +z < ZOOMS.length) zoomIdx = +z; } catch (e) { /* 무시 */ } }
+function setZoom(i) { zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i)); try { localStorage.setItem('sgsp-zoom6-' + (mobile ? 'mobile' : 'pc'), zoomIdx); } catch (e) { /* 무시 */ } if (S) clampCam(); }
 loadZoom(false);
 let worldDraw = false, wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
@@ -1655,7 +1655,7 @@ function drawToolbar() {
   label('조작: ' + army().name + (u ? ' · ' + u.name : ''), 12, 20, 17, COLORS.gold);
   label('Space 행동 · ← → 장수 · ↑ ↓ 군단', 12, 44, 14, COLORS.silver2);
   [['화면', 606], ['전투', 774], ['메뉴', 1179]].forEach(([s, x]) => label(s, x, 8, 12, COLORS.silver2, 'center'));
-  button('m:zoom', 500, 18, 104, 34, '거리 ×' + Z(), false);
+  button('m:zoomout', 470, 18, 30, 34, '−', false); button('m:zoom', 502, 18, 72, 34, '거리 ×' + Z(), false, 13); button('m:zoomin', 576, 18, 30, 34, '+', false);
   button('m:speed', 608, 18, 104, 34, '속도 ×' + SPEEDS[speedIdx], false);
   button('cmd:auto', 722, 18, 104, 34, S.auto ? '자동 ON' : '자동 OFF', S.auto);
   button('cmd:menu', 1084, 18, 190, 34, '시스템', false);
@@ -1761,8 +1761,8 @@ function drawUnitList() {   // 부대원 팝업(상태창 위에 그린다): 6�
   S.units.filter(u => u.army === army()).slice(0, 18).forEach((u, i) => drawPortrait(u, 4 + (i % 6) * 89, 351 + Math.floor(i / 6) * 89, TOUCH, TOUCH));
 }
 function drawMobileSide() {   // 상단: 화면 → 전투 → 메뉴 순으로 86px 터치 버튼을 한 줄에 둔다 (오른쪽 위는 미니맵)
-  const y = 4, xs = [6, 162, 318, 474];
-  button('m:zoom', xs[0], y, 150, TOUCH, '거리 ×' + Z(), false, 17);
+  const y = 4, xs = [6, 286, 442, 598];
+  button('m:zoomout', 6, y, 90, TOUCH, '−', false, 26); button('m:zoom', 98, y, 90, TOUCH, '거리 ×' + Z(), false, 15); button('m:zoomin', 190, y, 90, TOUCH, '+', false, 26);
   button('m:speed', xs[1], y, 150, TOUCH, '속도 ×' + SPEEDS[speedIdx], false, 17);
   button('cmd:auto', xs[2], y, 150, TOUCH, S.auto ? '자동 ON' : '자동 OFF', S.auto, 17);
   button('cmd:menu', xs[3], y, 150, TOUCH, '시스템', false, 17);
@@ -1992,7 +1992,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.327', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.328', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
@@ -2917,7 +2917,8 @@ function uiClickCore(id) {
   else if (id === 'm:act') act(false); else if (id === 'm:alt') act(true);
   else if (id === 'm:spell') { const u = ctrlOf(); if (u && u.spells.length) Sim.selectSpell(u, (u.spellSel + 1) % u.spells.length); }
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:pad') padVisible = !padVisible;
-  else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);
+  else if (id === 'm:zoom') setZoom(2);   // 가운데 표시를 누르면 기본 ×1
+  else if (id === 'm:zoomout') setZoom(zoomIdx - 1); else if (id === 'm:zoomin') setZoom(zoomIdx + 1);
   else if (id === 'm:info') { selTarget = null; selectMode = true; }
   else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
   else if (id === 'm:formation') cycleFormation(army());
