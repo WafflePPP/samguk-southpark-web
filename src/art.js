@@ -171,7 +171,7 @@ function connectHeroPose(u,pose,t) {
 }
 // 화면만 보간하며 공격·피격 판정과 타이머는 변경하지 않는다.
 function heroPose(u, s, t) {
-  const enhanced=s.lubuMotion||s.caoMotion;
+  const enhanced=s.lubuMotion||s.caoMotion||s.liuMotion;
   if (!u.named && !enhanced) return null;
   const action = u.anim > 0 ? u.actionKind || 'attack' : '', duration = action === 'attack' || action === 'melee' ? 0.28 : 0.4;
   const p = Math.max(0, Math.min(1, 1 - u.anim / duration)), kick = action ? (1 - p) ** 2 : 0;
