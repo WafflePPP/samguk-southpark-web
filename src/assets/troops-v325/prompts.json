@@ -1,0 +1,34 @@
+[
+  {
+    "key": "troop_sword",
+    "name": "여포군 검보병",
+    "file": "troop_sword.png",
+    "actions": ["thrust", "slash"],
+    "frameCount": 64,
+    "prompt": "여포 기수의 얼굴 크기·성인 체형·도트 밀도를 기준으로 만든 남색 검보병. 8방향 대기·보행·찌르기·베기 64컷. 보병 총높이는 기병보다 작게 유지. 투명 배경, 프레임 병합·잘린 무기·말 없음."
+  },
+  {
+    "key": "troop_spear",
+    "name": "여포군 창보병",
+    "file": "troop_spear.png",
+    "actions": ["thrust", "slash"],
+    "frameCount": 56,
+    "prompt": "여포 기수의 얼굴 크기·성인 체형·도트 밀도를 기준으로 만든 남색 창보병. 8방향 대기·보행·찌르기·베기 56컷. 보병 총높이는 기병보다 작게 유지. 투명 배경, 프레임 병합·잘린 무기·말 없음."
+  },
+  {
+    "key": "troop_archer",
+    "name": "여포군 궁병",
+    "file": "troop_archer.png",
+    "actions": ["shoot", "slash"],
+    "frameCount": 64,
+    "prompt": "여포 기수의 얼굴 크기·성인 체형·도트 밀도를 기준으로 만든 남색 궁병. 8방향 대기·보행·사격·활 타격 64컷. 보병 총높이는 기병보다 작게 유지. 투명 배경, 프레임 병합·잘린 활·말 없음."
+  },
+  {
+    "key": "troop_mage",
+    "name": "여포군 법사·회복병",
+    "file": "troop_mage.png",
+    "actions": ["cast", "heal"],
+    "frameCount": 56,
+    "prompt": "여포 기수의 얼굴 크기·성인 체형·도트 밀도를 기준으로 만든 남색 군사. 법사와 회복병이 공유하는 8방향 대기·보행·시전·회복 56컷. 보병 총높이는 기병보다 작게 유지. 투명 배경, 분리된 마법 입자·말 없음."
+  }
+]
