@@ -296,6 +296,7 @@ const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
 const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 28, SAVE_SLOTS = 3;   // v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
+let stratPractice = null;   // 명세 76: 전략 화면 실습 상태 {step,flags,snap,stepT,advT,denyT} (저장하지 않는 모듈 변수). null 이 아니면 saveCampaign·startBattle 이 막힌다
 let tutorialBattle = null;   // 명세 70: 새 게임 연습 전투 상태(저장하지 않는 모듈 변수). null 이 아니면 saveCampaign 이 막힌다
 let startDifficulty = 'normal', activeSaveSlot = 1, saveSlotMode = null, startFactionSelect = false;
 const saveKey = slot => `${SAVE_KEY}-${slot}`;
@@ -327,11 +328,12 @@ function resetCampaignData(faction = '여포') {
   distributePlayerInfantry(); cityGuards.length = 0; STAGES.forEach(s => resetCityGuards(s));
   campaign.pacified = null; Object.assign(campaign, econInit(), dipInit()); for (const s of STAGES) campaign.econOwner[s.id] = stageFaction(s);
 }
-function canManualSave() { return !tutorialBattle && stratTutStep < 0 && !custodyOpen() && state === 'map' && !campaign.pendingEncounter && !campaign.movement.length && !allyChoice && !warnMove && !diplomacyResult && !diplomacyView && !scoutView && !econView && !heroView && !campaign.battle; }   // 전략 화면에서 이동·교전 처리가 끝난 시점에만 저장할 수 있다
+function canManualSave() { return !tutorialBattle && !stratPractice && stratTutStep < 0 && !custodyOpen() && state === 'map' && !campaign.pendingEncounter && !campaign.movement.length && !allyChoice && !warnMove && !diplomacyResult && !diplomacyView && !scoutView && !econView && !heroView && !campaign.battle; }   // 전략 화면에서 이동·교전 처리가 끝난 시점에만 저장할 수 있다
+const campaignPayload = () => ({ ver: SAVE_VERSION, owners: STAGES.map(s => s.owner), factions: STAGES.map(s => s.faction), enemyForces, cityGuards, roster, campaign: { ...campaign, battle: null, pendingEncounter: null, movement: [], movementPage: 0, invasion: false, explore: false, from: null } });   // 저장 슬롯과 전략 실습 스냅샷(명세 76)이 같이 쓰는 페이로드
 function saveCampaign(slot = activeSaveSlot, manual = false) {   // manual=true(저장 버튼)일 때만 실제로 저장한다. 그 밖의 호출(자동 저장)은 하지 않는다
-  if (!manual || tutorialBattle) return false;   // 연습 전투 중에는 어떤 경로로도 슬롯을 덮지 않는다 (명세 70)
+  if (!manual || tutorialBattle || stratPractice) return false;   // 연습 전투·전략 실습 중에는 어떤 경로로도 슬롯을 덮지 않는다 (명세 70·76)
   activeSaveSlot = slot;
-  try { localStorage.setItem(saveKey(slot), JSON.stringify({ ver: SAVE_VERSION, owners: STAGES.map(s => s.owner), factions: STAGES.map(s => s.faction), enemyForces, cityGuards, roster, campaign: { ...campaign, battle: null, pendingEncounter: null, movement: [], movementPage: 0, invasion: false, explore: false, from: null } })); return true; } catch (e) { /* 저장소를 못 쓰면 현재 플레이는 계속한다 */ }
+  try { localStorage.setItem(saveKey(slot), JSON.stringify(campaignPayload())); return true; } catch (e) { /* 저장소를 못 쓰면 현재 플레이는 계속한다 */ }
 }
 const rawSave = slot => localStorage.getItem(saveKey(slot)) || (slot === 1 ? localStorage.getItem(SAVE_KEY) : '') || '';
 function readCampaign(slot = activeSaveSlot) { try { const d = JSON.parse(rawSave(slot) || 'null'); return d && d.ver === SAVE_VERSION ? d : null; } catch (e) { return null; } }
@@ -506,6 +508,7 @@ function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 �
   mobile = on; loadZoom(on); TB_H = on ? 0 : 58; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
 function startBattle(stage, explore = false) {
+  if (stratPractice) return false;   // 전략 실습에서는 어떤 경로로도 전투가 열리지 않는다 (명세 76)
   repSide = 'player'; repPage = 0;
   if (!combatReadyCorps(roster[campaign.corps])) { state = 'map'; campaign.battle = null; campaign.notice = '군단 편성에서 1번 칸에 이름 있는 군단장을 배치해야 출전할 수 있습니다.'; saveCampaign(); return false; }
   const st0 = stage || campaign.battle, gi = st0 && guestInfo(st0), hostIds = campaign.invasion && st0 && st0.owner === 'enemy' && relationOf(st0.faction).status === 'ally' ? gi.allies.filter(f => forceFaction(f) === st0.faction).map(f => f.id) : [];
@@ -530,7 +533,7 @@ function startCampaign() {
   state = 'map'; S = null; campaign.battle = null; moveSelectOpen = false; exploreSelectOpen = false; diplomacyView = null; heroView = null; moveMode = 'corps'; centerMap(); campaign.notice = campaign.completed ? '전 도시 점령 승리 기록입니다.' : (START_NOTICE[playerFaction()] ? START_NOTICE[playerFaction()] + ' ' : '') + '이동 버튼에서 군단과 이동할 도시를 선택하세요.';
 }
 function resetTransientUi() {
-  stratTutStep = -1; custodyView = false; custodyPage = 0; turnSummary = null; pendingSummary = null; inTurnFlow = false;   // 남아 있던 팝업·선택 상태가 새 게임·불러오기 뒤 입력을 막지 않게 한다
+  stratTutStep = -1; stratPractice = null; custodyView = false; custodyPage = 0; turnSummary = null; pendingSummary = null; inTurnFlow = false;   // 남아 있던 팝업·선택 상태가 새 게임·불러오기 뒤 입력을 막지 않게 한다
   allyChoice = null; allyHelpIds = null; lastHelpIds = []; warnMove = null; diplomacyResult = null; diplomacyQueue = []; diplomacyView = null; scoutView = null; econView = false; heroView = null; aiRelationsOpen = false; mapTool = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps'; saveSlotMode = null; startFactionSelect = false; popupSink = null; aiEntries = null; rosterPick = null; selectMode = false; selTarget = null; menuOpen = false;
 }
 function startNewGame(faction) { resetCampaignData(faction); campaign.difficulty = startDifficulty; resetTransientUi(); titleNotice = ''; startCampaign(); saveCampaign(); }
@@ -563,7 +566,7 @@ function finishTutorialBattle() {   // 승리 뒤: 연습 상태를 정리하고
   if (snap && JSON.stringify(roster) !== snap) { const keep = JSON.parse(snap); roster.forEach((c, i) => { for (const k of Object.keys(c)) delete c[k]; Object.assign(c, keep[i]); }); }   // 방어: 성장·편성이 새어 들었으면 되돌린다 (createBattle 은 growth 를 값으로 복사하므로 보통 같다)
   tutorialBattle = null; tutorialStep = -1; tutorialSeen = true;
   try { localStorage.setItem('sgsp-tutorial', '1'); } catch (e) { /* 무시 */ }
-  S = null; overAt = 0; startCampaign(); saveCampaign(); if (!stratTutSeen) stratTutStep = 0;
+  S = null; overAt = 0; startCampaign(); saveCampaign(); beginStratIntro();
 }
 function tutorialTick() {   // 프레임마다: 지시 단계 완료 감지. 자동 통과 없음 — 플레이어의 실제 행동(flags)만 단계를 올린다
   const t = tutorialBattle; if (!t || !S || S.over || tutorialStep >= 0) return;
@@ -1876,6 +1879,139 @@ function drawStratTutorial() {
   button('stut:skip', x + w / 2 - 80, ty, 160, tb(46), '건너뛰기', false, 18);
   button('stut:next', x + w - 190, ty, 160, tb(46), last ? '닫기' : '다음', true, 18);
 }
+// ---------- 명세 76: 전략 화면 실습형 튜토리얼 (연습 전투 직후 첫 진입 1회, 건너뛰기 없음, 끝나면 전부 되돌림) ----------
+const STRAT_PRACTICE = { on: true, idle: 30 };   // on=false 면 읽기형 7쪽 자동 표시(긴급 롤백·시험). idle: 이 시간(초) 동안 행동이 없으면 배너가 깜박인다 (설계값)
+const SPR_STEPS = [   // [이름, PC 문구들, 모바일 문구들] — 문구가 둘 이상이면 하위 상태(practiceSub)로 고른다. 완료 감지는 practiceAfter·stratPracticeTick
+  ['도시 선택', ['지도에서 내 도시(깃발이 있는 곳)를 눌러 정보를 보세요'], ['지도의 내 도시(깃발)를 터치하세요']],
+  ['이동 예약', ["오른쪽 '이동' 버튼을 누르세요", '이동할 군단을 목록에서 고르세요', '지도에서 갈 도시를 누르면 이동이 예약됩니다 (연습이라 실행되지 않아요)'], ["오른쪽 '이동' 버튼을 터치하세요", '이동할 군단을 터치하세요', '지도에서 갈 도시를 터치하세요 (연습이라 실행되지 않아요)']],
+  ['진행하기', ["'진행하기'를 눌러 한 턴을 실행해 보세요 (예약한 이동은 취소되고, 끝나면 원래대로 돌아와요)", '한 턴이 진행됩니다. 안내 창을 읽고 닫으세요'], ["'진행하기'를 터치하세요 (끝나면 원래대로 돌아와요)", '안내 창을 읽고 닫으세요']],
+  ['외교', ["'외교' 버튼을 누르고, 빛나는 다른 세력 수도를 선택하세요", '외교 창입니다. 휴전·동맹을 시도해 봐도 됩니다. 닫기를 누르세요'], ["'외교' 버튼을 터치하고 빛나는 수도를 터치하세요", '외교 창입니다. 닫기를 터치하세요']],
+  ['군량', ['군량 칩을 눌러 보유량과 턴당 증감을 보세요. 닫기를 누르세요'], ['군량 칩을 터치해 보고, 닫으세요']],
+  ['군단 편성', ["'군단 편성'을 눌러 열었다가 '전략으로'로 돌아오세요"], ["'군단 편성'을 터치했다가 '전략으로'를 터치하세요"]],
+];
+const SPR_CARDS = {   // [제목, 줄들(문자열 또는 [PC, 모바일]), 버튼 글자]
+  0: ['전략 화면 연습', ['6단계를 직접 눌러 봅니다. 건너뛸 수 없습니다.', '목표: 모든 도시를 점령하면 승리합니다.', '연습이 끝나면 한 일은 모두 되돌립니다. (저장되지 않음)'], '시작'],
+  7: ['연습 끝', ['연습 중 한 일은 모두 되돌렸습니다. 지금부터 실제 1턴입니다.', '저장·로드는 전략 화면에서만 됩니다 (오른쪽 저장 버튼).', ['N턴 요약·정찰·세력 장수·탐색은 오른쪽 위 도움말 버튼에서 다시 봅니다.', 'N턴 요약·정찰·장수·탐색은 왼쪽 아래 도움말에서 다시 봅니다.']], '실제 원정 시작'],
+};
+const SPR_BLOCK = /^(campaign:(help|save|load|heroes|scout|explore|news|diff|movemode)(:|$)|save-slot:|stut:|tut:|title:|start-)/;   // 실습 중 어떤 단계에서도 막는 버튼
+const practiceModal = () => !!(campaign.movement.length || diplomacyResult || diplomacyQueue.length || turnSummary || diplomacyView || econView || moveSelectOpen || state === 'roster' || campaign.pendingEncounter || warnMove || allyChoice);   // 모달 팝업·편성 화면: 안의 입력은 기존 규칙에 맡긴다
+function beginStratIntro() {   // 연습 전투 승리 직후·(연습 전투를 끈) 새 게임 직후: 처음이면 실습, 실습을 끄면 기존 읽기형 7쪽
+  if (stratTutSeen) return;
+  if (STRAT_PRACTICE.on) startStratPractice(); else stratTutStep = 0;
+}
+function startStratPractice() {
+  if (!STRAT_PRACTICE.on || stratTutSeen) return false;
+  stratTutStep = -1; stratPractice = { step: 0, flags: {}, snap: JSON.stringify(campaignPayload()), stepT: T, advT: T, denyT: -9 };   // snap: 실습 시작 직후(턴 1, 새 게임 상태)
+  return true;
+}
+function restoreSnapshot() {   // 실습 중 바뀐 세계·편성·외교·군량을 시작 스냅샷으로 되돌린다. 슬롯·activeSaveSlot·localStorage 는 건드리지 않는다
+  const P = stratPractice, data = JSON.parse(P.snap);
+  for (const k of Object.keys(campaign)) if (!(k in data.campaign)) delete campaign[k];   // Object.assign 만으로는 턴 진행 중 새로 생긴 필드가 남는다
+  if (!restoreCampaign(data)) { stratPractice = null; S = null; state = 'title'; titleNotice = '연습 상태를 되돌리지 못해 처음 화면으로 돌아왔습니다.'; return false; }   // 방어: 스냅샷은 항상 유효해야 한다
+  for (const k of Object.keys(aiGoal)) delete aiGoal[k]; aiSupportUsed = new Set();   // 저장하지 않는 AI 메모리 캐시
+  Object.assign(campaign, { battle: null, pendingEncounter: null, movement: [], movementPage: 0, invasion: false, explore: false, from: null, responsePage: 0 });
+  resetTransientUi(); stratPractice = P; rosterSource = 0; rosterPage = 0; rosterTarget = null; rosterNew = null; rosterMode = 'select';
+  startCampaign(); return true;
+}
+function finishStratPractice() {
+  if (!restoreSnapshot()) return;
+  stratPractice = null; stratTutSeen = true;
+  try { localStorage.setItem('sgsp-strat-tutorial', '1'); } catch (e) { /* 무시 */ }
+}
+function practiceNext() {   // 카드의 버튼 (시작 카드 → 1단계, 끝 카드 → 실제 원정)
+  const P = stratPractice; if (!P || state !== 'map') return;
+  if (P.step === 0) { P.step = 1; P.flags = {}; P.advT = P.stepT = T; } else if (P.step === 7) finishStratPractice();
+}
+function practiceAllows(id) {   // 단계별 허용 버튼 (카메라 끌기·방향키·미니맵은 버튼이 아니라 항상 허용)
+  const n = stratPractice.step;
+  if (SPR_BLOCK.test(id)) return false;
+  if (practiceModal()) return true;
+  if (n === 0 || n === 7) return false;
+  if (n === 1) return id.startsWith('stage:');
+  if (n === 2) return id === 'campaign:move' || id.startsWith('campaign:move:') || id.startsWith('stage:');
+  if (n === 3) return id === 'campaign:end';
+  if (n === 4) return id === 'campaign:diplomacy' || id.startsWith('campaign:diplomacy:') || id.startsWith('stage:');
+  if (n === 5) return id === 'campaign:econ' || id === 'campaign:econ:close';
+  return id === 'campaign:roster' || id.startsWith('roster:');
+}
+function practiceSub() {   // 한 단계 안의 하위 상태 (문구·강조 선택)
+  const P = stratPractice, f = P.flags;
+  if (P.step === 2) return f.reserved || (!moveSelectOpen && moveMode === 'city') ? 2 : moveSelectOpen ? 1 : 0;
+  if (P.step === 3) return f.ended ? 1 : 0;
+  if (P.step === 4) return diplomacyView ? 1 : 0;
+  return 0;
+}
+function practiceAfter(id) {   // 클릭 직후: 플레이어의 실제 행동으로 단계 완료 조건(flags)을 기록한다
+  const P = stratPractice, f = P.flags, n = P.step;
+  if (n === 1) { if (id.startsWith('stage:') && mapSel && stageById(mapSel) && stageById(mapSel).owner === 'player') f.city = true; }
+  else if (n === 2) {   // 이동 → 군단 → 도시 순서
+    if (/^campaign:move:\d+$/.test(id) && moveMode === 'city') f.picked = true;
+    else if (id.startsWith('stage:') && f.picked && roster.some(c => c.target)) { f.reserved = true; moveSelectOpen = false; moveMode = 'corps'; }
+  } else if (n === 4) { if (diplomacyView) f.dip = true; }
+  else if (n === 5) { if (econView) f.econ = true; }
+  else if (n === 6) { if (state === 'roster') f.roster = true; }
+}
+function practiceEndTurn() {   // 3단계: 이동 예약을 비우고 실제로 한 턴을 실행한다(AI·경제·요약 포함). 끝나면 stratPracticeTick 이 복원한다
+  const P = stratPractice; if (!P || P.step !== 3 || P.flags.ended) return;
+  mapTool = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps';
+  for (const c of roster) c.target = null; campaign.destination = null;   // 아군 발 교전·전쟁 돌입을 원천 차단
+  const t0 = campaign.turn;
+  try { endCampaignTurn(); } catch (e) { console.error(e); if (restoreSnapshot()) P.flags.restored = true; return; }   // 방어: AI 단계 예외로 실습이 멈추지 않게
+  P.flags.ended = campaign.turn > t0;
+}
+function practiceAdvance() {
+  const P = stratPractice; P.step++; if (P.step === 7) campaign.notice = ''; P.advT = P.stepT = T; P.flags = {};
+  moveSelectOpen = false; moveMode = 'corps'; mapTool = null;
+  if (P.step === 4) {   // 외교: 화면 밖을 찾아다니지 않게 가장 가까운 외교 가능 수도로 카메라를 옮긴다
+    const from = roster[0] && roster[0].at, list = STAGES.filter(diplomable), dist = s => route(from, s.id).length || 1e9;
+    if (list.length) centerMap(list.reduce((a, b) => dist(b) < dist(a) ? b : a).id);
+  }
+}
+function stratPracticeTick() {   // 프레임마다: 완료 조건이 맞으면 0.8초 뒤 다음 단계. 자동 통과 없음 (30초 무행동은 깜박임만)
+  const P = stratPractice; if (!P || P.step < 1 || P.step > 6) return;
+  const f = P.flags, n = P.step;
+  if (n === 3 && f.ended && !f.restored && (campaign.pendingEncounter || allyChoice || warnMove || campaign.battle || !practiceModal() && !custodyOpen())) {   // AI 침공이 걸리면 바로 복원, 아니면 요약까지 모두 닫힌 뒤 복원
+    const invaded = !!campaign.pendingEncounter; if (!restoreSnapshot()) return; f.restored = true; campaign.notice = invaded ? '연습 턴이 끝나 처음 상태로 돌아왔습니다' : campaign.notice;
+  }
+  const done = n === 1 ? f.city : n === 2 ? f.reserved : n === 3 ? f.restored : n === 4 ? f.dip && !diplomacyView && !diplomacyResult && !diplomacyQueue.length : n === 5 ? f.econ && !econView : f.roster && state === 'map';
+  if (done && T - P.advT > 0.8) practiceAdvance();
+}
+function practiceTargets() {   // 지금 눌러야 할 버튼의 btns (금테 맥동)
+  const n = stratPractice.step, sub = practiceSub(), by = id => btns.filter(b => b.id === id);
+  if (n === 1) return by('stage:' + (roster[0] && roster[0].at));
+  if (n === 2) return sub === 0 ? by('campaign:move') : sub === 1 ? btns.filter(b => /^campaign:move:\d+$/.test(b.id)).slice(0, 1) : [];
+  if (n === 3) return sub === 0 ? by('campaign:end') : [];
+  if (n === 4) return sub === 1 ? by('campaign:diplomacy:close') : mapTool === 'diplomacy' ? btns.filter(b => b.id.startsWith('stage:') && diplomable(stageById(b.id.slice(6)))) : by('campaign:diplomacy');
+  if (n === 5) return by(econView ? 'campaign:econ:close' : 'campaign:econ');
+  return by(state === 'roster' ? 'roster:back' : 'campaign:roster');
+}
+function stratBannerRect() {   // 위쪽(미니맵과 오른쪽 패널 사이)이 기본, 팝업 버튼과 겹치면 하단 → 빈 띠를 찾아 옮긴다
+  const x = mb(200, 190), w = mb(780, 800), h = mb(56, 76), top = mb(10, 8), bot = VH - h - 8;
+  const clash = y => btns.some(b => !b.id.startsWith('stage:') && b.x < x + w && x < b.x + b.w && b.y < y + h && y < b.y + b.h);
+  for (const y of campaign.movement.length ? [bot, top] : [top, bot]) if (!clash(y)) return { x, y, w, h };   // 이동 안내 창은 왼쪽 위를 차지하므로 하단을 먼저
+  for (let y = top; y <= bot; y += 8) if (!clash(y)) return { x, y, w, h };
+  return { x, y: top, w, h };
+}
+function drawStratPractice() {
+  const P = stratPractice; if (!P || state === 'title') return;
+  if (P.step === 0 || P.step === 7) {   // 시작·끝 카드 (읽기형 카드와 같은 치수)
+    const c = SPR_CARDS[P.step], w = mobile ? 960 : 800, h = mobile ? 374 : 330, x = mobile ? 20 : 100, y = mobile ? 232 : 200;
+    ctx.fillStyle = 'rgba(4,6,12,.6)'; ctx.fillRect(0, 0, VW, VH);
+    panel(x, y, w, h, COLORS.gold, 4, 'rgba(18,21,31,.98)');
+    label(`전략 화면 연습  ${P.step === 0 ? '시작' : '끝'}`, x + 30, y + 30, 18, COLORS.silver2, 'left', w - 60);
+    label(c[0], x + w / 2, y + mb(82, 78), mb(32, 34), COLORS.gold, 'center', w - 60);
+    c[1].forEach((l, i) => label(Array.isArray(l) ? l[mobile ? 1 : 0] : l, x + w / 2, y + mb(138, 130) + i * mb(36, 34), mb(20, 22), COLORS.silver, 'center', w - 50));
+    button('spr:next', x + w - 190, y + h - mb(62, TOUCH + 12), 160, tb(46), c[2], true, 17);
+    return;
+  }
+  const pulse = 0.5 + 0.5 * Math.sin(T * 6);
+  for (const b of practiceTargets()) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 3 + pulse * 3; ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8); }
+  const texts = SPR_STEPS[P.step - 1][mb(1, 2)], text = `${P.step}/6 ${texts[Math.min(practiceSub(), texts.length - 1)]}`, R = stratBannerRect();
+  const deny = T - P.denyT < 0.6, flash = T - P.stepT > STRAT_PRACTICE.idle && Math.floor(T * 2) % 2 === 0, lines = wrapText(text, mb(34, 27)).slice(0, 2);
+  panel(R.x, R.y, R.w, R.h, deny ? COLORS.danger : flash ? '#fff' : COLORS.gold, 3, 'rgba(10,12,20,.9)');
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = i < P.step - 1 ? COLORS.gold : 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(R.x + 18 + i * 15, R.y + R.h / 2, 5, 0, TAU); ctx.fill(); }
+  lines.forEach((t, i) => label(t, R.x + 112, R.y + R.h / 2 + (i - (lines.length - 1) / 2) * mb(20, 28), mb(18, 17), deny ? COLORS.danger : flash ? '#fff' : COLORS.silver, 'left', R.w - 124));
+}
 function finishTutorial() {
   tutorialStep = -1; if (tutorialBattle) return;   // 연습 전투 안내는 연습이 끝날 때 기록한다 (finishTutorialBattle)
   tutorialSeen = true;
@@ -1997,7 +2133,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.335', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.336', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
@@ -2083,7 +2219,7 @@ let mcam = { x: 0, y: 0 }, mapSel = null, mapDrag = null;   // mapSel: 오른쪽
 const mapKeys = new Set();
 const clampMcam = () => { mcam.x = Math.max(0, Math.min(WORLD_W - MAP_VW, mcam.x)); mcam.y = Math.max(0, Math.min(WORLD_H - VH, mcam.y)); };
 function centerMap(id) { const s = stageById(id || (roster[campaign.corps] && roster[campaign.corps].at)); mapSel = null; if (s) { mcam.x = s.x - MAP_VW / 2; mcam.y = s.y - VH / 2; } clampMcam(); }
-const mapFree = () => state === 'map' && !custodyOpen() && !(stratTutStep >= 0 || saveSlotMode || campaign.pendingEncounter || warnMove || allyChoice || diplomacyResult || diplomacyView || heroView || scoutView || econView || exploreSelectOpen || moveSelectOpen || campaign.movement.length);   // 팝업이 없을 때만 카메라 입력을 받는다
+const mapFree = () => state === 'map' && !custodyOpen() && !(stratTutStep >= 0 || (stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) || saveSlotMode || campaign.pendingEncounter || warnMove || allyChoice || diplomacyResult || diplomacyView || heroView || scoutView || econView || exploreSelectOpen || moveSelectOpen || campaign.movement.length);   // 팝업이 없을 때만 카메라 입력을 받는다
 const inMapMini = p => p.x >= MAP_MINI.x && p.x < MAP_MINI.x + MAP_MINI.w && p.y >= MAP_MINI.y && p.y < MAP_MINI.y + MAP_MINI.h;
 function miniJump(p) { mcam.x = (p.x - MAP_MINI.x) * (WORLD_W / MAP_MINI.w) - MAP_VW / 2; mcam.y = (p.y - MAP_MINI.y) * (WORLD_H / MAP_MINI.h) - VH / 2; clampMcam(); }
 function drawMapSea(g = ctx) {
@@ -2247,7 +2383,7 @@ function drawMapPanelMobile(sel, stationedAt) {   // 모바일: 오른쪽 패널
   button('campaign:roster', xs[0], rows[3], bw, TOUCH, '군단 편성', false, 17); button('campaign:heroes', xs[1], rows[3], bw, TOUCH, '세력 장수', false, 17);
   button('campaign:save', xs[0], rows[4], bw, TOUCH, '저장', false, 17); button('campaign:load', xs[1], rows[4], bw, TOUCH, '로드', false, 17);
   button('campaign:end', 1012, rows[5], 250, TOUCH, '진행하기', true, 19);
-  if (campaign.notice) { const lines = wrapText(campaign.notice, 36).slice(0, 2); panel(190, 6, 800, 12 + lines.length * 28, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.82)'); lines.forEach((t, i) => label(t, 200, 24 + i * 28, 15, COLORS.silver, 'left', 780)); }
+  if (campaign.notice && !(stratPractice && stratPractice.step >= 1 && stratPractice.step <= 6)) { const lines = wrapText(campaign.notice, 36).slice(0, 2); panel(190, 6, 800, 12 + lines.length * 28, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.82)'); lines.forEach((t, i) => label(t, 200, 24 + i * 28, 15, COLORS.silver, 'left', 780)); }
   const x0 = 10, y0 = 580;   // 아래: 세력 요약 + 세력 관계
   panel(x0, y0, 360, 134, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.82)');   // 오른쪽 틈(378~464)은 도움말 버튼
   label('세력 · 거점/군단', x0 + 10, y0 + 18, 12, COLORS.silver2);
@@ -2511,7 +2647,7 @@ const rosterHeroes = () => roster.flatMap((c, ci) => c.units.map((key, slot) => 
 function autoDisbandEmpty() {   // 장수·병사가 하나도 없는 군단은 자동으로 해제한다 (마지막 한 군단은 남긴다)
   let removedCount = 0;
   for (let i = roster.length - 1; i >= 0 && roster.length > 1; i--) {
-    if (roster[i].units.some(Boolean)) continue;
+    if (roster[i].units.some(Boolean) || i === rosterNew) continue;   // 편성 중인 새 군단은 나갈 때(roster:back) 정리한다
     roster.splice(i, 1); removedCount++;
     if (campaign.corps === i) campaign.corps = 0; else if (campaign.corps > i) campaign.corps--;
     if (rosterSource === i) rosterSource = 0; else if (rosterSource > i) rosterSource--;
@@ -2715,10 +2851,10 @@ function drawMinimap() {
 }
 function draw() {
   btns = []; mini = null;
-  if ((state === 'title' || state === 'map' || state === 'roster') && custodyOpen()) { drawCustody(); return; }
+  if ((state === 'title' || state === 'map' || state === 'roster') && custodyOpen()) { drawCustody(); drawStratPractice(); return; }
   if (state === 'title') { drawTitle(); return; }
-  if (state === 'map') { drawStageMap(); return; }
-  if (state === 'roster') { drawRoster(); return; }
+  if (state === 'map') { drawStageMap(); drawStratPractice(); return; }
+  if (state === 'roster') { drawRoster(); drawStratPractice(); return; }
   if(!BATTLE_ART.ready){ctx.fillStyle=COLORS.ink;ctx.fillRect(0,0,VW,VH);label(BATTLE_ART.error?'전투 이미지를 불러오지 못했습니다':'전투 이미지를 불러오는 중',VW/2,300,30,COLORS.gold,'center');label(BATTLE_ART.error?'연결을 확인한 뒤 화면을 누르거나 Enter로 다시 시도하세요.':'잠시만 기다려 주세요.',VW/2,360,22,COLORS.silver,'center');return;}
   layout(); clampCam(); const mobileSelect = mobile && selectMode && !menuOpen && !S.over;
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
@@ -2793,12 +2929,15 @@ function cycleItem(slot, d) {   // 장수의 ITEM 을 보유 목록에서 앞뒤
   campaign.notice = next ? `${Sim.U[key].name}에게 ${Sim.ITEMS[next].name}을 장착했습니다.` : `${Sim.U[key].name}의 ITEM을 해제했습니다.`;
 }
 function uiClick(id) {   // 군단 편성 조작 뒤에는 비어 버린 군단을 자동 해제한다
-  uiClickCore(id); if (state === 'roster' || id.startsWith('roster:')) autoDisbandEmpty();
+  const P = stratPractice; uiClickCore(id); if (state === 'roster' || id.startsWith('roster:')) autoDisbandEmpty();
+  if (P && stratPractice === P) practiceAfter(id);
 }
 function uiClickCore(id) {
   if (aiRelationsOpen) { if (id === 'campaign:relations:close') aiRelationsOpen = false; return; }
   if (id === 'campaign:relations') { if (scoutView || diplomacyView) aiRelationsOpen = true; return; }
   if (id === 'campaign:opt:news') id = 'campaign:news'; else if (id === 'campaign:opt:diff') id = 'campaign:diff';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
+  if (id === 'spr:next') { practiceNext(); return; }
+  if (stratPractice && state !== 'title' && !practiceAllows(id)) { stratPractice.denyT = T; return; }   // 허용 목록 밖 버튼은 배너만 깜박인다 (명세 76)
   if ((state === 'map' || state === 'roster') && custodyOpen() && !id.startsWith('custody:') && id !== 'campaign:movemode' && id !== 'campaign:news' && id !== 'campaign:diff') return;
   if (id === 'campaign:help') { if (mapFree()) stratTutStep = 0; return; }
   if (id.startsWith('stut:')) { if (stratTutStep >= 0) stratTutNav(id.slice(5)); return; }
@@ -2812,7 +2951,7 @@ function uiClickCore(id) {
     return;
   }
   if (id === 'start-diff') { const k = Object.keys(AI_PROFILES); startDifficulty = k[(k.indexOf(startDifficulty) + 1) % k.length]; return; }
-  if (/^start-faction:/.test(id)) { const faction = id.slice(14); if (PLAYABLE_FACTIONS.includes(faction)) { if (TUTORIAL_BATTLE.on) { resetCampaignData(faction); campaign.difficulty = startDifficulty; resetTransientUi(); titleNotice = ''; startTutorialBattle(); } else { startNewGame(faction); if (!stratTutSeen) stratTutStep = 0; } } return; }   // 새 게임 첫 진입에만 전략 튜토리얼 (불러오기는 제외)
+  if (/^start-faction:/.test(id)) { const faction = id.slice(14); if (PLAYABLE_FACTIONS.includes(faction)) { if (TUTORIAL_BATTLE.on) { resetCampaignData(faction); campaign.difficulty = startDifficulty; resetTransientUi(); titleNotice = ''; startTutorialBattle(); } else { startNewGame(faction); beginStratIntro(); } } return; }   // 새 게임 첫 진입에만 전략 튜토리얼 (불러오기는 제외)
   if (id === 'campaign:save') { saveSlotMode = 'save'; return; }
   if (id === 'campaign:load') { saveSlotMode = 'load'; return; }
   if (id === 'save-slot:close') { saveSlotMode = null; return; }
@@ -2869,7 +3008,7 @@ function uiClickCore(id) {
   if (id === 'campaign:move:close') { moveSelectOpen = false; moveMode = 'corps'; return; }
   if (id === 'campaign:move:prev' || id === 'campaign:move:next') { const pages = Math.max(1, Math.ceil(roster.length / listN())), d = id.endsWith('next') ? 1 : -1; movePage = (movePage + d + pages) % pages; return; }
   if (/^campaign:move:\d+$/.test(id)) { const index = +id.slice(14), corps = roster[index]; if (!corps) return; if (!combatReadyCorps(corps)) { campaign.notice = '군단장이 없는 군단은 편성 전까지 이동할 수 없습니다.'; return; } campaign.corps = index; campaign.at = corps.at; campaign.destination = corps.target; moveMode = 'city'; moveSelectOpen = false; campaign.notice = `${corpsName(corps)}이 이동할 지역을 지도에서 선택하세요.`; return; }
-  if (id === 'campaign:end') { mapTool = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps'; endCampaignTurn(); return; }
+  if (id === 'campaign:end') { if (stratPractice) { practiceEndTurn(); return; } mapTool = null; moveSelectOpen = false; exploreSelectOpen = false; moveMode = 'corps'; endCampaignTurn(); return; }
   if (id === 'campaign:explore') { moveSelectOpen = false; exploreSelectOpen = true; explorePage = 0; campaign.notice = '탐색할 군단을 선택하세요.'; return; }
   if (id === 'campaign:explore:close') { exploreSelectOpen = false; return; }
   if (id === 'campaign:explore:prev' || id === 'campaign:explore:next') { const available = roster.filter(c => combatReadyCorps(c) && stageById(c.at).owner === 'player'), pages = Math.max(1, Math.ceil(available.length / listN())), d = id.endsWith('next') ? 1 : -1; explorePage = (explorePage + d + pages) % pages; return; }
@@ -2901,7 +3040,7 @@ function uiClickCore(id) {
   if (id.startsWith('roster:unit:')) { const [, , side, slot] = id.split(':'); pickRosterUnit(side, +slot); return; }
   if (id.startsWith('stage:')) mapSel = id.slice(6);
   if (id.startsWith('stage:') && mapTool) { useMapTool(stageById(id.slice(6))); return; }
-  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6)); /* 도시를 고르면 군단 선택으로 돌아가 다음 군단을 이어서 지정 */ if (!warnMove) { moveMode = 'corps'; moveSelectOpen = true; movePage = Math.floor(campaign.corps / listN()); } } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
+  if (id.startsWith('stage:')) { if (moveMode === 'city') { moveCampaign(id.slice(6), !!stratPractice); /* 도시를 고르면 군단 선택으로 돌아가 다음 군단을 이어서 지정 */ if (!warnMove) { moveMode = 'corps'; moveSelectOpen = true; movePage = Math.floor(campaign.corps / listN()); } } else campaign.notice = '이동 버튼에서 군단을 선택한 뒤 지도에서 지역을 선택하세요.'; return; }
   if (id === 'tut:prev') { tutorialStep = Math.max(0, tutorialStep - 1); return; }
   if (id === 'tut:next') { if (tutorialStep >= 3) finishTutorial(); else tutorialStep++; return; }
   if (id === 'tut:skip') { if (!tutorialBattle) finishTutorial(); return; }
@@ -3030,6 +3169,7 @@ addEventListener('keydown', e => {
   if ((state === 'title' || state === 'map' || state === 'roster') && custodyOpen()) return;
   if (state === 'title') { if (startFactionSelect) { if (e.key === 'Escape') startFactionSelect = false; else if (/^[1-6]$/.test(e.key)) uiClick('start-faction:' + PLAYABLE_FACTIONS[+e.key - 1]); } else if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Enter' || e.key.toLowerCase() === 'n') startNewFromTitle(); else if (e.key.toLowerCase() === 'l') saveSlotMode = 'load'; return; }
   if ((state === 'map' || state === 'roster') && custodyOpen()) return;
+  if (state === 'map' && stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) { if (e.key === 'Enter' || e.key === ' ') uiClick('spr:next'); return; }   // 실습 카드: 건너뛰기·Esc 없음
   if (state === 'map' && stratTutStep >= 0) { if (e.key === 'Escape') finishStratTut(); else if (e.key === 'ArrowLeft') stratTutNav('prev'); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) stratTutNav('next'); return; }
   if (state === 'map') { if (e.key.startsWith('Arrow')) mapKeys.add(e.key); else if (e.key === 'Home' && mapFree()) centerMap(); }
   if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (aiRelationsOpen) { aiRelationsOpen = false; return; } moveSelectOpen = false; exploreSelectOpen = false; heroView = null; } return; }
@@ -3080,6 +3220,7 @@ function frame(now) {
     if (!ctrlOf() || !alive(ctrlOf())) { const next = activePlayerArmies().find(A => corpsKey(A) === corpsKey(army())) || activePlayerArmies()[0]; if (next) armyIdx = next.id; }
     snapCam();   // 조작 캐릭터를 전장 표시 영역의 정확한 중앙에 고정
   }
+  stratPracticeTick();
   draw(); requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
