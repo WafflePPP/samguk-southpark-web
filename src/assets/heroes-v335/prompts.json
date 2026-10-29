@@ -1,0 +1,29 @@
+[
+  {
+    "key": "liubei",
+    "name": "유비",
+    "file": "liubei.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "여포 기준의 큰 얼굴·짧고 단단한 성인 체형. 작은 금관·검은 수염·녹색 망토·금갈색 갑옷·직검을 유지한다.",
+    "prompt": "Rebuild Liu Bei from the v308 target using the approved v321 Lü Bu atlas as the strict pixel-art style and body-proportion reference. Produce exactly 56 isolated sprites in an 8-column by 7-row transparent atlas: directions upper-left, left, lower-left, front, lower-right, right, upper-right, back; rows idle, walk A, walk B, thrust impact, thrust recovery, slash impact, slash recovery. Enlarge the actual face and head while keeping a compact, sturdy adult warrior body, bold dark outline and clustered two-step shading. Preserve his small gold crown, black beard, green cape, gold-brown armor and straight sword. No horse, text, grid, shadow, effects, merged sprites or cropped weapons."
+  },
+  {
+    "key": "guan",
+    "name": "관우",
+    "file": "guan.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "여포 기준의 실제 얼굴·머리 폭과 성인 체형. 붉은 얼굴·긴 검은 수염·녹색 두건과 갑주·청룡언월도를 유지한다.",
+    "prompt": "Rebuild Guan Yu from the v308 target using the approved v321 Lü Bu atlas as the strict pixel-art style and body-proportion reference. Produce exactly 56 isolated sprites in an 8-column by 7-row transparent atlas: directions upper-left, left, lower-left, front, lower-right, right, upper-right, back; rows idle, walk A, walk B, thrust impact, thrust recovery, slash impact, slash recovery. Enlarge the actual face and green headcloth to match Lü Bu's readable head proportion; do not count the long beard, cape or guandao as head size. Preserve the red face, long black beard, green and gold armor and Green Dragon guandao. Use a compact sturdy adult body, bold dark outline and clustered two-step shading. No horse, text, grid, shadow, effects, merged sprites or cropped weapons."
+  },
+  {
+    "key": "zhangfei",
+    "name": "장비",
+    "file": "zhangfei.png",
+    "frameCount": 56,
+    "actions": ["thrust", "slash"],
+    "design": "여포 기준의 큰 실제 얼굴과 가장 넓고 강한 체형. 붉은 두건·검은 장수염·흑갈색 갑옷·장팔사모를 유지한다.",
+    "prompt": "Rebuild Zhang Fei from the v308 target using the approved v321 Lü Bu atlas as the strict pixel-art style and body-proportion reference. Produce exactly 56 isolated sprites in an 8-column by 7-row transparent atlas: directions upper-left, left, lower-left, front, lower-right, right, upper-right, back; rows idle, walk A, walk B, thrust impact, thrust recovery, slash impact, slash recovery. Make the actual face clearly larger and the body the broadest and most powerful of the three while retaining the same compact adult proportions, bold dark outline and clustered two-step shading. Preserve his red headwrap, black beard, dark warm armor and snake spear. No horse, text, grid, shadow, effects, merged sprites or cropped weapons."
+  }
+]

@@ -236,6 +236,7 @@ for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
 const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
 const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
 const HERO_REWORK_KEYS=['gao','yuan','cao','xia','dian','yan','wen','xiahouyuan','xuchu','guo','sima','liubei','guan','kong','zhao','diao','huang','captain','jang','gong','zhangfei','machao','xuhuang','dong','xun','hua'];
+const SHU_STYLE_KEYS=['liubei','guan','zhangfei'];
 const LUBU_STYLE_KEYS=['gao','yuan','cao','xia','dian','yan'];
 const LULINGQI_STYLE_KEYS=['lubu','gao'];
 const STRONG_LUBU_KEYS=['lubu'];
@@ -263,9 +264,10 @@ function loadBattleArt() {
   const names=['terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v308',309),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('heroes-v321',321),manifest('heroes-v318',318),manifest('troops-v305',305),manifest('rework-v303',303),manifest('troops-v323',323),manifest('troops-v325',325)]).then(async ([images,heroes,lubuStyle,lulingqiStyle,strongLubu,strongGao,troops,remaining,lubuFaceTroops,lubuCommonTroops])=>{
+  BATTLE_ART.promise=Promise.all([Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274))),manifest('heroes-v308',309),manifest('heroes-v335',335),manifest('heroes-v314',314),manifest('heroes-v316',316),manifest('heroes-v321',321),manifest('heroes-v318',318),manifest('troops-v305',305),manifest('rework-v303',303),manifest('troops-v323',323),manifest('troops-v325',325)]).then(async ([images,heroes,shuStyle,lubuStyle,lulingqiStyle,strongLubu,strongGao,troops,remaining,lubuFaceTroops,lubuCommonTroops])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(heroes.length!==HERO_REWORK_KEYS.length||new Set(heroes.map(h=>h.key)).size!==heroes.length||HERO_REWORK_KEYS.some(k=>!heroes.some(h=>h.key===k)))throw new Error('장수 리워크 외형 누락');
+    if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
     if(lulingqiStyle.length!==LULINGQI_STYLE_KEYS.length||LULINGQI_STYLE_KEYS.some(k=>!lulingqiStyle.some(h=>h.key===k)))throw new Error('여령기 기준 장수 외형 누락');
     if(strongLubu.length!==STRONG_LUBU_KEYS.length||STRONG_LUBU_KEYS.some(k=>!strongLubu.some(h=>h.key===k)))throw new Error('강인한 여포 외형 누락');
@@ -282,6 +284,11 @@ function loadBattleArt() {
     await Promise.all(heroes.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)).map(async h=>{
       if(h.frames.length!==56||h.actions?.length!==2||new Set(h.actions).size!==2||h.actions.some(a=>!['thrust','slash','shoot','cast','heal'].includes(a)))throw new Error('장수 리워크 동작 누락: '+h.key);
       const image=await load('src/assets/heroes-v308/'+h.file,309),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      installAtlasRework(h,frames,frames,[h.key]);
+    }));
+    await Promise.all(shuStyle.map(async h=>{
+      if(h.frames.length!==56||h.actions?.join(',')!=='thrust,slash')throw new Error('유비·관우·장비 동작 누락: '+h.key);
+      const image=await load('src/assets/heroes-v335/'+h.file,335),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,[h.key]);
     }));
     await Promise.all(lubuStyle.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)).map(async h=>{
