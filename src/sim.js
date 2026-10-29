@@ -789,7 +789,7 @@ function setFormation(A, type) {
   A.units.forEach((u, i) => {
     if (type === 'line') u.slot = { dx: i - mid, dy: 0 };
     else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: i ? (i % 2 ? -row : row) : 0, dy: sgn * row }; }
-    else if (type === 'guard') { const n = A.units.filter(v => !v.isLeader).indexOf(u); u.slot = u.isLeader ? { dx: 0, dy: sgn } : { dx: (n % 4) - 1, dy: sgn * Math.floor(n / 4) }; }
+    else if (type === 'guard') { const n0 = A.units.filter(v => !v.isLeader).indexOf(u), n = n0 + (n0 >= 5 && A.units.some(v => v.isLeader) ? 1 : 0); u.slot = u.isLeader ? { dx: 0, dy: sgn } : { dx: (n % 4) - 1, dy: sgn * Math.floor(n / 4) }; }
     else u.slot = { dx: (i % 4) - 1, dy: sgn * Math.floor(i / 4) };
     u.path = null;
   });
@@ -877,6 +877,10 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   }
   return false;
 }
+function promoteIdle(S, u) {   // 자동·동맹의 idle→charge 승격. 이동 중에도 해야 한다: 맞바꾸기를 반복 당하는 병사는 mv 가 계속 켜져 있어 승격 줄에 닿지 못했다
+  const o = u.order;
+  if (o.type === 'idle' && ((S.auto && u.team === 'player' && !u.manual) || u.army.state === 'advance' || u.army.ally)) { u.order = { type: 'charge' }; u.autoCharge = u.team === 'player' && !u.army.ally; }
+}
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.kiteT = (u.kiteT || 0) - dt; u.ftDebuffT -= dt; if (u.buffs) { for (const b of u.buffs) b.t -= dt; u.buffs = u.buffs.filter(b => b.t > 0); } u.moving = false;
   const HT = (TITLE_EFFECT[u.subclass] || {}).hp; if (HT) { if (u.hp <= u.maxHp * HT.below && !u.hpTrig) { u.hpTrig = true; addBuff(S, u, 'hp', HT.mods, HT.glyph, HT.col); text(S, u.x, u.y - u.r * 5, HT.text, HT.col, 'buff'); ring(S, u.x, u.y, 36, HT.col, 0.5); } else if (u.hp > u.maxHp * HT.below) u.hpTrig = false; }
@@ -884,6 +888,7 @@ function updateUnit(S, u, dt) {
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
   if (u.stun > 0) { u.stun -= dt; return; }
+  promoteIdle(S, u);
   if (u.mv) { advanceMove(S, u, dt); if (u.mv) { if (U[u.key].movingShot && u.cdT <= 0) { const t = pickTarget(S, u, u.range / TILE, false); if (t) attack(S, u, t); } return; } }   // 기마궁병만 이동 중 사격, 나머지는 도착 후 행동
   if (u.knockQ) { const n = u.knockQ.shift(); if (n && !S.occ[ti(n.tx, n.ty)]) { beginStep(S, u, n.tx, n.ty, 0.08); advanceMove(S, u, 0); return; } u.knockQ = null; return; }
   if (u.dashQ) {
@@ -1074,9 +1079,8 @@ function armyOrder(S, A, type, directCtrl = A.ctrl) {   // 현재 직접 조작 
 function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric' && !retreating(u)) { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
 function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 아직 참전하지 않은 지원군만 출진할 수 있다.
   if (!u.out || u.retreated || u.fled || u.dead || u.team !== 'player') return false;
-  for (let k = 0; k < 80; k++) {
-    const ty = MH - 4 - Math.floor(S.rnd() * 4), tx = 14 + Math.floor(S.rnd() * 14);
-    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === directCtrl ? 'stop' : u.army.order }; u.path = null; text(S, u.x, u.y - 40, u.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
+  for (const [txs, tys] of [[[17, 18, 19, 20, 21, 22], [58, 59, 60, 57]], [[16, 23, 15, 24, 14, 25, 26, 27], [58, 59, 60, 57]]]) for (const ty of tys) for (const tx of txs) {   // 출진 구역 중앙에서 줄 맞춰 채운다
+    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === directCtrl ? 'stop' : u.army.order }; u.path = null; if (u === (directCtrl || u.army.leader)) text(S, u.x, u.y - 40, u.army.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
   }
   return false;
 }
@@ -1087,6 +1091,7 @@ function deployArmy(S, A, directCtrl = A.ctrl, quiet = false) {
     if (count) {
       A.state = A.support ? 'player' : 'advance'; A.order = A.support ? 'idle' : 'charge';
       for (const u of A.units) if (live(u)) { u.order = { type: A.support && !S.auto ? 'idle' : 'charge' }; u.autoCharge = A.support && S.auto; }
+      if (!A.ctrl || !live(A.ctrl)) setCtrl(S, A, A.leader && live(A.leader) ? A.leader : A.units.find(live));   // 조작 대상이 없으면 군단 전환 때 아무도 못 움직인다
       setFormation(A, A.formation);
     }
   } else {
