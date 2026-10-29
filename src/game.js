@@ -81,7 +81,7 @@ const FACTION_HEROES = {   // 명세 71: 도시 수 × 2 (원소 10도시 : 20�
 };
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
-// 군단 편성 (명세 55): 기동 군단 수 = 장수 수 × 30%(최소 1). 군주가 첫 군단장, 군단장은 나머지 중 등급 높은 순. 남는 장수는 등급순 snake 분배로 슬롯 6·12(2·3분대장)·1·2·3·4·5… 에 배치. 3번째마다 원정군.
+// 군단 편성 (명세 55): 기동 군단 수 = 장수 수 × 30%(최소 1). 군주가 첫 군단장, 군단장은 나머지 중 등급 높은 순. 남는 장수는 등급순 snake 분배로 슬롯 6·12(7·13번째 칸)·1·2·3·4·5… 에 배치. 3번째마다 원정군.
 const CORPS_RATIO = 0.3, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
 const gradeMul = k => Sim.GRADE_MUL[Sim.GRADE[k]];
 const CORPS_OVERRIDE = { '유비': [{ lead: 'liubei', slots: { 6: 'guan', 12: 'zhangfei', 1: 'zhao' } }, { lead: 'mizhu', slots: { 6: 'jianyong', 12: 'sunqian' } }] };   // 사용자 지정 편성: 군주 군단(유비·관우·장비·조운) / 2군단(미축·간옹·손건)
@@ -190,7 +190,7 @@ const capitalRefill = s => Math.max(cityKind(s).guard, CAPITAL_REFILL.min) + CAP
 const guardCap = s => isDefenseCapital(s) ? CAPITAL_GUARD + (capExtra(s).guard || 0) : CITY_SIZES[citySize(s)].units;
 const guardTroop = (s, idx) => { const pool = CITY_TROOPS[s.theme]; return isDefenseCapital(s) ? CAPITAL_POOL[idx % CAPITAL_POOL.length] : pool[idx % pool.length]; };   // idx: 수비군 안의 칸 번호
 function guardForce(stage, i, units, maxUnits, lv) {
-  return { id: 'guard:' + stage.id + ':' + i, role: 'garrison', home: stage.id, at: stage.id, fac: stageFaction(stage), active: units.length > 0, maxUnits, level: lv, army: { team: 'enemy', name: stage.name + ' 도시수비군 ' + (i + 1) + '대', leader: null, detachment: true, commander: true, units, growth: units.map((k, j) => enemyGrowth(k, lv, Sim.soldierGradeAt(lv, j, isDefenseCapital(stage)))), formation: 'guard' } };
+  return { id: 'guard:' + stage.id + ':' + i, role: 'garrison', home: stage.id, at: stage.id, fac: stageFaction(stage), active: units.length > 0, maxUnits, level: lv, army: { team: 'enemy', name: stage.name + ' 도시수비군 ' + (i + 1) + '대', leader: null, commander: true, units, growth: units.map((k, j) => enemyGrowth(k, lv, Sim.soldierGradeAt(lv, j, isDefenseCapital(stage)))), formation: 'guard' } };
 }
 function resetCityGuards(stage, ratio = 1) {
   for (let i = cityGuards.length - 1; i >= 0; i--) if (cityGuards[i].home === stage.id) cityGuards.splice(i, 1);
@@ -292,7 +292,7 @@ function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 군단장(�
 const stageEnemyCount = stage => allForces().filter(f => f.active && f.at === stage.id && forceFaction(f) !== playerFaction()).reduce((n, f) => n + f.army.units.length, 0);
 const campaign = { playerFaction: '여포', at: START_STAGE, corps: 0, from: null, battle: null, explore: false, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: JSON.parse(JSON.stringify(DEFAULT_RELATIONS)), aiRelations: initialAiRelations(), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', difficulty: 'normal', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: START_NOTICE['여포'], ...econInit(), ...dipInit() };
 const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS[faction] || { status: 'neutral', truceUntil: 0 };
-// 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 1·2·3분대다.
+// 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 6명 단위 묶음이다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
 const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 28, SAVE_SLOTS = 3;   // v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
@@ -366,7 +366,7 @@ function restoreCampaign(data) {
   data.campaign.items ||= {};
   for (const key of Object.keys(Sim.ITEMS)) if (!Number.isFinite(data.campaign.items[key])) data.campaign.items[key] = 0;
   Object.assign(campaign, data.campaign); if (!Array.isArray(data.campaign.pacified)) campaign.pacified = null; campaign.playerFaction ||= '여포'; campaign.corps = Math.max(0, Math.min(roster.length - 1, campaign.corps || 0)); campaign.battle = battle; if (campaign.pendingEncounter) { campaign.pendingEncounter.stage = pendingStage; campaign.pendingEncounter.responders = (campaign.pendingEncounter.responders || []).filter(i => combatReadyCorps(roster[i])); campaign.pendingEncounter.unopposed = !campaign.pendingEncounter.responders.length; }
-  cityGuards.splice(0, cityGuards.length, ...data.cityGuards); for (const f of cityGuards) { f.fac = stageFaction(stageById(f.home)); f.active = f.army.units.length > 0; f.army.detachment = true; f.army.commander = true; f.army.leader = null; }
+  cityGuards.splice(0, cityGuards.length, ...data.cityGuards); for (const f of cityGuards) { f.fac = stageFaction(stageById(f.home)); f.active = f.army.units.length > 0; f.army.commander = true; f.army.leader = null; }
   ensureCapitalGuards();   // 수도 슬롯이 모자라면(구 저장·천도) 빈 슬롯을 만든다
   campaign.rulers ||= { ...INITIAL_RULERS };
   for (const [k, v] of Object.entries(dipInit())) campaign[k] ||= v; campaign.hostages = campaign.hostages.filter(h => h && Sim.U[h.key] && Number.isFinite(h.until) && FACTIONS.includes(h.to) && h.growth); for (const h of campaign.hostages) detachHero(h.key); for (const [k, v] of Object.entries(AFFINITY_INIT)) if (!Number.isFinite(campaign.affinity[k])) campaign.affinity[k] = v;
@@ -405,23 +405,16 @@ resetCampaignData('여포');   // 모듈 시작 때 한 번 편성해 두고(시
 { const error = rosterError(); if (error) throw new Error(error); }
 function rosterArmies() {
   const active = roster[campaign.corps] || roster[0];
-  const squadData = (corps, start) => {
+  const corpsData = corps => {
     const units = [], growth = [], rosterSlots = [];
-    for (let slot = start; slot < start + 6; slot++) if (corps.units[slot]) { units.push(corps.units[slot]); growth.push(corps.growth[slot]); rosterSlots.push(slot); }
+    for (let slot = 0; slot < 18; slot++) if (corps.units[slot]) { units.push(corps.units[slot]); growth.push(corps.growth[slot]); rosterSlots.push(slot); }
     return { units, growth, rosterSlots };
   };
-  let i = 0;
-  const armies = Sim.ARMIES.filter(a => a.team === 'player').map(a => {
-    const start = i++ * 6, data = squadData(active, start);
-    return { ...a, ...data, name: i + '분대', leader: start === 0 ? active.units[0] : null, detachment: start > 0, corps: active.id, squadIndex: i - 1 };
-  });
+  const armies = Sim.ARMIES.filter(a => a.team === 'player').map(a => ({ ...a, ...corpsData(active), name: corpsName(active), leader: active.units[0], corps: active.id }));
   roster.forEach((corps, corpsIndex) => {
     const battle = campaign.battle;
     if (corps === active || !combatReadyCorps(corps) || battle && corps.at !== battle.id && !battle.links.includes(corps.at)) return;
-    for (let start = 0; start < 18; start += 6) {
-      const data = squadData(corps, start);
-      armies.push({ team: 'player', name: `${corpsName(corps)} ${start / 6 + 1}분대`, leader: start === 0 ? corps.units[0] : null, detachment: start > 0, ...data, at: [18 + corpsIndex * 2, 58], corps: corps.id, squadIndex: start / 6, support: true });
-    }
+    armies.push({ team: 'player', name: corpsName(corps), leader: corps.units[0], ...corpsData(corps), at: [18 + corpsIndex * 2, 58], corps: corps.id, support: true });
   });
   return armies;
 }
@@ -481,7 +474,7 @@ function scaleEnemy(a) {
 }
 function stageArmies(stage, helpIds = [], joinIds = []) {
   const enemies = enemyForces.filter(f => f.active && f.at === stage.id && (relationOf(forceFaction(f)).status === 'war' || joinIds.includes(f.id))).map((f, k) => ({ ...f.army, at: [18 + 7 * (k % 3), 18], reserve: k > 0, reserveAt: 12, units: [...f.army.units], forceId: f.id }));   // 적 능력치는 동일 기준, 난이도는 수량·레벨·AI로 조정
-  const helpers = enemyForces.filter(f => f.active && f.at === stage.id && helpIds.includes(f.id)).map((f, k) => ({ ...f.army, units: [...f.army.units], team: 'player', ally: true, corps: 'ally:' + f.id, forceId: undefined, name: `${forceFaction(f)}군 동맹군`, at: [10 + k * 6, 54], reserve: false, trig: null, support: false, commander: false, squadIndex: undefined }));
+  const helpers = enemyForces.filter(f => f.active && f.at === stage.id && helpIds.includes(f.id)).map((f, k) => ({ ...f.army, units: [...f.army.units], team: 'player', ally: true, corps: 'ally:' + f.id, forceId: undefined, name: `${forceFaction(f)}군 동맹군`, at: [10 + k * 6, 54], reserve: false, trig: null, support: false, commander: false }));
   const owner = stageFaction(stage), team = owner === playerFaction() || relationOf(owner).status === 'ally' ? 'player' : 'enemy';
   const guards = (team === 'player' || relationOf(owner).status === 'war' ? guardsAt(stage) : []).map((f, i) => ({ ...f.army, team, units: [...f.army.units], rosterSlots: f.army.units.map((_, j) => j), forceId: f.id, corps: f.id, cityGuard: true, ownedGuard: owner === playerFaction(), ally: team === 'player', at: team === 'player' ? [9, 10 + i * 6] : [45, 18 + i * 6], reserve: team === 'enemy' && i > 0, reserveAt: 12, trig: { near: 12, t: 0 } }));
   return rosterArmies().concat(guards, enemies, helpers).map(scaleEnemy);
@@ -529,7 +522,7 @@ function startBattle(stage, explore = false) {
   for (const n of aiGuest.notes) S.events.push({ type: 'notice', team: 'enemy', text: n });
   if (helpIds.length) S.events.push({ type: 'notice', team: 'player', text: `동맹군 ${helpIds.length}군단이 함께 싸웁니다.` });
   if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: campaign.invasion ? `적 군단이 ${campaign.battle.name}을 침공했습니다!` : `${campaign.battle.stage}지역 ${campaign.battle.name} · ${campaign.battle.difficulty} · ${campaign.battle.note}` + ` · 전투력 아군 ⚔${S.armies.filter(A => A.team === "player" && !A.support).reduce((n, A) => n + Sim.battlePower(A), 0)} / 적 ⚔${S.armies.filter(A => A.team === "enemy").reduce((n, A) => n + Sim.battlePower(A), 0)}` });
-  state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
+  state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; unitListOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam(); saveCampaign();
   return true;
 }
@@ -542,18 +535,18 @@ function resetTransientUi() {
 }
 function startNewGame(faction) { resetCampaignData(faction); campaign.difficulty = startDifficulty; resetTransientUi(); titleNotice = ''; startCampaign(); saveCampaign(); }
 function startNewFromTitle() { activeSaveSlot = Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).find(slot => !hasCampaign(slot)) || activeSaveSlot; startFactionSelect = true; titleNotice = ''; }
-// ---------- 명세 70: 새 게임 강제 전투 튜토리얼 (군주 군단 vs 일반 병사 2개 분대, 캠페인 상태를 건드리지 않는 연습 전투) ----------
-const TUTORIAL_BATTLE = { on: true, ratio: 1.0, min: 8, max: 36, gap: 19, xs: [15, 23], kinds: ['esword', 'eshield', 'earcher'] };   // ratio: 적 전투력/아군 전투력 (명세 기본안 0.4 는 자동 15~21초라 목표 40~75초 미달 → 측정으로 1.0: 1.4 는 가벼운 수동 플레이 승률 25% 로 너무 어려움), min·max: 적 병사 수 한계(max=ENEMY_FIELD_MAX 36), gap: 양군 시작 거리(칸), xs: 적 두 분대의 가로 칸 (설계값, tools/tutorial-battle.js 로 측정)
+// ---------- 명세 70: 새 게임 강제 전투 튜토리얼 (군주 군단 vs 일반 병사 2개 부대, 캠페인 상태를 건드리지 않는 연습 전투) ----------
+const TUTORIAL_BATTLE = { on: true, ratio: 1.0, min: 8, max: 36, gap: 19, xs: [15, 23], kinds: ['esword', 'eshield', 'earcher'] };   // ratio: 적 전투력/아군 전투력 (명세 기본안 0.4 는 자동 15~21초라 목표 40~75초 미달 → 측정으로 1.0: 1.4 는 가벼운 수동 플레이 승률 25% 로 너무 어려움), min·max: 적 병사 수 한계(max=ENEMY_FIELD_MAX 36), gap: 양군 시작 거리(칸), xs: 적 두 부대의 가로 칸 (설계값, tools/tutorial-battle.js 로 측정)
 const TUT_STEPS = [   // [이름, PC 문구, 모바일 문구] — 완료 감지는 tutorialTick·act·useCommand·confirmSelect 가 tutorialBattle.flags 에 기록
   ['이동', '숫자패드/WASD 로 조작 장수를 움직여 보세요', '왼쪽을 끌어 가상패드로 움직여 보세요'],
   ['특수기', 'Space 로 주 행동, X 로 보조 행동을 쓰세요', '오른쪽 행동 버튼을 눌러 보세요'],
-  ['부대 명령', '하단 부대 그룹의 돌격(F)·정지(V)를 눌러 보세요', '아래 부대 명령 버튼(돌격 등)을 눌러 보세요'],
+  ['부대 명령', '하단 부대 명령의 돌격(F)·정지(V)를 눌러 보세요', '아래 부대 명령 버튼(돌격 등)을 눌러 보세요'],
   ['집중 공격', '적을 클릭해 정보를 보고 Enter 로 확정하세요', "적을 탭한 뒤 '확정 · 집중 공격'을 누르세요"],
   ['마무리', '적을 모두 물리치세요', '적을 모두 물리치세요']];
-function tutorialEnemies(players) {   // 일반 병사만 2개 분대, 전투력 ≈ 아군 × ratio (min~max 명). 적 장수·군단장 없음, 대기(trig.t 무한) — 부대 명령 뒤 tutorialTick 이 진군시킨다
+function tutorialEnemies(players) {   // 일반 병사만 2개 부대, 전투력 ≈ 아군 × ratio (min~max 명). 적 장수·군단장 없음, 대기(trig.t 무한) — 부대 명령 뒤 tutorialTick 이 진군시킨다
   const K = TUTORIAL_BATTLE, power = players.reduce((n, a) => n + Sim.corpsPower(a.units, 'player', a.growth), 0), avg = K.kinds.reduce((n, k) => n + Sim.unitPower(k, 'enemy', null), 0) / K.kinds.length;
   const total = Math.max(K.min, Math.min(K.max, Math.round(power * K.ratio / avg))), half = Math.ceil(total / 2), y = (players[0] ? players[0].at[1] : 58) - K.gap;
-  return K.xs.map((x, k) => ({ team: 'enemy', name: `연습 적 ${k + 1}분대`, at: [x, y], detachment: true, trig: { near: 0, t: 1e9 }, units: Array.from({ length: k ? total - half : half }, (_, i) => K.kinds[(i + k) % K.kinds.length]) }));
+  return K.xs.map((x, k) => ({ team: 'enemy', name: `연습 적 ${k + 1}대`, at: [x, y], trig: { near: 0, t: 1e9 }, units: Array.from({ length: k ? total - half : half }, (_, i) => K.kinds[(i + k) % K.kinds.length]) }));
 }
 function startTutorialBattle(retry = false, seed = (Date.now() % 100000) + 1) {   // startBattle·finishBattle·applyBattleResults 를 거치지 않는다: campaign.battle=null, 저장 없음
   if (!retry || !tutorialBattle) tutorialBattle = { snap: JSON.stringify(roster), tries: 0 };
@@ -562,7 +555,7 @@ function startTutorialBattle(retry = false, seed = (Date.now() % 100000) + 1) { 
   const players = rosterArmies().filter(a => !a.support);   // 활성 군단(roster[0]) 만 — rosterArmies 는 battle=null 이면 다른 군단을 지원군으로 넣는다
   S = Sim.createBattle(seed, { armies: players.concat(tutorialEnemies(players)), mapSeed: 7, theme: 'plains', wideRiver: false, routChance: 0, tactics: 0, retreatScale: 0, explore: false, surrenderSlots: 0 }); terrain = buildTerrain(S.map, Sim.MW, Sim.MH, TILE);
   campaign.battle = null; campaign.explore = false; campaign.invasion = false; capturedOnWin = false;
-  state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; selectMode = false; selTarget = null; tutorialStep = 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
+  state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; unitListOpen = false; selectMode = false; selTarget = null; tutorialStep = 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam(); return true;
 }
 function finishTutorialBattle() {   // 승리 뒤: 연습 상태를 정리하고 새 게임 직후와 같은 전략 화면으로 (전략 튜토리얼은 처음일 때만 이어서)
@@ -575,7 +568,7 @@ function finishTutorialBattle() {   // 승리 뒤: 연습 상태를 정리하고
 function tutorialTick() {   // 프레임마다: 지시 단계 완료 감지. 자동 통과 없음 — 플레이어의 실제 행동(flags)만 단계를 올린다
   const t = tutorialBattle; if (!t || !S || S.over || tutorialStep >= 0) return;
   const u = ctrlOf(); if (u && alive(u)) { const o = t.origin[u.id] || (t.origin[u.id] = [u.tx, u.ty]); if (Math.max(Math.abs(u.tx - o[0]), Math.abs(u.ty - o[1])) >= 3) t.flags.move = true; }
-  if (t.flags.order && !t.released) { t.released = true; for (const A of S.armies) { if (A.team === 'enemy' && A.state === 'wait') A.state = 'advance'; else if (A.team === 'player' && A.order === 'idle') Sim.armyOrder(S, A, 'charge', null); } }   // 부대 명령 = 교전 시작: 적이 진군하고, 명령하지 않은 나머지 분대(자유)는 함께 돌격해 한 분대만 명령해도 지지 않게 한다
+  if (t.flags.order && !t.released) { t.released = true; for (const A of S.armies) { if (A.team === 'enemy' && A.state === 'wait') A.state = 'advance'; else if (A.team === 'player' && A.order === 'idle') Sim.armyOrder(S, A, 'charge', null); } }   // 부대 명령 = 교전 시작: 적이 진군하고, 명령하지 않은 군(자유)은 함께 돌격한다
   const need = ['move', 'act', 'order', 'focus'][t.step];
   if (need && t.flags[need] && T - t.advT > 0.8) { t.step++; t.advT = t.stepT = T; }   // 단계 사이 0.8초는 문구가 보이게
 }
@@ -1557,7 +1550,7 @@ function finishBattle() {
   else if (campaign.explore) campaign.notice = `${campaign.battle.name} 탐색을 마쳤다.`;
   else { campaign.notice = `${campaign.battle ? campaign.battle.name : '전장'}에서 후퇴했다.`; if (campaign.invasion && campaign.battle) enemyTakesCity(campaign.battle); if (campaign.from) active.at = campaign.from; }
   if (lostHome) { defeatCampaign(`${stageById(playerCapital()).name} 방어에 실패하여 원정에 패배했습니다.`); return; }
-  campaign.at = active.at; campaign.destination = active.target; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; capturedOnWin = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; selectMode = false; centerMap();
+  campaign.at = active.at; campaign.destination = active.target; campaign.from = null; campaign.battle = null; campaign.explore = false; campaign.invasion = false; capturedOnWin = false; S = null; state = 'map'; overAt = 0; menuOpen = false; supportOpen = false; unitListOpen = false; selectMode = false; centerMap();
   if (completeCampaignIfWon()) return;
   if (turnEncounter) finishMovementStep(); else saveCampaign();
 }
@@ -1565,10 +1558,7 @@ const army = () => S.armies[armyIdx];
 const ctrlOf = () => army().ctrl;
 const activePlayerArmies = () => S.armies.filter(A => A.team === 'player' && !A.ally && A.units.length && (!A.support || A.state !== 'support'));
 const corpsKey = A => String(A.corps);
-const pArmies = () => { const key = corpsKey(army()); return activePlayerArmies().filter(A => corpsKey(A) === key).slice(0, 3); };
-const armySlots = () => { const list = pArmies(); return Array.from({ length: 3 }, (_, i) => list.find(A => A.squadIndex === i) || { empty: true, name: `${i + 1}분대`, units: [] }); };
-const supportArmies = () => { const all = S.armies.filter(A => A.team === 'player' && A.support && A.state === 'support' && A.units.some(u => !u.dead && u.out)); return all.filter((A, i) => all.findIndex(B => B.corps === A.corps) === i); };
-const nextArmy = dir => { const l = pArmies(), i = l.indexOf(army()); return l[(i + dir + l.length) % l.length].id; };   // 조작 부대 순환
+const supportArmies = () => S.armies.filter(A => A.team === 'player' && A.support && A.state === 'support' && A.units.some(u => !u.dead && u.out));
 const nextCorps = () => { const all = activePlayerArmies(), l = all.filter((A, i) => all.findIndex(B => corpsKey(B) === corpsKey(A)) === i), n = l.findIndex(A => corpsKey(A) === corpsKey(army())); return l[(n + 1) % l.length].id; };
 const alive = u => Sim.live(u);
 let look = null, mini = null, miniPtr = -1;   // look: 미니맵으로 잠시 둘러보기, mini: 이번 프레임 미니맵 영역, miniPtr: 미니맵을 누르고 있는 포인터
@@ -1614,7 +1604,7 @@ const cooldownText = a => a.cd > 0 ? a.cd.toFixed(1) + '초' : a.ready ? '준비
 
 // ---------- 월드 그리기 ----------
 function drawUnit(u) {
-  const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && pArmies().some(A => A !== army() && A.ctrl === u);
+  const x = u.x, y = u.y, ally = u.team === 'player', mine = u === ctrlOf(), other = ally && activePlayerArmies().some(A => A !== army() && A.ctrl === u);
   ctx.save(); ctx.lineWidth = mine ? 4 : 3; ctx.strokeStyle = mine ? COLORS.gold : ally ? COLORS.ally : COLORS.danger;   // 팀 표시(아트방향 5-5): 아군 청 실선 / 적 주홍 점선 / 조작 중 금
   drawBattleRing(ctx,x,y+u.r*0.35,u.r*1.3,u.r*0.7,ctx.strokeStyle,!ally&&!mine); ctx.restore();
   { const marks = [...(u.buffs || []).map(b => [true, b.col]), [u.ftDebuffT > 0, '#ff9a4a'], ...Object.entries(u.auraOn || {}).filter(([, on]) => on).map(([k]) => [true, Sim.TITLE_EFFECT[k].col])].filter(m => m[0]), pulse = 0.45 + 0.3 * Math.sin(T * 6);   // 효과가 켜져 있는 동안 발밑에 색 고리 (공격 금·방어 청·피로 디버프 주황)
@@ -1650,28 +1640,24 @@ function drawWorld() {
 }
 
 // ---------- HUD (PC) ----------
-function drawPortraits(x0, y0, w, h, step, A = army(), vert = false, cols = 2) {   // 군단 초상: 클릭 = 조작 캐릭터로 선택(그 군단으로 전환), 더블클릭 = 화면 이동
-  A.units.forEach((u, i) => {
-    const x = vert ? x0 + (i % cols) * (w + 2) : x0 + i * step, y = vert ? y0 + Math.floor(i / cols) * step : y0, on = A === army() && u === ctrlOf(), cx = x + w / 2, k = h / 36;
-    panel(x, y, w, h, on ? COLORS.gold : 'rgba(255,255,255,.25)', on ? 3 : 1);
-    ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip(); ctx.globalAlpha = u.dead ? 0.25 : u.out ? 0.45 : 1;
-    drawBattlePortrait(ctx, x+2, y+2, w-4, h-7*k, styleOf(u), { t: T, team:u.team }); ctx.restore();
-    if (!u.dead && !u.out) { bar(x + 2, y + h - 4, w - 4, 3 * k, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); if (vert && u.maxMp) bar(x + 2, y + h - 9, w - 4, 3, u.mp / u.maxMp, '#8a6aff'); }
-    if (u.dead) label('✕', cx, y + h / 2, 22, COLORS.danger, 'center'); else if (u.out) label('철', cx, y + h / 2, 16, COLORS.silver2, 'center');
-    btns.push({ id: 'slot' + u.id, x, y, w, h });
-  });
+function drawPortrait(u, x, y, w, h, click = true) {   // 한 칸 초상: 클릭 = 조작 캐릭터로 선택(그 군단으로 전환), 더블클릭 = 화면 이동
+  const on = u === ctrlOf(), cx = x + w / 2, k = h / 36;
+  panel(x, y, w, h, on ? COLORS.gold : 'rgba(255,255,255,.25)', on ? 3 : 1);
+  ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip(); ctx.globalAlpha = u.dead ? 0.25 : u.out ? 0.45 : 1;
+  drawBattlePortrait(ctx, x+2, y+2, w-4, h-7*k, styleOf(u), { t: T, team:u.team }); ctx.restore();
+  if (!u.dead && !u.out) bar(x + 2, y + h - 4, w - 4, 3 * k, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
+  if (u.dead) label('✕', cx, y + h / 2, 22, COLORS.danger, 'center'); else if (u.out) label('철', cx, y + h / 2, 16, COLORS.silver2, 'center');
+  if (click) btns.push({ id: 'slot' + u.id, x, y, w, h });
 }
 function drawToolbar() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, TB_H); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, TB_H - 2, VW, 2);
   const u = ctrlOf();
-  label('조작: ' + (pArmies().indexOf(army()) + 1) + ' ' + army().name + (u ? ' · ' + u.name : ''), 12, 20, 17, COLORS.gold);
+  label('조작: ' + army().name + (u ? ' · ' + u.name : ''), 12, 20, 17, COLORS.gold);
   label('Space 행동 · ← → 장수 · ↑ ↓ 군단', 12, 44, 14, COLORS.silver2);
-  [['화면', 606], ['전투', 833], ['군단', 1014], ['메뉴', 1179]].forEach(([s, x]) => label(s, x, 8, 12, COLORS.silver2, 'center'));
+  [['화면', 606], ['전투', 774], ['메뉴', 1179]].forEach(([s, x]) => label(s, x, 8, 12, COLORS.silver2, 'center'));
   button('m:zoom', 500, 18, 104, 34, '거리 ×' + Z(), false);
   button('m:speed', 608, 18, 104, 34, '속도 ×' + SPEEDS[speedIdx], false);
   button('cmd:auto', 722, 18, 104, 34, S.auto ? '자동 ON' : '자동 OFF', S.auto);
-  button('cmd:support', 830, 18, 114, 34, `지원 ${supportArmies().length}`, supportOpen);
-  button('armyT', 954, 18, 120, 34, '군단 전환', false);
   button('cmd:menu', 1084, 18, 190, 34, '시스템', false);
 }
 // 능력치 실시간 표기: 버프·오라·피로가 반영된 현재값 하나만 쓰고, 기본값보다 오르면 초록·내리면 주황으로 칠한다.
@@ -1717,56 +1703,69 @@ function drawPad() {   // 보조키 윈도우: 마우스로 누르고 있으면 
     btns.push({ id: 'pad:' + dx + ',' + dy, x, y, w: bs, h: bs });
   });
 }
+function fitText(s, size, maxW, minSize = 10) {   // 열 폭에 맞춰 글자를 minSize 까지 줄이고, 그래도 넘치면 끝을 … 로 자른다 (PC 표 전용)
+  s = String(s); const w = t => (ctx.measureText(t) || { width: 0 }).width;
+  for (; size >= minSize; size--) { ctx.font = `bold ${size}px sans-serif`; if (w(s) <= maxW) return [s, size]; }
+  while (s.length > 1 && w(s + '…') > maxW) s = s.slice(0, -1);
+  return [s + '…', minSize];
+}
+function dimOver(b) { ctx.fillStyle = 'rgba(8,10,18,.55)'; ctx.fillRect(b.x, b.y, b.w, b.h); }   // 눌러도 아무 일 없는 버튼을 흐리게
 function drawTable() {
   const y0 = TB_H + vh; ctx.fillStyle = COLORS.ink; ctx.fillRect(0, y0, VW, tblH); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, y0, VW, 2);
-  const groups = armySlots(), compact = tblCompact, names = tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST'], rh = 22, headH = 54, gw = VPW / groups.length, cw = gw / 6, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2;
+  const A = army(), compact = tblCompact, names = tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST'], rh = 22, headH = 54, cw = VPW / 18, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2, hy = y0 + 6;
   if (!compact) names.forEach((r, i) => label(r, 10, dataY + 12 + i * rh, 15, COLORS.silver2));
-  groups.forEach((A, j) => {
-    const gx = LEFT_W + j * gw, bw = (gw - 144) / 4, selected = !A.empty && armyIdx === A.id;
-    panel(gx + 1, y0 + 2, gw - 2, tblH - 4, selected ? COLORS.gold : 'rgba(255,255,255,.35)', selected ? 3 : 2, selected ? 'rgba(50,42,20,.4)' : 'rgba(10,12,20,.7)');
-    if (A.empty) { label(`${j + 1}분대`, gx + 12, y0 + 21, 15, COLORS.silver2); label('비어있음', gx + gw / 2, y0 + (compact ? 30 : 126), 18, COLORS.dim, 'center'); return; }
-    button('army' + A.id, gx + 4, y0 + 6, 70, 30, `${j + 1}분대`, selected, 13); label('⚔ ' + Sim.battlePower(A), gx + 8, y0 + 46, 13, COLORS.goldSel);
-    button('form:' + A.id, gx + 78, y0 + 6, 62, 30, FORMATION_NAME[A.formation], false, 13);
-    [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴']].forEach(([id, title], k) => button('order:' + A.id + ':' + id, gx + 144 + k * bw, y0 + 6, bw - 2, 30, title, A.order === id, 14));
-    if (compact) return;
-    A.units.forEach((u, c) => {
-      const x = gx + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
-      if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
-      if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
+  panel(LEFT_W + 1, y0 + 2, VPW - 2, tblH - 4, 'rgba(255,255,255,.35)', 2, 'rgba(10,12,20,.7)');
+  // 머리줄: 진형 · 행동지침 · 군단 전환 · 지원 · 전투력 (명세 75)
+  button('form:' + A.id, 154, hy, 84, 30, '진형 ' + FORMATION_NAME[A.formation], false, 14);
+  [['idle', '자유', 244], ['stop', '정지', 322], ['charge', '돌격', 400], ['retreat', '후퇴', 478]].forEach(([id, title, x]) => button('order:' + A.id + ':' + id, x, hy, 74, 30, title, A.order === id, 14));
+  button('armyT', 576, hy, 118, 30, '군단 전환', false, 14); if (activePlayerArmies().length < 2) dimOver(btns[btns.length - 1]);
+  button('cmd:support', 698, hy, 118, 30, `지원 ${supportArmies().length}`, supportOpen, 14); if (!supportArmies().length) dimOver(btns[btns.length - 1]);
+  label(`⚔ ${Sim.battlePower(A)} · ${A.name}`, 836, hy + 15, 15, COLORS.goldSel);
+  if (compact) return;
+  A.units.forEach((u, c) => {
+    const x = LEFT_W + c * cw, isSel = u === ctrlOf(), gone = u.dead || u.out;
+    if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
+    if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-      const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? 'MAX' : u.xp, stText(u)];
-      cells.forEach((v, i) => label(String(v), x + cw / 2, dataY + 12 + i * rh, 15, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center'));
-      btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
+    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? 'MAX' : u.xp, stText(u)];
+    cells.forEach((v, i) => {
+      const [txt, size] = fitText(v, 13, cw - 4);
+      label(txt, x + cw / 2, dataY + 12 + i * rh, size, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center');
     });
+    btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
   });
 }
 
 // ---------- HUD (모바일) ----------
-function drawToolbarMobile() {   // 하단 한 줄 (버튼 14개 × 86px): 분대 탭 3 · 진형 1 · 행동지침 4 · 선택한 분대의 초상 6. 행동·마법 버튼은 오른쪽 빈 곳
-  const ORDERS = [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴']], y0 = VH - TOUCH - 4, step = TOUCH + 3, slots = armySlots(), cur = slots.find(A => !A.empty && armyIdx === A.id) || slots.find(A => !A.empty);
-  panel(0, y0 - 4, VW, TOUCH + 8, 'rgba(255,255,255,.25)', 1, 'rgba(8,10,18,.72)');
-  slots.forEach((A, j) => {
-    const x = 4 + j * step;
-    if (A.empty) { panel(x, y0, TOUCH, TOUCH, COLORS.dim, 1, 'rgba(8,10,18,.5)'); label(`${j + 1}분대`, x + TOUCH / 2, y0 + 30, 14, COLORS.dim, 'center', TOUCH - 8); label('비어있음', x + TOUCH / 2, y0 + 58, 12, COLORS.dim, 'center', TOUCH - 8); return; }
-    const on = A === cur; panel(x, y0, TOUCH, TOUCH, on ? COLORS.gold : COLORS.silver2, on ? 4 : 2, on ? 'rgba(80,60,16,.85)' : 'rgba(10,12,20,.8)');
-    label(`${j + 1}분대`, x + TOUCH / 2, y0 + 28, 15, on ? COLORS.goldSel : COLORS.silver, 'center', TOUCH - 8); label(`⚔${Sim.battlePower(A)}`, x + TOUCH / 2, y0 + 58, 13, COLORS.goldSel, 'center', TOUCH - 8);
-    btns.push({ id: 'army' + A.id, x, y: y0, w: TOUCH, h: TOUCH });
-  });
-  if (!cur) return;
-  const i = cur.id, fx = 4 + 3 * step + 12;
-  button('form:' + i, fx, y0, TOUCH, TOUCH, FORMATION_NAME[cur.formation], false, 15); label('진형', fx + TOUCH / 2, y0 + 16, 11, COLORS.silver2, 'center');
-  ORDERS.forEach(([id, title], k) => button('order:' + i + ':' + id, fx + (k + 1) * step, y0, TOUCH, TOUCH, title, cur.order === id, 16));
-  drawPortraits(fx + 5 * step + 12, y0, TOUCH, TOUCH, step, cur);
+let unitListOpen = false;   // 모바일 부대원 팝업
+function mobBtn2(id, x, y, l1, l2, on, dim) {   // 86px 두 줄 버튼
+  panel(x, y, TOUCH, TOUCH, on ? COLORS.gold : COLORS.silver2, on ? 3 : 2);
+  label(l1, x + TOUCH / 2, y + TOUCH * 0.32, 16, on ? COLORS.goldSel : COLORS.silver, 'center', TOUCH - 8); label(l2, x + TOUCH / 2, y + TOUCH * 0.7, 16, on ? COLORS.goldSel : COLORS.silver, 'center', TOUCH - 8);
+  btns.push({ id, x, y, w: TOUCH, h: TOUCH }); if (dim) dimOver(btns[btns.length - 1]);
 }
-function drawMobileSide() {   // 상단: 화면 → 전투 → 군단 → 메뉴 순으로 86px 터치 버튼을 한 줄에 둔다 (오른쪽 위는 미니맵)
-  const y = 4, bw = [150, 150, 150, 150, 170, 150];
-  const xs = bw.reduce((a, w, i) => (a.push(i ? a[i - 1] + bw[i - 1] + 6 : 6), a), []);
-  button('m:zoom', xs[0], y, bw[0], TOUCH, '거리 ×' + Z(), false, 17);
-  button('m:speed', xs[1], y, bw[1], TOUCH, '속도 ×' + SPEEDS[speedIdx], false, 17);
-  button('cmd:auto', xs[2], y, bw[2], TOUCH, S.auto ? '자동 ON' : '자동 OFF', S.auto, 17);
-  button('cmd:support', xs[3], y, bw[3], TOUCH, `지원 ${supportArmies().length}`, supportOpen, 17);
-  button('armyT', xs[4], y, bw[4], TOUCH, '군단 전환', false, 17);
-  button('cmd:menu', xs[5], y, bw[5], TOUCH, '시스템', false, 17);
+function drawToolbarMobile() {   // 하단 한 줄 (버튼 12개 × 86px): 군단 전환 · 지원 · 진형 · 행동지침 4 · ◀ 조작 초상 ▶ · 군단장 초상 · 부대원 팝업
+  const ORDERS = [['idle', '자유'], ['stop', '정지'], ['charge', '돌격'], ['retreat', '후퇴']], y0 = VH - TOUCH - 4, X = [4, 93, 182, 271, 360, 449, 538, 639, 728, 817, 917, 1006], A = army(), cur = ctrlOf(), lead = A.leader, n = supportArmies().length;
+  panel(0, y0 - 4, VW, TOUCH + 8, 'rgba(255,255,255,.25)', 1, 'rgba(8,10,18,.72)');
+  mobBtn2('armyT', X[0], y0, '군단', '전환', false, activePlayerArmies().length < 2);
+  mobBtn2('cmd:support', X[1], y0, '지원', String(n), supportOpen, !n);
+  button('form:' + A.id, X[2], y0, TOUCH, TOUCH, FORMATION_NAME[A.formation], false, 15); label('진형', X[2] + TOUCH / 2, y0 + 16, 11, COLORS.silver2, 'center');
+  ORDERS.forEach(([id, title], k) => button('order:' + A.id + ':' + id, X[3 + k], y0, TOUCH, TOUCH, title, A.order === id, 16));
+  button('m:prevUnit', X[7], y0, TOUCH, TOUCH, '◀', false, 26);
+  if (cur) drawPortrait(cur, X[8], y0, TOUCH, TOUCH);
+  button('m:nextUnit', X[9], y0, TOUCH, TOUCH, '▶', false, 26);
+  if (lead) drawPortrait(lead, X[10], y0, TOUCH, TOUCH, false);
+  mobBtn2('m:unitlist', X[11], y0, '부대원', `${A.units.length}/${S.units.filter(u => u.army === A).length}`, unitListOpen, false);
+}
+function drawUnitList() {   // 부대원 팝업(상태창 위에 그린다): 6열×3줄 초상 86px (간격 3), 누르면 그 장수를 조작하고 닫힌다
+  panel(1, 348, 6 * 89 + 2, 3 * 89 + 2, COLORS.gold, 2, 'rgba(8,10,18,.94)');
+  S.units.filter(u => u.army === army()).slice(0, 18).forEach((u, i) => drawPortrait(u, 4 + (i % 6) * 89, 351 + Math.floor(i / 6) * 89, TOUCH, TOUCH));
+}
+function drawMobileSide() {   // 상단: 화면 → 전투 → 메뉴 순으로 86px 터치 버튼을 한 줄에 둔다 (오른쪽 위는 미니맵)
+  const y = 4, xs = [6, 162, 318, 474];
+  button('m:zoom', xs[0], y, 150, TOUCH, '거리 ×' + Z(), false, 17);
+  button('m:speed', xs[1], y, 150, TOUCH, '속도 ×' + SPEEDS[speedIdx], false, 17);
+  button('cmd:auto', xs[2], y, 150, TOUCH, S.auto ? '자동 ON' : '자동 OFF', S.auto, 17);
+  button('cmd:menu', xs[3], y, 150, TOUCH, '시스템', false, 17);
 }
 function roundBtn(id, cx, cy, r, title, sub, col, on) {
   ctx.fillStyle = on ? 'rgba(80,60,16,.75)' : 'rgba(10,12,20,.6)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
@@ -1886,7 +1885,7 @@ function drawTutorial() {
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 상단의 카메라 거리로 화면을 조정합니다.'],
     ['공격과 기술', 'Space는 주 행동, X는 보조 행동입니다.', '보조키의 가운데 버튼으로도 주 행동을 사용할 수 있습니다.'],
-    ['부대 지휘', '하단 부대 그룹에서 자유·정지·돌격·후퇴를 지시합니다.', '후퇴한 병력은 해당 전투에 다시 돌아올 수 없습니다.'],
+    ['부대 지휘', '하단 부대 명령에서 자유·정지·돌격·후퇴를 지시합니다.', '후퇴한 병력은 해당 전투에 다시 돌아올 수 없습니다.'],
     ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '상단에서 자동·거리·속도를 조정하고 Esc로 시스템을 엽니다.']
   ];
   const p = pages[tutorialStep], w = mobile ? 1040 : 780, h = mobile ? 400 : 340, x = (VW - w) / 2, y = mobile ? 150 : 190;
@@ -1993,7 +1992,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.324', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.325', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '왼쪽 위: 화면·전투·군단·메뉴 · 오른쪽 아래: 부대별 진형·행동 지침'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · X: 보조 행동 · 1 2 3: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
@@ -2536,14 +2535,22 @@ function drawHeroInfo(key, unit, growth, stats, item) {   // 장수 상세 오�
   if (!mobile) label(STAT_NOTE, 438, 626, 11, COLORS.silver2);
   ctx.restore();
 }
-let rosterSquad = { left: 0, right: 0 }, rosterEquipPage = 0;   // 모바일 교환 화면: 양쪽 군단이 한 번에 한 분대(6명)만 보인다
+let rosterSlotPage = { left: 0, right: 0 }, rosterEquipPage = 0;   // 모바일 교환 화면: 양쪽 군단이 한 번에 6칸(1~6·7~12·13~18 쪽)만 보인다
+function corpsGrid(corps, x, y, cw, ch, gap) {   // 군단원 18칸 아이콘 격자(6열×3줄)
+  for (let slot = 0; slot < 18; slot++) {
+    const key = corps.units[slot], cx = x + (slot % 6) * (cw + gap), cy = y + Math.floor(slot / 6) * (ch + gap);
+    panel(cx, cy, cw, ch, key ? COLORS.silver2 : COLORS.dim, 1, 'rgba(15,44,52,.8)');
+    if (key) { drawUnitIcon(key, cx + 8, cy + 2, cw - 16, ch - 20); label(Sim.U[key].name, cx + cw / 2, cy + ch - 9, 12, COLORS.silver, 'center', cw - 4); }
+    else label('—', cx + cw / 2, cy + ch / 2, 14, COLORS.dim, 'center');
+  }
+}
 const rosterTargetN = () => mobile ? 4 : 10, rosterDetailN = () => mobile ? 8 : 16, rosterEquipN = () => mobile ? 4 : 99;
 function button2(id, x, y, w, h, line1, line2, on, col1 = COLORS.silver, col2 = COLORS.silver2) {   // 두 줄 버튼 (모바일 목록 칸)
   panel(x, y, w, h, on ? COLORS.gold : COLORS.silver2, on ? 3 : 1, on ? 'rgba(117,96,25,.65)' : 'rgba(15,44,52,.8)');
   label(line1, x + 12, y + h * 0.32, 16, on ? COLORS.goldSel : col1, 'left', w - 24); if (line2) label(line2, x + 12, y + h * 0.7, 14, col2, 'left', w - 24);
   btns.push({ id, x, y, w, h });
 }
-function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px 이상, 글자 22 가상 px 이상 — 교환 화면은 열(병과·능력치)을 줄이고 분대 단위로 본다
+function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px 이상, 글자 22 가상 px 이상 — 교환 화면은 열(병과·능력치)을 줄이고 6칸씩 쪽으로 본다
   drawArtBackdrop();
   panel(6, 4, 1268, 98, COLORS.gold, 3, 'rgba(6,17,23,.9)');
   label(rosterMode === 'select' ? '군단 편성 · 교환 선택' : rosterMode === 'equip' ? '군단 편성 · 장비 관리' : rosterMode === 'detail' ? '군단 편성 · 장수 상세' : '군단 편성 · 군단 간 교환', 20, 34, 19, COLORS.gold, 'left', 470);
@@ -2557,16 +2564,9 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
     const corps = roster[rosterSource], count = corps.units.filter(Boolean).length;
     panel(6, top, 610, bottom - top, COLORS.gold, 3, 'rgba(8,20,25,.92)');
     label('교환할 군단', 20, top + 22, 15, COLORS.silver2); label(`${rosterSource + 1}군단 · ${corpsName(corps)}`, 20, top + 56, 21, COLORS.gold, 'left', 580);
-    label(`${count} / 18명 · ${Math.ceil(count / 6)}분대 · 전투력 ⚔${corpsPow(corps)}`, 20, top + 90, 15, COLORS.silver, 'left', 580);
+    label(`${count} / 18명 · 전투력 ⚔${corpsPow(corps)}`, 20, top + 90, 15, COLORS.silver, 'left', 580);
     button('roster:source:prev', 16, top + 110, 288, TOUCH, '◀ 이전 군단', false, 17); button('roster:source:next', 316, top + 110, 288, TOUCH, '다음 군단 ▶', false, 17);
-    for (let squad = 0; squad < 3; squad++) {
-      const members = corps.units.slice(squad * 6, squad * 6 + 6).filter(Boolean), y = top + 212 + squad * 112;
-      panel(16, y, 588, 100, members.length ? COLORS.silver2 : COLORS.dim, 1, 'rgba(15,44,52,.8)');
-      label(`${squad + 1}분대`, 28, y + 20, 16, members.length ? COLORS.gold : COLORS.dim);
-      label(members.length ? `⚔${Sim.corpsPower(corps.units.slice(squad * 6, squad * 6 + 6), 'player', corps.growth.slice(squad * 6, squad * 6 + 6))}` : '', 592, y + 20, 15, COLORS.goldSel, 'right');
-      members.forEach((key,i)=>{drawUnitIcon(key,28+i*94,y+28,80,44);label(Sim.U[key].name,68+i*94,y+86,14,COLORS.silver,'center',90);});
-      if(!members.length)label('비어 있음',28,y+60,14,COLORS.dim);
-    }
+    corpsGrid(corps, 20, top + 222, 94, 50, 2);
     panel(626, top, 648, bottom - top, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 640, top + 22, 20, COLORS.gold);
     const N = rosterTargetN(), targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), pages = Math.max(1, Math.ceil(targets.length / N));
@@ -2607,14 +2607,14 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
     });
   } else {
     const drawCorps = (corpsId, x, w, side) => {
-      const corps = roster[corpsId], squad = rosterSquad[side], count = corps.units.filter(Boolean).length; panel(x, top, w, bottom - top, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
+      const corps = roster[corpsId], page = rosterSlotPage[side], count = corps.units.filter(Boolean).length; panel(x, top, w, bottom - top, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
       label(`${corpsId + 1}군단 · ${corpsName(corps)}`, x + 12, top + 22, 15, COLORS.gold, 'left', w * 0.5);
       label(`${count}/18명 · ⚔${corpsPow(corps)}`, x + w - 12, top + 22, 14, COLORS.silver, 'right', w * 0.45);
       const tw = (w - 24 - 16) / 3;
-      for (let q = 0; q < 3; q++) button(`roster:squad:${side}:${q}`, x + 12 + q * (tw + 8), top + 40, tw, TOUCH, `${q + 1}분대 ${corps.units.slice(q * 6, q * 6 + 6).filter(Boolean).length}/6`, q === squad, 16);
+      for (let q = 0; q < 3; q++) button(`roster:page:${side}:${q}`, x + 12 + q * (tw + 8), top + 40, tw, TOUCH, `${q * 6 + 1}~${q * 6 + 6}`, q === page, 16);
       const cw = (w - 24 - 8) / 2;
       for (let k = 0; k < 6; k++) {
-        const slot = squad * 6 + k, key = corps.units[slot], unit = key ? Sim.U[key] : null, cx = x + 12 + (k % 2) * (cw + 8), cy = top + 40 + TOUCH + 10 + Math.floor(k / 2) * 94, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
+        const slot = page * 6 + k, key = corps.units[slot], unit = key ? Sim.U[key] : null, cx = x + 12 + (k % 2) * (cw + 8), cy = top + 40 + TOUCH + 10 + Math.floor(k / 2) * 94, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
         panel(cx, cy, cw, TOUCH, selected ? COLORS.goldSel : 'rgba(206,231,224,.4)', selected ? 3 : 1, selected ? 'rgba(117,96,25,.65)' : 'rgba(15,44,52,.8)');
         label(String(slot + 1).padStart(2, '0'), cx + 10, cy + 24, 13, COLORS.silver2);drawUnitIcon(key,cx+40,cy+4,48,48); label(unit ? unit.name : '—', cx + 96, cy + 24, 16, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim, 'left', cw - 96 - 84);
         if (slot === 0) label('군단장', cx + cw - 10, cy + 24, 14, COLORS.gold, 'right');
@@ -2626,7 +2626,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
     drawCorps(rosterSource, 6, 626, 'left'); drawCorps(rosterTarget, 642, 632, 'right');
   }
   panel(6, 666, 1268, 50, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.35)');
-  label(campaign.notice || '분대원을 선택하세요.', VW / 2, 691, 16, COLORS.silver, 'center', 1240);
+  label(campaign.notice || '교환할 장수를 선택하세요.', VW / 2, 691, 16, COLORS.silver, 'center', 1240);
 }
 function drawRoster() {
   if (mobile) { drawRosterMobile(); return; }
@@ -2643,17 +2643,10 @@ function drawRoster() {
     panel(28, 94, 570, 536, COLORS.gold, 3, 'rgba(8,20,25,.92)');
     label('교환할 군단', 52, 126, 19, COLORS.silver2);
     label(`${rosterSource + 1}군단 · ${corpsName(corps)}`, 52, 174, 28, COLORS.gold);
-    label(`${count} / 18명 · ${Math.ceil(count / 6)}분대 · 전투력 ⚔${corpsPow(corps)}`, 52, 215, 19, COLORS.silver);
+    label(`${count} / 18명 · 전투력 ⚔${corpsPow(corps)}`, 52, 215, 19, COLORS.silver);
     button('roster:source:prev', 52, 252, 245, 46, '◀ 이전 군단', false, 17);
     button('roster:source:next', 315, 252, 245, 46, '다음 군단 ▶', false, 17);
-    for (let squad = 0; squad < 3; squad++) {
-      const members = corps.units.slice(squad * 6, squad * 6 + 6).filter(Boolean);
-      panel(52, 326 + squad * 82, 508, 66, members.length ? COLORS.silver2 : COLORS.dim, 1, 'rgba(15,44,52,.8)');
-      label(`${squad + 1}분대`, 70, 340 + squad * 82, 16, members.length ? COLORS.gold : COLORS.dim);
-      members.forEach((key,i)=>{drawUnitIcon(key,70+i*78,346+squad*82,64,28);label(Sim.U[key].name,102+i*78,384+squad*82,12,COLORS.silver,'center',76);});
-      if(!members.length)label('비어 있음',70,370+squad*82,14,COLORS.dim);
-      label(members.length ? `⚔${Sim.corpsPower(corps.units.slice(squad * 6, squad * 6 + 6), 'player', corps.growth.slice(squad * 6, squad * 6 + 6))}` : '', 548, 340 + squad * 82, 15, COLORS.goldSel, 'right');
-    }
+    corpsGrid(corps, 52, 326, 82, 54, 2);
     panel(622, 94, 630, 536, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
     label('교환 대상 군단', 646, 126, 20, COLORS.gold);
     const targets = roster.map((c, index) => ({ c, index })).filter(x => x.index !== rosterSource), page = targets.slice(rosterPage * rosterTargetN(), rosterPage * rosterTargetN() + rosterTargetN());
@@ -2692,10 +2685,9 @@ function drawRoster() {
       label(`${corpsId + 1}군단 · ${corpsName(corps)}`, x + 18, 120, 22, COLORS.gold);
       label(`${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, x + 582, 120, 16, COLORS.silver, 'right');
       corps.units.forEach((key, slot) => {
-        const unit = key ? Sim.U[key] : null, ry = 142 + slot * 26, squadStart = slot % 6 === 0, commander = slot === 0, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
-        panel(x + 10, ry, 580, 24, selected ? COLORS.goldSel : squadStart ? '#698b94' : 'rgba(206,231,224,.25)', selected ? 2 : 1, selected ? 'rgba(117,96,25,.65)' : squadStart ? 'rgba(23,72,84,.95)' : 'rgba(15,44,52,.75)');
+        const unit = key ? Sim.U[key] : null, ry = 142 + slot * 26, commander = slot === 0, selected = rosterPick && rosterPick.side === side && rosterPick.slot === slot;
+        panel(x + 10, ry, 580, 24, selected ? COLORS.goldSel : 'rgba(206,231,224,.25)', selected ? 2 : 1, selected ? 'rgba(117,96,25,.65)' : 'rgba(15,44,52,.75)');
         label(String(slot + 1).padStart(2, '0'), x + 20, ry + 12, 13, COLORS.silver2);
-        label(squadStart ? `${slot / 6 + 1}분대` : '', x + 55, ry + 12, 13, COLORS.gold);
         drawUnitIcon(key,x+98,ry+1,25,22);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
         if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`HP${stats.maxHp} AT${stats.atk} DF${stats.df} AD${stats.ad} MD${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
@@ -2706,7 +2698,7 @@ function drawRoster() {
     drawCorps(rosterSource, 28, 'left'); drawCorps(rosterTarget, 652, 'right');
   }
   panel(18, 666, 1244, 38, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.35)');
-  label(campaign.notice || '분대원을 선택하세요.', VW / 2, 685, 16, COLORS.silver, 'center');
+  label(campaign.notice || '교환할 장수를 선택하세요.', VW / 2, 685, 16, COLORS.silver, 'center');
 }
 // 미니맵 (우측 상단): 지형 축소도 + 아군(파랑)·적군(빨강) 점 + 현재 화면 사각형. 누르거나 끌면 그 위치를 4초 둘러본다 (look).
 function drawMinimap() {
@@ -2727,7 +2719,7 @@ function draw() {
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
   if (mobile) {
-    if (!mobileSelect) { drawToolbarMobile(); drawMobileStatus(); drawMobileSide(); drawStick(); drawActionsMobile(); }
+    if (!mobileSelect) { drawToolbarMobile(); drawMobileStatus(); drawMobileSide(); drawStick(); drawActionsMobile(); if (unitListOpen) drawUnitList(); }
   } else { drawToolbar(); drawLeftPanel(); drawSpellPanel(); drawPad(); drawTable(); }
   if (!mobileSelect) drawMinimap();
   if (S.auto && !mobileSelect) label('자동 전투', VW - 10, (mini ? mini.y + mini.h : TB_H) + 20, 18, COLORS.gold, 'right');
@@ -2777,7 +2769,7 @@ function cycleUnit(dir) {
 function act(alt) { const u = ctrlOf(); if (u && Sim.action(S, u, alt)) { if (tutorialBattle) tutorialBattle.flags.act = true; } else if (u) floatText(u, u.spells.length && !alt ? (S.lock.player > 0 ? '마법 잠금' : '사용 불가') : '준비중', '#cfd3e6'); }
 function useCommand(id, A = army()) {
   if (['charge', 'stop', 'retreat', 'idle'].includes(id)) { const before = A.order; Sim.armyOrder(S, A, id, A === army() ? ctrlOf() : null); if (tutorialBattle && A.order !== before) tutorialBattle.flags.order = true; return; }
-  if (id === 'act') act(false); else if (id === 'auto') { if (!tutorialBattle) Sim.setAuto(S, !S.auto); }   // 연습 전투는 직접 조작을 배우는 곳이라 자동 전투를 막는다 else if (id === 'support') supportOpen = !supportOpen; else if (id === 'menu') menuOpen = true;
+  if (id === 'act') act(false); else if (id === 'auto') { if (!tutorialBattle) Sim.setAuto(S, !S.auto); }   else if (id === 'support') supportOpen = !supportOpen; else if (id === 'menu') menuOpen = true;   // 연습 전투는 직접 조작을 배우는 곳이라 자동 전투를 막는다
 }
 function cycleFormation(A) { const forms = Object.keys(FORMATION_NAME), i = forms.indexOf(A.formation); Sim.setFormation(A, forms[(i + 1) % forms.length]); }
 function pickRosterUnit(side, slot) {
@@ -2880,7 +2872,7 @@ function uiClickCore(id) {
   if (id === 'roster:detail') { rosterMode = 'detail'; rosterDetailCorps = rosterSource; const own = roster[rosterSource].units.findIndex(k => k && !Sim.U[k].generic), first = rosterHeroes()[0]; if (own >= 0) rosterDetailSlot = own; else if (first) { rosterDetailCorps = first.ci; rosterDetailSlot = first.slot; } rosterDetailPage = Math.max(0, Math.floor(rosterHeroes().findIndex(x => x.ci === rosterDetailCorps && x.slot === rosterDetailSlot) / 16)); campaign.notice = '왼쪽 목록에서 상세 정보를 볼 장수를 선택하세요. (세력 내 모든 장수)'; return; }
   if (id === 'roster:detail:prev' || id === 'roster:detail:next') { rosterDetailPage = Math.max(0, rosterDetailPage + (id.endsWith('next') ? 1 : -1)); return; }
   if (/^roster:detail:\d+:\d+$/.test(id)) { const [, , ci, slot] = id.split(':'); rosterDetailCorps = +ci; rosterDetailSlot = +slot; return; }
-  if (id.startsWith('roster:squad:')) { const [, , side, q] = id.split(':'); rosterSquad[side] = +q; return; }
+  if (id.startsWith('roster:page:') && id.split(':').length === 4) { const [, , side, q] = id.split(':'); rosterSlotPage[side] = +q; return; }
   if (id === 'roster:equip:prev' || id === 'roster:equip:next') { rosterEquipPage = Math.max(0, rosterEquipPage + (id.endsWith('next') ? 1 : -1)); return; }
   if (id === 'roster:equip') { rosterMode = 'equip'; rosterEquipPage = 0; campaign.notice = '◀ ▶ 로 장수의 ITEM 을 바꿉니다.'; return; }
   if (id.startsWith('roster:item:')) { const [, , slot, d] = id.split(':'); cycleItem(+slot, +d); return; }
@@ -2912,11 +2904,12 @@ function uiClickCore(id) {
   if (id === 'support:close') { supportOpen = false; return; }
   if (id.startsWith('support:')) { const A = S.armies[+id.slice(8)]; if (!A) return; const groups = S.armies.filter(B => B.team === 'player' && B.support && B.corps === A.corps); let count = 0; for (const B of groups) count += Sim.deployArmy(S, B, B.ctrl, true); if (count) { const corps = roster.find(c => c.id === A.corps); S.events.push({ type: 'notice', team: 'player', text: `아군 ${corps ? corpsName(corps) : A.name}이 참전했습니다.` }); supportOpen = false; } else S.events.push({ type: 'notice', team: 'player', text: '출진 구역이 가득 차 참전할 수 없습니다. 아군이 자리를 비우면 다시 시도하세요.' }); return; }
   if (id.startsWith('form:')) { cycleFormation(S.armies[+id.slice(5)]); return; }
-  if (/^army\d/.test(id)) { armyIdx = +id.slice(4); beginSelect(); return; }
+  if (id === 'm:prevUnit' || id === 'm:nextUnit') { if (!menuOpen) cycleUnit(id === 'm:prevUnit' ? -1 : 1); return; }
+  if (id === 'm:unitlist') { if (!menuOpen) unitListOpen = !unitListOpen; return; }
   if (id.startsWith('slot') || id.startsWith('col')) {
     const u = S.units.find(x => x.id === +id.replace(/\D/g, '')); if (!u || u.dead) return;
     const dbl = lastPortrait.id === u.id && T - lastPortrait.t < 0.4; lastPortrait = { id: u.id, t: T };
-    if (alive(u)) { pick(u); if (dbl) snapCam(); } return;
+    if (alive(u)) { pick(u); if (dbl) snapCam(); unitListOpen = false; } return;
   }
   if (id.startsWith('cmd:')) { useCommand(id.slice(4)); return; }
   if (id.startsWith('spell:')) { const u = ctrlOf(); if (u) Sim.selectSpell(u, +id.slice(6)); return; }
@@ -2984,6 +2977,11 @@ cv.addEventListener('pointerdown', e => {
   if (paused && !menuOpen) { paused = false; return; }   // 일시정지(앱 전환 등)는 화면을 탭하면 계속
   if (menuOpen) { if (b && /^m:(?!act$|alt$|spell$)/.test(b.id)) uiClick(b.id); return; }
   if (supportOpen) { if (b && b.id.startsWith('support:')) uiClick(b.id); return; }
+  if (unitListOpen) {   // 부대원 팝업: 팝업 안 초상·열기 버튼은 그대로, 팝업 안 빈 곳은 무시, 밖은 닫고 평소 입력(조이스틱 등)을 이어서 처리
+    if (b && (b.id.startsWith('slot') || b.id === 'm:unitlist')) { uiClick(b.id); return; }
+    if (!b && p.x >= 1 && p.x <= 537 && p.y >= 348 && p.y <= 617) return;
+    unitListOpen = false;
+  }
   if (!b && inMini(p)) { miniPtr = e.pointerId; lookAt(p); return; }   // 미니맵: 누르거나 끌면 그 위치를 잠시 본다
   if (b && b.id.startsWith('order:')) { cancelSelect(); uiClick(b.id); return; }
   if (selectMode && mobile && !b && inStickZone(p.x, p.y)) confirmSelect();   // 모바일: 조이스틱을 잡으면 확정하고 바로 이동
@@ -3040,10 +3038,11 @@ addEventListener('keydown', e => {
   if (selectMode && k === ' ') { const cast = !selTarget; confirmSelect(); if (cast) act(false); return; }   // 아군 선택 중 Space 는 확정과 행동을 함께 실행
   if (selectMode && k === 'Escape') { if (selTarget) cancelSelect(); else confirmSelect(); return; }   // 적 정보는 Esc 로 지시 없이 닫는다   // 선택 확정 → 전투 재개
   if (supportOpen && k === 'Escape') { supportOpen = false; return; }
+  if (unitListOpen && k === 'Escape') { unitListOpen = false; return; }
   if (k === 'Escape' || k === 'F10') { menuOpen = !menuOpen; return; }
   if (menuOpen) return;
   if (k === 'ArrowLeft') cycleUnit(-1); else if (k === 'ArrowRight') cycleUnit(1);
-  else if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'Tab') { armyIdx = nextArmy(k === 'ArrowUp' ? -1 : 1); beginSelect(); }
+  else if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'Tab') { armyIdx = nextCorps(); cancelSelect(); snapCam(); }
   else if (k === ' ') act(false); else if (k === 'x') act(true);
   else if (k === '[') setZoom(zoomIdx - 1); else if (k === ']') setZoom(zoomIdx + 1);
   else if (k === 'f') useCommand('charge'); else if (k === 'v') useCommand('stop'); else if (k === 'r') useCommand('retreat'); else if (k === 'b') useCommand('idle');
