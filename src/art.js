@@ -171,12 +171,13 @@ function connectHeroPose(u,pose,t) {
 }
 // 화면만 보간하며 공격·피격 판정과 타이머는 변경하지 않는다.
 function heroPose(u, s, t) {
-  if (!u.named && !s.lubuMotion) return null;
+  const enhanced=s.lubuMotion||s.caoMotion;
+  if (!u.named && !enhanced) return null;
   const action = u.anim > 0 ? u.actionKind || 'attack' : '', duration = action === 'attack' || action === 'melee' ? 0.28 : 0.4;
   const p = Math.max(0, Math.min(1, 1 - u.anim / duration)), kick = action ? (1 - p) ** 2 : 0;
   const fleeing = u.order && ['retreat', 'flee'].includes(u.order.type);
   const gait = u.moving ? Math.sin(t * (fleeing ? 14 : 10) + u.id) : 0;
-  const pose = { state: u.moving ? 'move' : 'idle', progress:p, walkFrame:Math.floor(t*8+(u.id||0)*.73)%4, angle: u.face + 0.9, reach: 0, lean: 0, bob: Math.abs(gait) * 2, stride: gait, pull: 0, glow: null, glowAlpha: 0.7 * kick, trail: kick, power:s.lubuMotion?(u.named?1.45:1.15):1, impact: Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))) };
+  const pose = { state: u.moving ? 'move' : 'idle', progress:p, walkFrame:Math.floor(t*8+(u.id||0)*.73)%4, angle: u.face + 0.9, reach: 0, lean: 0, bob: Math.abs(gait) * 2, stride: gait, pull: 0, glow: null, glowAlpha: 0.7 * kick, trail: kick, power:enhanced?(u.named?1.45:1.15):1, impact: Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))) };
   if (action) {
     if (action === 'cast' || action === 'heal' || action === 'bless') {
       pose.state = action; pose.angle = u.face - 0.6 * kick; pose.reach = 3 * kick; pose.bob += 3 * kick; pose.glow = action === 'cast' ? '#b398ff' : '#7dff9a';
@@ -387,10 +388,10 @@ function battleHeroMotion(pose,face,r) {
     case 'move': m.y=-Math.abs(pose.stride||0)*2; m.turn=(pose.stride||0)*.035; m.frame=pose.stride>0?1:0; break;
     case 'thrust': reach=18*k*power-16*wind; m.turn=side*(.2*k*power-.12*wind); m.y-=2*k*(power-1);m.stretch+=.05*k*(power-1);m.frame=k>.12?1:0; break;
     case 'slash': reach=10*k*power-10*wind; m.turn=side*(-.48*k*power+.38*Math.sin(Math.PI*p)+.25*wind);m.y-=2*k*(power-1);m.stretch+=.04*k*(power-1);m.frame=k>.12?1:0; break;
-    case 'shoot': reach=-7*k; m.turn=-side*.12*k; m.frame=k>.35?1:0; break;
-    case 'cast': case 'heal': case 'bless': m.y=-5*k; m.turn=side*.06*k; m.frame=k>.25?1:0; break;
-    case 'spin': m.face=face+Math.PI*2*(pose.progress||0); m.turn=side*.18*Math.sin(Math.PI*2*(pose.progress||0)); m.frame=k>.2?1:0; break;
-    case 'dash': reach=8; m.y=-(pose.bob||0); m.turn=side*.2; m.frame=pose.bob>1.5?1:0; break;
+    case 'shoot': reach=-7*k*(.5+.5*power); m.turn=-side*.12*k*power; m.frame=k>.35?1:0; break;
+    case 'cast': case 'heal': case 'bless': m.y=-5*k*(.6+.4*power); m.turn=side*.06*k*power; m.frame=k>.25?1:0; break;
+    case 'spin': m.face=face+Math.PI*2*(pose.progress||0); m.turn=side*.18*power*Math.sin(Math.PI*2*(pose.progress||0));m.stretch+=.03*k*(power-1);m.frame=k>.2?1:0; break;
+    case 'dash': reach=8*power; m.y=-(pose.bob||0); m.turn=side*.2*power; m.frame=pose.bob>1.5?1:0; break;
     case 'guard': reach=-3*hit; m.turn=-side*.08*hit; break;
     case 'hurt': reach=-7*hit; m.turn=-side*.24*hit; break;
   }
