@@ -1,6 +1,6 @@
 ﻿'use strict';
 // 렌더 · 입력 · HUD — 퍼스트퀸4 전투 화면/조작: 군단마다 "조작 캐릭터" 한 명을 방향키(숫자패드)로 직접 움직이고 Space 로 특수기·마법,
-// 나머지는 AI + 하단 부대별 군단 명령(돌격·정지·후퇴). ←→ 조작 캐릭터 변경, ↑↓ 군단 변경, Ctrl 가속, 적을 클릭하면 집중 공격.
+// 나머지는 AI + 하단 부대별 군단 명령(돌격·정지·후퇴). ←→ 조작 캐릭터 변경, ↑↓ 군단 변경, Shift 가속, 적을 클릭하면 집중 공격.
 // 모바일(터치): 같은 조작을 큰 버튼으로 — 왼쪽 이동패드(누르고 있기·멀티터치), 오른쪽 행동 버튼과 그 왼쪽 스킬 버튼 줄(마법·축복), 상단 두 군단 초상 줄·군단 명령, 왼쪽 중간 미니맵, 왼쪽 아래 시스템.
 // 전투 규칙은 sim.js, 도형은 art.js.
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -2151,9 +2151,9 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.342', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.343', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Ctrl: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
+  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Shift: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
   if (saveSlotMode) drawSaveSlots();
@@ -3239,7 +3239,7 @@ function frame(now) {
     for (const m of marks) m.t -= dt; marks = marks.filter(m => m.t > 0);
     if (BATTLE_ART.ready && !paused && !menuOpen && !supportOpen && tutorialStep < 0 && !S.over && !selectMode && !S.events.length) {
       const d = padDir || (dirStack.length ? DIRS[dirStack[dirStack.length - 1]] : null), u = ctrlOf();
-      let r = dt * BATTLE_SPEED * (keys.Control ? 3 : SPEEDS[speedIdx]);
+      let r = dt * BATTLE_SPEED * (keys.Shift ? 3 : SPEEDS[speedIdx])   // Shift 가속: Ctrl+W/Q 같은 브라우저 예약 단축키가 이동 키(WASD·QEZC)와 겹쳐 탭이 닫히던 문제로 Ctrl 에서 변경;
       let steps = 0;
       while (r > 0 && steps++ < MAX_SIM_STEPS && !S.over && !S.events.length) { const s = Math.min(r, 1 / 60); if (d && u && alive(u)) Sim.control(S, u, d[0], d[1]); Sim.step(S, s); r -= s; }
     }
@@ -3251,5 +3251,6 @@ function frame(now) {
   stratPracticeTick();
   draw(); requestAnimationFrame(frame);
 }
+addEventListener('beforeunload', e => { if (state === 'play' && S && !S.over) { e.preventDefault(); e.returnValue = ''; } });   // 전투 중 실수로 탭을 닫거나 새로고침하면 확인을 묻는다 (Ctrl+W 등)
 requestAnimationFrame(frame);
 
