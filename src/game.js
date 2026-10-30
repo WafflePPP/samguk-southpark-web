@@ -68,7 +68,7 @@ function checkProvinceWins() {   // 평정 소식(명세 71 §2-1): 플레이어
   const fresh = full.filter(n => !campaign.pacified.includes(n)); if (!fresh.length) return fresh;
   campaign.pacified.push(...fresh); const line = fresh.map(n => (n.endsWith('주') ? n : n + '주') + ' 평정').join(' · '); campaign.notice = line + '! ' + (campaign.notice || ''); campaign.digest ||= []; campaign.digest.push({ title: '주 평정', line }); return fresh;
 }
-const START_STAGE = 'xiapi', CAPITALS = { '여포': 'xiapi', '원소': 'ye', '조조': 'xuchang', '유비': 'xiaopei', '장양': 'jinyang', '공손찬': 'ji', '공손도': 'xiangping' }, PLAYABLE_FACTIONS = ['여포', '조조', '유비', '장양', '공손찬', '공손도'];   // 명세 71: 원소만 AI 전용
+const START_STAGE = 'xiapi', CAPITALS = { '여포': 'xiapi', '원소': 'ye', '조조': 'xuchang', '유비': 'xiaopei', '장양': 'jinyang', '공손찬': 'ji', '공손도': 'xiangping' }, PLAYABLE_FACTIONS = ['여포', '조조', '유비'];   // 새 게임 선택 가능 세력. 원소·장양·공손찬·공손도는 AI 전용 (명세 71 원소 → v0.1.344 장양·공손찬·공손도 제거)
 const FACTIONS = ['여포', '원소', '조조', '유비', '장양', '공손찬', '공손도'], INITIAL_RULERS = { '여포': 'lubu', '원소': 'yuan', '조조': 'cao', '유비': 'liubei', '장양': 'zhangyang', '공손찬': 'gong', '공손도': 'gongsundu' }, SUCCESSORS = { lubu: ['lulingqi'], yuan: ['yuantan'], cao: ['caopi'], liubei: ['guan'], zhangyang: ['yangchou'], gong: ['gongsunxu'], gongsundu: ['gongsunkang'] };   // 양추→장양·공손속→공손찬·공손강→공손도 후계 (혈연 아님 포함, 명세 71)
 const FACTION_HEROES = {   // 명세 71: 도시 수 × 2 (원소 10도시 : 20명 기준) = 52명. 제거 장수는 Sim.U·GRADE·art 데이터를 지우지 않고 여기서만 뺀다(ARMIES·시험이 직접 사용)
   '여포': ['lubu', 'jang', 'diao', 'gao', 'chengong', 'lulingqi'],
@@ -2151,14 +2151,14 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.343', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.344', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Shift: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
   label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
   if (saveSlotMode) drawSaveSlots();
   if (startFactionSelect) {   // 명세 71: 6세력 3×2 격자(PC·모바일 같은 가상 좌표, 모바일은 버튼 높이 ≥86·글자 ≥22) — 배치 다듬기는 3단계(Codex)
-    const cw = 300, rowH = tb(90) + mb(26, 30) + mb(22, 30) + 24, py = mb(50, 36), ph = mb(560, 612), by = py + mb(120, 120);
+    const cw = 300, rowH = tb(90) + mb(26, 30) + mb(22, 30) + 24, rows = Math.ceil(PLAYABLE_FACTIONS.length / 3), py = mb(50, 36), ph = mb(560, 612) - (2 - rows) * rowH, by = py + mb(120, 120);
     panel(140, py, 1000, ph, COLORS.gold, 3, 'rgba(8,20,25,.98)'); label('시작 세력 선택', 640, py + mb(45, 42), 30, COLORS.gold, 'center');
     label('선택한 세력의 수도와 장수로 전략을 시작합니다.', 640, py + mb(85, 82), 17, COLORS.silver2, 'center', 960);
     PLAYABLE_FACTIONS.forEach((faction, i) => {
@@ -2167,7 +2167,7 @@ function drawTitle() {
       label(`${capital.name} · ${Sim.U[INITIAL_RULERS[faction]].name}`, x + cw / 2, y + tb(90) + mb(26, 26), 15, FACTION_STYLE[faction].light, 'center', cw);
       label(`시작 거점 ${info.cities} · 군단 ${info.corps} · ${info.difficulty}`, x + cw / 2, y + tb(90) + mb(26, 26) + mb(22, 30), 14, info.difficulty === '어려움' ? '#ffb06a' : COLORS.silver, 'center', cw);
     });
-    const ky = by + 2 * rowH + mb(6, 20);
+    const ky = by + rows * rowH + mb(6, 20);
     label(mobile ? '세력을 터치하세요' : PLAYABLE_FACTIONS.map((f, i) => (i + 1) + ' ' + f).join(' · ') + ' · Esc 취소', 640, ky, 16, COLORS.silver, 'center', 960);
     button('start-diff', mb(540, 510), ky + mb(18, 20), mb(200, 260), tb(40), '난이도: ' + (AI_PROFILES[startDifficulty] || AI_PROFILES.normal).name, false, 17);
   }
@@ -3195,7 +3195,7 @@ addEventListener('keydown', e => {
   if (e.repeat) return;
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
   if ((state === 'title' || state === 'map' || state === 'roster') && custodyOpen()) return;
-  if (state === 'title') { if (startFactionSelect) { if (e.key === 'Escape') startFactionSelect = false; else if (/^[1-6]$/.test(e.key)) uiClick('start-faction:' + PLAYABLE_FACTIONS[+e.key - 1]); } else if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Enter' || e.key.toLowerCase() === 'n') startNewFromTitle(); else if (e.key.toLowerCase() === 'l') saveSlotMode = 'load'; return; }
+  if (state === 'title') { if (startFactionSelect) { if (e.key === 'Escape') startFactionSelect = false; else if (/^[1-9]$/.test(e.key)) uiClick('start-faction:' + PLAYABLE_FACTIONS[+e.key - 1]); } else if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Enter' || e.key.toLowerCase() === 'n') startNewFromTitle(); else if (e.key.toLowerCase() === 'l') saveSlotMode = 'load'; return; }
   if ((state === 'map' || state === 'roster') && custodyOpen()) return;
   if (state === 'map' && stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) { if (e.key === 'Enter' || e.key === ' ') uiClick('spr:next'); return; }   // 실습 카드: 건너뛰기·Esc 없음
   if (state === 'map' && stratTutStep >= 0) { if (e.key === 'Escape') finishStratTut(); else if (e.key === 'ArrowLeft') stratTutNav('prev'); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) stratTutNav('next'); return; }
