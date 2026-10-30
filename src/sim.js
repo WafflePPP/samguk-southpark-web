@@ -147,6 +147,8 @@ const RANK_ONLY_KEYS = ['yangchou', 'dongzhao', 'yangfeng', 'tiankai', 'yangang'
 const CLASS_DAMAGE = { cavalry: { cavalry: 1, sword: 1, archer: 1.2, military: 1.2, spear: 0.8 }, sword: { sword: 1, spear: 1.2, archer: 1, military: 1, cavalry: 1 }, spear: { spear: 1, sword: 0.8, archer: 1, military: 1, cavalry: 1.2 }, archer: { archer: 1, sword: 1, spear: 1, cavalry: 0.8, military: 1 }, military: { military: 1, sword: 1, spear: 1, cavalry: 0.8, archer: 1 } };
 // CLASS_DAMAGE 가 최종 피해 배율이다. 별도 우세 보너스를 겹치지 않는다.
 const MATCHUP_BONUS = 1;
+const DASH_PUSH_BONUS = 0.15, DASH_PUSH_CAP = 6;   // 한 번의 돌진 안에서 적을 밀칠 때마다 다음 피해가 +15% 씩 누적된다(최대 6회 = ×1.9)
+const dashPushMul = n => 1 + DASH_PUSH_BONUS * Math.min(n, DASH_PUSH_CAP);
 const DASH_BASE = 1, DASH_EXTRA = 0.5;   // 돌진 충격 피해 = 기본 1배 + 추가분(1 + 밀친 칸×0.5) × 0.5 — 추가 피해 효율 50% 감소 (이전: 2 + 밀친 칸×0.5)
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 // ITEM: 이름 있는 장수만 장착. owner가 있는 고유 장비는 해당 장수 전용이다.
@@ -645,7 +647,7 @@ function useSpecial(S, u, x, y) {
     if ((!dx && !dy) || u.mv) return false;
     while (q.length < 6) { const nx = cx + dx, ny = cy + dy; if (!okTile(S, nx, ny) || !diagOk(S, cx, cy, dx, dy)) break; const o = S.units[S.occ[ti(nx, ny)] - 1]; if (o && (!titled || !live(o) || o.team === u.team)) break; q.push({ tx: nx, ty: ny }); cx = nx; cy = ny; }
     if (!q.length) return false;
-    u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; u.titleDash = titled; u.dashHit = titled ? new Set() : null; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
+    u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; u.dashPushes = 0; u.titleDash = titled; u.dashHit = titled ? new Set() : null; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
   else if (THRUST_MUL[u.special] || u.special === 'sweep') {   // 격자 특수기: 8방향 정면 직선 관통(thrust/pike) · 전방 180° 5칸(sweep). 아군은 칸만 차지하고 피해 없음
     const [dx, dy] = dir8(ang); ang = Math.atan2(dy, dx);
@@ -932,7 +934,7 @@ function updateUnit(S, u, dt) {
     if (n && o && u.titleDash && live(o) && o.team !== u.team) {
       if (u.dashHit.has(o.id) && o.mv) return;
       const line = pushDashLine(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 6 - u.dashMoved)), hit = line || [o], moved = line ? 1 : 0;
-      for (let i = 0; i < hit.length; i++) { const e = hit[i]; if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * (i ? DASH_CHAIN_DAMAGE : 1))); const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, D.scale || 1); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); } }
+      for (let i = 0; i < hit.length; i++) { const e = hit[i]; if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * (i ? DASH_CHAIN_DAMAGE : 1) * dashPushMul(u.dashPushes))); if (moved) u.dashPushes++; const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, D.scale || 1); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); } }
       if (!line) u.dashQ.length = 0;
       return;
     }
@@ -940,7 +942,8 @@ function updateUnit(S, u, dt) {
     const [dx, dy] = u.dashDir || [Math.round(Math.cos(u.face)), Math.round(Math.sin(u.face))], push = Math.max(1, Math.ceil((u.dashMoved || 1) / 2));
     const titled = u.titleDash; u.dashQ = null; u.titleDash = false; u.dashHit = null; u.passT = 0;
     const D = (TITLE_EFFECT[u.subclass] || {}).dash, sc = (D && D.scale) || 1;
-    if (!titled) aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA)); if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
+    let pushes = 0;
+    if (!titled) aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * dashPushMul(pushes))); if (moved) pushes++; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
     if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
   }
   let o = u.order;
