@@ -814,14 +814,24 @@ function openEnemy(S, u, except) {   // 현재 적 주변이 가득 찼으면 �
   }
   u.claim = claim; u.claimT = S.t; return target && { target, claim };
 }
+// 기본 진형: 창병·검병 전열, 궁병 중열, 군사 후열(몸통 4열 dx -1~2), 기병은 좌·우 측면(dx -2·-3 / 3·4)에 번갈아 선다. 슬롯은 모두 달라야 한다
+function blockSlots(A, sgn) {
+  const body = { front: [], archer: [], military: [] }, flank = [], map = new Map();
+  for (const u of A.units) { const c = u.category; if (c === 'cavalry') flank.push(u); else if (c === 'archer') body.archer.push(u); else if (c === 'military') body.military.push(u); else body.front.push(u); }
+  let row = 0;
+  for (const g of [body.front, body.archer, body.military]) { g.forEach((u, i) => map.set(u, { dx: (i % 4) - 1, dy: sgn * (row + Math.floor(i / 4)) })); row += Math.ceil(g.length / 4); }
+  const rows = Math.max(1, row);   // 측면 열 길이 = 몸통 깊이
+  flank.forEach((u, i) => { const side = i % 2, k = Math.floor(i / 2), col = Math.floor(k / rows); map.set(u, { dx: side ? 3 + col : -2 - col, dy: sgn * (k % rows) }); });
+  return map;
+}
 function setFormation(A, type) {
   if (!FORMATION_NAME[type]) return false; A.formation = type;
-  const sgn = A.team === 'player' ? 1 : -1, mid = Math.floor((A.units.length - 1) / 2);
+  const sgn = A.team === 'player' ? 1 : -1, mid = Math.floor((A.units.length - 1) / 2), blockMap = type === 'block' ? blockSlots(A, sgn) : null;
   A.units.forEach((u, i) => {
     if (type === 'line') u.slot = { dx: i - mid, dy: 0 };
     else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: i ? (i % 2 ? -row : row) : 0, dy: sgn * row }; }
     else if (type === 'guard') { const n0 = A.units.filter(v => !v.isLeader).indexOf(u), n = n0 + (n0 >= 5 && A.units.some(v => v.isLeader) ? 1 : 0); u.slot = u.isLeader ? { dx: 0, dy: sgn } : { dx: (n % 4) - 1, dy: sgn * Math.floor(n / 4) }; }
-    else u.slot = { dx: (i % 4) - 1, dy: sgn * Math.floor(i / 4) };
+    else u.slot = blockMap.get(u);   // 기본: 병과별 배치
     u.path = null;
   });
   return true;

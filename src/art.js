@@ -255,9 +255,11 @@ function extractBattleSprite(image,b,tint=false,cutoff=128) {
   while(head<tail){const i=queue[head++],x=i%b.w,y=Math.floor(i/b.w);for(const n of [x?i-1:-1,x+1<b.w?i+1:-1,y?i-b.w:-1,y+1<b.h?i+b.w:-1])if(n>=0&&!seen[n]&&d[n*4+3]>=cutoff){seen[n]=1;queue[tail++]=n;}}
   if(tail<500)throw new Error('빈 스프라이트 이미지');
   for(let i=0;i<seen.length;i++){const j=i*4;if(!seen[i]){d[j+3]=0;continue;}d[j+3]=255;if(tint&&d[j+2]>d[j]*1.18&&d[j+2]>d[j+1]*1.05){const r=d[j],g=d[j+1],blue=d[j+2];d[j]=Math.min(255,blue*.9+25);d[j+1]=g*.7+8;d[j+2]=r*.8+8;}}
-  const feet=new Uint32Array(b.w);let total=0;for(let y=Math.floor(b.h*.85);y<b.h;y++)for(let x=0;x<b.w;x++)if(seen[y*b.w+x]){feet[x]++;total++;}
+  const rows=new Uint32Array(b.h);let widest=0;for(let y=0;y<b.h;y++){for(let x=0;x<b.w;x++)rows[y]+=seen[y*b.w+x];widest=Math.max(widest,rows[y]);}
+  let footY=b.h-1;while(footY>0&&rows[footY]<widest*.18)footY--;
+  const feet=new Uint32Array(b.w);let total=0;for(let y=Math.max(0,footY-Math.ceil(b.h*.08));y<=footY;y++)for(let x=0;x<b.w;x++)if(seen[y*b.w+x]){feet[x]++;total++;}
   let weight=0;c.footX=b.w/2;for(let x=0;x<b.w;x++){weight+=feet[x];if(weight>=total/2){c.footX=x;break;}}
-  let mass=0,top=0;while(top<b.h&&mass<tail*.15){for(let x=0;x<b.w;x++)mass+=seen[top*b.w+x];top++;}c.bodyHeight=b.h-top+1;
+  let mass=0,top=0;while(top<b.h&&mass<tail*.15){for(let x=0;x<b.w;x++)mass+=seen[top*b.w+x];top++;}c.footY=footY;c.bodyHeight=footY-top+1;
   g.putImageData(pixels,0,0);return c;
 }
 function loadBattleArt() {
@@ -302,17 +304,17 @@ function loadBattleArt() {
     });
     await each(lubuFaceTroops,async h=>{
       if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('여포 얼굴 기준 병종 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v323/'+h.file,323),frames=h.frames.map(b=>extractTroopSprite(image,b,false)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true));
+      const image=await load('src/assets/troops-v323/'+h.file,323),scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true,scale));
       installAtlasRework(h,frames,enemy,TROOP_REWORK_BINDINGS[h.key]);
     });
     await each(lubuCommonTroops,async h=>{
       if(![56,64].includes(h.frames.length)||h.actions?.length!==2)throw new Error('여포군 공통 병사 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v325/'+h.file,325),frames=h.frames.map(b=>extractTroopSprite(image,b,false));
+      const image=await load('src/assets/troops-v325/'+h.file,325),scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
       installAtlasRework(h,frames,frames,LUBU_COMMON_REWORK_BINDINGS[h.key]);
     });
     await each(remaining.filter(h=>h.key==='lulingqi'),async h=>{
       if(![56,64,72].includes(h.frames.length)||h.actions?.length!==2)throw new Error('여령기 동작 누락');
-      const image=await load('src/assets/rework-v303/'+h.file,303),frames=h.frames.map(b=>extractTroopSprite(image,b,false));
+      const image=await load('src/assets/rework-v303/'+h.file,303),scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
       installAtlasRework(h,frames,frames,['lulingqi']);
     });
     await each(finalHeroes,async h=>{
@@ -322,8 +324,8 @@ function loadBattleArt() {
     });
     await each(finalTroops,async h=>{
       if(h.frames.length!==56||h.actions?.length!==2)throw new Error('최종 병사 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v339/'+h.file,342),keys=FINAL_REWORK_BINDINGS[h.key],frames=h.frames.map(b=>extractTroopSprite(image,b,false));
-      const enemy=keys.length===2?h.frames.map(b=>extractTroopSprite(image,b,true)):frames;
+      const image=await load('src/assets/troops-v339/'+h.file,342),keys=FINAL_REWORK_BINDINGS[h.key],scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
+      const enemy=keys.length===2?h.frames.map(b=>extractTroopSprite(image,b,true,scale)):frames;
       installAtlasRework(h,frames,enemy,keys);
     });
     for(const [key,model]of BATTLE_ART.models)if(model.idle?.length!==8||model.directions?.length!==8)throw new Error('캐릭터 리워크 연결 누락: '+key);
@@ -340,13 +342,13 @@ const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=1.03;
 const LUBU_FACE_SCALE={lubu:LUBU_SCALE,jang:.95,diao:LULINGQI_SCALE,gao:LULINGQI_SCALE,chengong:LULINGQI_SCALE,lulingqi:LULINGQI_SCALE,f_xian:.8,f_bing:.97};
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
+function animationFrameHeight(frames){const heights=frames.map(battleFrameHeight).sort((a,b)=>a-b);return heights[Math.floor(heights.length/2)];}
 function installDiaoRework(sheets){
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,model=BATTLE_ART.models.get('diao');
   if(sheets.length!==2||idle?.length!==8||walk?.length!==32||!model)throw new Error('초선 방향/동작 이미지 누락');
   model.idle=idle;model.directions=Array.from({length:8},(_,d)=>Array.from({length:4},(_,f)=>walk[f*8+d]));
-  model.directionHeight=Math.max(...walk.map(c=>c.height));
-  const body=a=>a.map(c=>c.bodyHeight).sort((a,b)=>a-b)[Math.floor(a.length/2)];
-  model.bodyRatio=body(walk)/model.directionHeight;model.idleHeight=body(idle)/model.bodyRatio;model.reworked=true;
+  model.directionHeight=animationFrameHeight(walk);model.idleHeight=animationFrameHeight(idle);
+  const body=walk.map(c=>c.bodyHeight).sort((a,b)=>a-b);model.bodyRatio=body[Math.floor(body.length/2)]/model.directionHeight;model.reworked=true;
 }
 function battleDirection(face){return ((Math.round(face/(Math.PI/4))%8)+8)%8;}
 function installLubuRework(sheets,key='lubu',actions=['thrust','slash']) {
@@ -355,16 +357,15 @@ function installLubuRework(sheets,key='lubu',actions=['thrust','slash']) {
   const model=BATTLE_ART.models.get(key);if(!model)throw new Error(key+' 기본 모델 누락');
   model.idle=idle;model.directions=Array.from({length:8},(_,d)=>Array.from({length:4},(_,f)=>walk[f*8+d]));
   model.attacks=Object.fromEntries(actions.map((kind,i)=>[kind,Array.from({length:8},(_,d)=>[attack[i*16+d],attack[i*16+8+d]])]));
-  model.directionHeight=Math.max(...walk.map(c=>c.height));
-  const body=a=>a.map(c=>c.bodyHeight).sort((a,b)=>a-b)[Math.floor(a.length/2)],ref=body(walk);
-  model.idleHeight=model.directionHeight*body(idle)/ref;model.attackHeight=model.directionHeight*body(attack)/ref;model.reworked=true;
+  model.directionHeight=animationFrameHeight(walk);model.idleHeight=animationFrameHeight(idle);model.attackHeight=animationFrameHeight(attack);model.reworked=true;
 }
-function extractTroopSprite(image,b,enemy) {
-  const source=extractBattleSprite(image,b,enemy,200),scale=Math.min(1,128/source.height);
+function troopAtlasScale(frames){return Math.min(1,128/Math.max(...frames.map(b=>b.h)));}
+function extractTroopSprite(image,b,enemy,scale) {
+  const source=extractBattleSprite(image,b,enemy,200);
   if(scale===1)return source;
   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(source.width*scale));canvas.height=Math.max(1,Math.round(source.height*scale));
   const g=canvas.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(source,0,0,canvas.width,canvas.height);
-  canvas.footX=source.footX*canvas.width/source.width;canvas.bodyHeight=source.bodyHeight*canvas.height/source.height;return canvas;
+  canvas.footX=source.footX*canvas.width/source.width;canvas.footY=source.footY*canvas.height/source.height;canvas.bodyHeight=source.bodyHeight*canvas.height/source.height;return canvas;
 }
 function installAtlasRework(spec,frames,enemyFrames,keys=TROOP_REWORK_BINDINGS[spec.key]) {
   if(!keys||![56,64,72].includes(frames.length)||enemyFrames.length!==frames.length)throw new Error('병사 방향/동작 누락: '+spec.key);
@@ -375,7 +376,7 @@ function installAtlasRework(spec,frames,enemyFrames,keys=TROOP_REWORK_BINDINGS[s
     if(walk.length===24)walk.push(...walk.slice(8,16));
     if(walk.length===16)walk.push(...walk);
     installLubuRework([{kind:'idle',frames:all.slice(0,8)},{kind:'walk',frames:walk},{kind:'attack',frames:all.slice(attackStart)}],key,spec.actions);
-    const model=BATTLE_ART.models.get(key);model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;model.troop=keys.length===2;
+    const model=BATTLE_ART.models.get(key);model.idleHeight=model.attackHeight=model.directionHeight;model.bodyRatio=model.directions.flat().map(c=>c.bodyHeight).sort((a,b)=>a-b)[16]/model.directionHeight;model.troop=keys.length===2;
   });
 }
 function battleActionWeight(p){p=Math.max(0,Math.min(1,p||0));const k=p<.2?p/.2:(1-p)/.8;return k*k*(3-2*k);}
@@ -437,10 +438,10 @@ function drawBattleBody(g,x,y,r,face,s,o={}) {
   const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,face,r):null,view=motion?motion.face:face,back=Math.sin(view)<-.25;
   const directional=!!model.directions,frame=directional?(pose&&['move','dash'].includes(pose.state)||!pose&&o.moving?pose?.walkFrame??Math.floor((o.t||0)*8)%4:phase>0?Math.min(3,Math.floor((pose.progress||0)*4)):0):motion?motion.frame:o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0;
   const frames=directional?model.directions[battleDirection(view)]:back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
-  if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;white.bodyHeight=image.bodyHeight;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
+  if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;white.footY=image.footY;white.bodyHeight=image.bodyHeight;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
   const scale=battleSpriteHeight(r,s)/battleFrameHeight(image),h=image.height*scale,w=image.width*scale;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+(motion?.x||0)),Math.round(y+(motion?motion.y:o.moving&&frame?-1:0)));if(motion?.turn)g.rotate(motion.turn);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if(!directional&&(Math.cos(view)<-.25)!==sourceLeft)g.scale(-1,1);
-  g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round(h),Math.round(w),Math.round(h));g.restore();
+  g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round((image.footY??image.height)*h/image.height),Math.round(w),Math.round(h));g.restore();
   drawBattleMeleeTrail(g,x,y,r,face,pose,!!s.horse);
 }
 function drawConnectedHero(g,x,y,r,face,s,o,model) {
@@ -448,18 +449,18 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
   const samples=layers.map(l=>{
     const p=l.pose,m=battleHeroMotion(p,l.face,r),d=battleDirection(m.face),idle=p.state==='idle'||model.reworked&&['guard','hurt','cast','heal','bless'].includes(p.state);
     const walking=['move','dash'].includes(p.state),f=walking?p.walkFrame??Math.floor((o.t||0)*8)%4:p.trail>0?Math.min(3,Math.floor((p.progress||0)*4)):0;
-    let image=idle?model.idle[d]:model.directions[d][f];
+    let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
     const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state,kind=model.attacks?.[action]?action:null;
-    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];}
-    return {...l,m,image,height:battleFrameHeight(image)};
+    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
+    return {...l,m,image,height:height||battleFrameHeight(image)};
   });
   const motion={x:0,y:0,turn:0,stretch:0};for(const l of samples)for(const k of Object.keys(motion))motion[k]+=l.m[k]*l.weight;
   const l=samples[0];let image=l.image;
-  if(o.flash){if(!image.flash){const c=document.createElement('canvas');c.width=image.width;c.height=image.height;c.footX=image.footX;const cg=c.getContext('2d');cg.drawImage(image,0,0);cg.globalCompositeOperation='source-in';cg.fillStyle='#fff4db';cg.fillRect(0,0,c.width,c.height);image.flash=c;}image=image.flash;}
+  if(o.flash){if(!image.flash){const c=document.createElement('canvas');c.width=image.width;c.height=image.height;c.footX=image.footX;c.footY=image.footY;const cg=c.getContext('2d');cg.drawImage(image,0,0);cg.globalCompositeOperation='source-in';cg.fillStyle='#fff4db';cg.fillRect(0,0,c.width,c.height);image.flash=c;}image=image.flash;}
   const scale=battleSpriteHeight(r,s)/l.height,h=image.height*scale*motion.stretch,w=image.width*scale;
   g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+motion.x),Math.round(y+motion.y));g.rotate(motion.turn);
-  g.drawImage(image,Math.round(-(image.footX??image.width/2)*scale),-Math.round(h),Math.round(w),Math.round(h));
+  g.drawImage(image,Math.round(-(image.footX??image.width/2)*scale),-Math.round((image.footY??image.height)*scale*motion.stretch),Math.round(w),Math.round(h));
   g.restore();drawBattleMeleeTrail(g,x,y,r,face,o.pose,!!s.horse);
 }
 if(typeof Image==='function')loadBattleArt();
