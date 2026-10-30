@@ -814,14 +814,15 @@ function openEnemy(S, u, except) {   // 현재 적 주변이 가득 찼으면 �
   }
   u.claim = claim; u.claimT = S.t; return target && { target, claim };
 }
-// 기본 진형: 창병·검병 전열, 궁병 중열, 군사 후열(몸통 4열 dx -1~2), 기병은 좌·우 측면(dx -2·-3 / 3·4)에 번갈아 선다. 슬롯은 모두 달라야 한다
+// 기본 진형: 창병·검병 전열, 궁병 중열, 군사 후열 — 한 열(가로줄)에 최대 BLOCK_COLS(10)명, 슬롯은 열 안에서 고정(dx -4~5)이라 자리를 못 잡고 오가지 않는다. 기병은 몸통 바깥 좌·우 측면(dx -5·-6… / 6·7…)에 번갈아 선다. 슬롯은 모두 달라야 한다
+const BLOCK_COLS = 10, BLOCK_LEFT = -4;
 function blockSlots(A, sgn) {
   const body = { front: [], archer: [], military: [] }, flank = [], map = new Map();
   for (const u of A.units) { const c = u.category; if (c === 'cavalry') flank.push(u); else if (c === 'archer') body.archer.push(u); else if (c === 'military') body.military.push(u); else body.front.push(u); }
   let row = 0;
-  for (const g of [body.front, body.archer, body.military]) { g.forEach((u, i) => map.set(u, { dx: (i % 4) - 1, dy: sgn * (row + Math.floor(i / 4)) })); row += Math.ceil(g.length / 4); }
+  for (const g of [body.front, body.archer, body.military]) { g.forEach((u, i) => map.set(u, { dx: (i % BLOCK_COLS) + BLOCK_LEFT, dy: sgn * (row + Math.floor(i / BLOCK_COLS)) })); row += Math.ceil(g.length / BLOCK_COLS); }
   const rows = Math.max(1, row);   // 측면 열 길이 = 몸통 깊이
-  flank.forEach((u, i) => { const side = i % 2, k = Math.floor(i / 2), col = Math.floor(k / rows); map.set(u, { dx: side ? 3 + col : -2 - col, dy: sgn * (k % rows) }); });
+  flank.forEach((u, i) => { const side = i % 2, k = Math.floor(i / 2), col = Math.floor(k / rows); map.set(u, { dx: side ? BLOCK_LEFT + BLOCK_COLS + col : BLOCK_LEFT - 1 - col, dy: sgn * (k % rows) }); });
   return map;
 }
 function setFormation(A, type) {
