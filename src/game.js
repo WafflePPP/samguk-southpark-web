@@ -488,6 +488,7 @@ try { tutorialSeen = localStorage.getItem('sgsp-tutorial') === '1'; } catch (e) 
 let stratTutStep = -1, stratTutSeen = false;   // 전략 화면 튜토리얼 (drawStratTutorial)
 try { stratTutSeen = localStorage.getItem('sgsp-strat-tutorial') === '1'; } catch (e) { /* 저장소를 못 쓰면 새 게임마다 안내 */ }
 let armyIdx = 0, tblAbility = false, tblCompact = false, speedIdx = 0, padVisible = false;
+let hoverId = '', pressId = '', pressT = -9, chipNotice = null;   // 명세 80: PC 호버 버튼 id / 눌림(0.12초) / 모바일 모드 칩이 보이기 시작할 때의 알림 글(그 글의 토스트는 생략)
 let cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0, in: false }, btns = [], marks = [], lastPortrait = { id: 0, t: 0 }, keys = {}, dirStack = [], padPtrs = new Map(), padDir = null, stick = null;   // stick: 모바일 가상 조이스틱 {id, ox, oy, kx, ky}
 // 표시 옵션: 버프·효과는 상시 숨김, 나머지는 시스템 메뉴에서 바꾸고 브라우저에 기억한다.
 const SHOW = { dmg: true, buff: false, pauseSel: true, status: true };   // status: 모바일 조작 장수 정보 표시
@@ -533,7 +534,7 @@ function startCampaign() {
 }
 function resetTransientUi() {
   stratTutStep = -1; stratPractice = null; custodyView = false; custodyPage = 0; turnSummary = null; pendingSummary = null; inTurnFlow = false;   // 남아 있던 팝업·선택 상태가 새 게임·불러오기 뒤 입력을 막지 않게 한다
-  allyChoice = null; allyHelpIds = null; lastHelpIds = []; warnMove = null; diplomacyResult = null; diplomacyQueue = []; diplomacyView = null; scoutView = null; econView = false; heroView = null; aiRelationsOpen = false; factionStatusOpen = false; mapTap = null; noticeSeen = ''; mapTool = null; moveSelectOpen = false; moveMode = 'corps'; saveSlotMode = null; startFactionSelect = false; popupSink = null; aiEntries = null; rosterPick = null; selectMode = false; selTarget = null; menuOpen = false;
+  allyChoice = null; allyHelpIds = null; lastHelpIds = []; warnMove = null; diplomacyResult = null; diplomacyQueue = []; diplomacyView = null; scoutView = null; econView = false; heroView = null; aiRelationsOpen = false; factionStatusOpen = false; mapTap = null; noticeSeen = ''; hoverId = ''; pressId = ''; chipNotice = null; mapTool = null; moveSelectOpen = false; moveMode = 'corps'; saveSlotMode = null; startFactionSelect = false; popupSink = null; aiEntries = null; rosterPick = null; selectMode = false; selTarget = null; menuOpen = false;
 }
 function startNewGame(faction) { resetCampaignData(faction); campaign.difficulty = startDifficulty; resetTransientUi(); titleNotice = ''; startCampaign(); saveCampaign(); }
 function startNewFromTitle() { activeSaveSlot = Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).find(slot => !hasCampaign(slot)) || activeSaveSlot; startFactionSelect = true; titleNotice = ''; }
@@ -1572,18 +1573,26 @@ const TOUCH = 86, MIN_FONT = 22;   // 모바일: 812×375 에서 캔버스가 0.
 const tb = h => mobile ? Math.max(h, TOUCH) : h;   // 모바일 터치 최소 높이
 const mb = (pc, mob) => mobile ? mob : pc;   // 화면별 PC/모바일 치수 선택
 const listN = () => mobile ? 5 : 8;   // 군단 선택 목록(이동)의 한 쪽 줄 수 — 모바일은 줄 높이를 86px 로 키운 만큼 줄인다
-function label(s, x, y, size, col, align = 'left', maxW) {   // maxW: 넘치면 글자를 가로로 눌러 영역 밖으로 나가지 않게 한다 (모바일 겹침 방지)
+function label(s, x, y, size, col, align = 'left', maxW, edge = 'rgba(0,0,0,.8)') {   // maxW: 넘치면 글자를 가로로 눌러 영역 밖으로 나가지 않게 한다 (모바일 겹침 방지) / edge: 글자 윤곽색 (어두운 글자를 금 바탕에 쓸 때 바탕색으로 윤곽을 없앤다)
   size = Math.round(size * FS / wz); if (mobile && wz === 1 && !worldDraw) size = Math.max(size, MIN_FONT);
   ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
-  ctx.lineWidth = size / 5; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineJoin = 'round'; if (maxW && mobile) { ctx.strokeText(s, x, y, maxW); ctx.fillStyle = col; ctx.fillText(s, x, y, maxW); } else { ctx.strokeText(s, x, y); ctx.fillStyle = col; ctx.fillText(s, x, y); }
+  ctx.lineWidth = size / 5; ctx.strokeStyle = edge; ctx.lineJoin = 'round'; if (maxW && mobile) { ctx.strokeText(s, x, y, maxW); ctx.fillStyle = col; ctx.fillText(s, x, y, maxW); } else { ctx.strokeText(s, x, y); ctx.fillStyle = col; ctx.fillText(s, x, y); }
 }
 function panel(x, y, w, h, border, bw = 2, fill = 'rgba(10,12,20,.92)') { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); ctx.strokeStyle = border; ctx.lineWidth = bw; ctx.strokeRect(x, y, w, h); }
 function bar(x, y, w, h, p, col) { ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x, y, w, h); ctx.fillStyle = col; ctx.fillRect(x, y, w * Math.max(0, Math.min(1, p)), h); }
-function button(id, x, y, w, h, text, on, size = 16) {
-  panel(x, y, w, h, on ? COLORS.gold : COLORS.silver2, on ? 3 : 2);
-  label(text, x + w / 2, y + h / 2, size, on ? COLORS.goldSel : COLORS.silver, 'center', mobile ? w - 12 : undefined);
-  btns.push({ id, x, y, w, h });
+function button(id, x, y, w, h, text, on, size = 16, o) {   // o(명세 80, 전략 화면 버튼만): { primary, key, off } — 없으면 예전 모양 그대로
+  if (!o) { panel(x, y, w, h, on ? COLORS.gold : COLORS.silver2, on ? 3 : 2); label(text, x + w / 2, y + h / 2, size, on ? COLORS.goldSel : COLORS.silver, 'center', mobile ? w - 12 : undefined); btns.push({ id, x, y, w, h }); return; }
+  const hover = !mobile && hoverId === id, press = pressId === id && T - pressT < 0.12, primary = !!o.primary;
+  if (primary) panel(x, y, w, h, COLORS.goldTrim, 2, press ? COLORS.goldTrim : hover ? COLORS.goldSel : COLORS.gold);
+  else panel(x, y, w, h, press ? COLORS.gold : on ? COLORS.gold : hover ? COLORS.silver : COLORS.silver2, on && !press ? 3 : 2);
+  const tint = press ? 'rgba(255,211,77,.28)' : on ? 'rgba(255,211,77,.18)' : hover ? 'rgba(255,255,255,.10)' : null;
+  if (!primary && tint) { ctx.fillStyle = tint; ctx.fillRect(x + 1, y + 1, w - 2, h - 2); }
+  label(text, x + w / 2, y + h / 2, size, primary ? COLORS.ink : on ? COLORS.goldSel : COLORS.silver, 'center', mobile ? w - 12 : undefined, primary ? (press ? COLORS.goldTrim : hover ? COLORS.goldSel : COLORS.gold) : undefined);
+  if (o.key && !mobile) label(String(o.key), x + w - 8, y + 9, 10, COLORS.dim, 'right');   // 단축키 배지(PC)
+  if (o.off) dimOver({ x, y, w, h });
+  btns.push({ id, x, y, w, h, on: !!on, primary, off: !!o.off, hover, press });
 }
+const sprOff = id => !!(stratPractice && stratPractice.step >= 1 && stratPractice.step <= 6 && !practiceAllows(id));   // 명세 80 R3: 실습 중 허용 목록 밖 버튼은 흐리게(사유는 배너)
 const LUBU_ART_KEYS=new Set(['lubu','jang','diao','gao','chengong','lulingqi','f_xian','f_bing']);
 const LUBU_COMMON_ART={sword:'lubu_sword',spear:'lubu_spear',archer:'lubu_archer',mage:'lubu_mage',healer:'lubu_mage'};
 const CAO_ART_KEYS=new Set([...FACTION_HEROES['조조'],'f_qing','f_hubao']);
@@ -1848,14 +1857,16 @@ function drawMenu() {   // 시스템: PC·모바일 공통 기능을 용도별 �
   game.forEach((it, i) => button(it[0], x + 44 + cw + gap, y + 82 + i * st, cw, ih, it[1], false, mobile ? 18 : 16));
 }
 // 전략 화면 튜토리얼 (명세 외 요청): 새 게임 첫 진입 때 1회 자동, 이후 지도의 '도움말' 버튼. 페이지 = [제목, 줄들(문자열 또는 [PC, 모바일]), PC 강조 사각형, 모바일 강조 사각형]
+let heroCloseT = -9;   // 장수 창 닫기 직후 0.4초는 아래 세력 현황 버튼으로 새는 더블 탭 무시
+const STRAT_KEYS = ['campaign:scout', 'campaign:diplomacy', 'campaign:move', 'campaign:roster', 'campaign:save', 'campaign:load', 'campaign:heroes'];   // 명세 80 R6: 숫자 1~7 (버튼 배지와 같은 순서)
 const STRAT_TUT = [
-  ['목표', ['모든 도시를 점령하면 승리합니다.', `세력은 ${FACTIONS.join('·')} ${FACTIONS.length}곳입니다.`, '다른 세력과는 외교로 휴전·동맹을 맺을 수 있습니다.', ['아래 상자에서 세력별 도시 수와 관계를 봅니다.', '왼쪽 아래 세력 현황 버튼에서 세력별 도시 수와 관계를 봅니다.']], [[10, 636, 980, 70]], [[104, 630, 160, 86]]],
+  ['목표', ['모든 도시를 점령하면 승리합니다.', `세력은 ${FACTIONS.join('·')} ${FACTIONS.length}곳입니다.`, '다른 세력과는 외교로 휴전·동맹을 맺을 수 있습니다.', ['아래 상자는 세력별 도시 수·관계, 위 버튼은 세력 장수 목록입니다.', '왼쪽 아래 세력 현황 버튼에서 도시 수·관계와 세력 장수를 봅니다.']], [[10, 604, 980, 102]], [[104, 630, 160, 86]]],
   ['지도 읽기', ['도시 색은 세력, 깃발 숫자는 주둔한 내 군단 수입니다.', ['★은 수도, 곡·병·요·교는 곡창·병영·요새·교역입니다.', '★은 수도입니다. 선택한 도시 위에만 유형 글자가 보입니다.'], ['글자가 없는 도시는 군현입니다.', '곡·병·요·교는 곡창·병영·요새·교역, 없으면 군현입니다.'], ['빈 곳 끌기·방향키·미니맵 클릭으로 지도를 움직입니다.', '빈 곳 끌기·왼쪽 위 미니맵 터치로 지도를 움직입니다.']], [[10, 10, 170, 120]], [[10, 10, 170, 120]]],
-  ['이동', ['이동 버튼 → 군단 선택 → 지도에서 도시를 고릅니다.', '도시를 고르면 군단 선택으로 돌아옵니다. 끝나면 닫기를 누릅니다.', '정한 이동은 진행하기를 눌러야 한 턴으로 실행됩니다.'], [[1025, 388, 210, 36], [1025, 556, 210, 36]], [[1012, 356, 250, 86], [1012, 626, 250, 86]]],
-  ['외교', ['외교 버튼을 누르고 지도에서 세력 수도를 선택합니다.', '휴전·동맹·전쟁 중에서 고르고 성공 확률이 표시됩니다.', '거절당하면 그 세력과 3턴간 쿨다운이 있습니다.', '중립 세력의 도시에 들어가면 전쟁이 시작됩니다.'], [[1135, 340, 100, 34]], [[1138, 266, 124, 86]]],
+  ['이동', ['이동 버튼 → 군단 선택 → 지도에서 도시를 고릅니다.', '도시를 고르면 군단 선택으로 돌아옵니다. 끝나면 닫기를 누릅니다.', '정한 이동은 진행하기를 눌러야 한 턴으로 실행됩니다.'], [[1025, 412, 100, 36], [1025, 544, 210, 48]], [[1012, 368, 121, 86], [1012, 626, 250, 86]]],
+  ['외교', ['외교 버튼을 누르고 지도에서 세력 수도를 선택합니다.', '휴전·동맹·전쟁 중에서 고르고 성공 확률이 표시됩니다.', '거절당하면 그 세력과 3턴간 쿨다운이 있습니다.', '중립 세력의 도시에 들어가면 전쟁이 시작됩니다.'], [[1135, 350, 100, 36]], [[1141, 272, 121, 86]]],
   ['군량', ['군량 칩에 보유량과 턴당 증감(+N/턴)이 나옵니다.', '기동 군단은 병사 수만큼 유지비가 들고 이동하면 더 듭니다.', '이동하지 않고 아군 도시에 머문 군단은 병력이 보충됩니다.', '군량 0 이면 기근: 보충 중단, 2턴째부터 병사가 탈영합니다.'], [[1025, 220, 210, 44]], [[1012, 176, 250, 86]]],
   ['전투와 포로', ['적 도시로 이동하면 도착한 턴에 교전이 시작됩니다.', '이름 있는 장수는 HP 0 이 되면 전사하거나 포박됩니다.', '포박한 적 장수는 전투 뒤 처형·포로·투항을 고릅니다.', '일반 병사의 전사·투항은 결과 화면에서 정리됩니다.'], [], []],
-  ['저장과 편성', ['저장·로드는 전략 화면에서만 할 수 있습니다.', '군단 편성에서 배치하고 세력 장수에서 상세를 봅니다.', '턴이 끝나면 N턴 요약이 나오고 정찰로 도시를 살핍니다.', ['이 안내는 오른쪽 위 제목줄의 도움말 버튼으로 다시 봅니다.', '이 안내는 왼쪽 아래의 도움말 버튼으로 다시 봅니다.']], [[1025, 514, 210, 34], [1180, 26, 66, 30]], [[1012, 536, 250, 86], [10, 630, 86, 86]]],
+  ['저장과 편성', ['저장·로드는 전략 화면에서만 할 수 있습니다.', ['군단 편성에서 배치하고, 세력 장수 버튼(관계 상자 위)에서 상세를 봅니다.', '군단 편성에서 배치하고, 세력 현황 → 세력 장수에서 상세를 봅니다.'], '턴이 끝나면 N턴 요약이 나오고 정찰로 도시를 살핍니다.', ['이 안내는 오른쪽 위 제목줄의 도움말 버튼으로 다시 봅니다.', '이 안내는 왼쪽 아래의 도움말 버튼으로 다시 봅니다.']], [[1025, 474, 210, 36], [1180, 26, 66, 30], [870, 604, 120, 32]], [[1012, 482, 250, 86], [10, 630, 86, 86], [104, 630, 160, 86]]],
 ];
 function finishStratTut() {
   stratTutStep = -1; stratTutSeen = true;
@@ -2151,7 +2162,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.345', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.346', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Shift: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
@@ -2335,14 +2346,15 @@ function drawStageMap() {
   ctx.restore();
   btns.push(...cityBtns);
   drawMapMini();
-  if (mobile) button('campaign:factions', 104, 630, 160, TOUCH, '세력 현황', false, 17);   // 명세 78 M1: 모바일은 세력 요약·관계 박스 대신 팝업 (지도 하단을 덮지 않는다)
-  button('campaign:help', mobile ? 10 : 1180, mobile ? 630 : 26, mobile ? TOUCH : 66, mobile ? TOUCH : 30, '도움말', false, mobile ? 17 : 14);   // 지도 위가 아닌 곳(PC 패널 제목줄·모바일 하단 왼쪽)에 둬 도시 판정과 겹치지 않는다 (QA v0.1.272 경미 3: 여포 시작 화면의 여남 도시 판정과 겹치지 않도록 도움말을 맨 왼쪽에 둔다)
-  if (!mobile) drawRelationPanel();
+  if (mobile) button('campaign:factions', 104, 630, 160, TOUCH, '세력 현황', false, 17, { off: sprOff('campaign:factions') });   // 명세 78 M1: 모바일은 세력 요약·관계 박스 대신 팝업 (지도 하단을 덮지 않는다)
+  button('campaign:help', mobile ? 10 : 1180, mobile ? 630 : 26, mobile ? TOUCH : 66, mobile ? TOUCH : 30, '도움말', false, mobile ? 17 : 14, { off: sprOff('campaign:help') });   // 지도 위가 아닌 곳(PC 패널 제목줄·모바일 하단 왼쪽)에 둬 도시 판정과 겹치지 않는다 (QA v0.1.272 경미 3: 여포 시작 화면의 여남 도시 판정과 겹치지 않도록 도움말을 맨 왼쪽에 둔다)
+  if (!mobile) { drawRelationPanel(); button('campaign:heroes', 870, 604, 120, 32, '세력 장수', false, 15, { key: 7, off: sprOff('campaign:heroes') }); }   // 명세 80 R1: 세력 관계 상자 윗변에 붙인 탭(도시 판정보다 나중에 push 되어 클릭을 이긴다)
   if (mobile) drawMapPanelMobile(sel, stationedAt); else {
   panel(1005, 20, 250, 696, COLORS.gold, 3, 'rgba(8,20,25,.88)');
   label('전략', 1130, 46, 27, COLORS.gold, 'center');
   label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1025, 78, 15, COLORS.silver);
-  label(moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역을 선택' : `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 100, 14, moveMode === 'city' && !moveSelectOpen ? COLORS.gold : COLORS.silver2, 'center');
+  { const mode = moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역 선택' : mapTool === 'scout' ? '지도에서 정찰할 적 도시 선택' : mapTool === 'diplomacy' ? '지도에서 외교할 수도 선택' : '';   // 명세 80 R3: 모드 안내를 한 줄로 (세 모드 공통)
+    label(mode || `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 100, 14, mode ? COLORS.gold : COLORS.silver2, 'center'); }
   label(`목표: 모든 거점 점령 ${STAGES.length - unclaimedCities().length}/${STAGES.length}`, 1025, 120, 13, COLORS.gold);
   { const f = stageFaction(sel), st = stationedAt(sel), foes = enemyForces.filter(x => x.active && x.at === sel.id), lead = c => c.units[0] ? Sim.U[c.units[0]].name : corpsName(c);   // 선택한 도시 정보
     label(`${isCapital(sel) ? '★' : ''}${sel.name} · ${f} · ${sel.kind === "gate" ? "관문" : CITY_SIZES[citySize(sel)].name}`, 1025, 146, 13, COLORS.goldSel);
@@ -2354,13 +2366,13 @@ function drawStageMap() {
   { const top = mobile ? 318 : 272, rows = mobile ? 0 : 3; label('내 군단', 1025, top, 11, COLORS.gold);
     roster.slice(0, rows).forEach((c, i) => label(`${i + 1}. ${c.units[0] ? Sim.U[c.units[0]].name : '—'} · ${stageById(c.at).name}${c.target ? ' → ' + stageById(c.target).name : ''}`, 1025, top + 14 + i * 13, 10, i === campaign.corps ? COLORS.goldSel : COLORS.silver));
     if (roster.length > rows) label(mobile ? `${roster.length}개 군단 (군단 편성)` : `외 ${roster.length - rows}개 군단`, 1025, top + 14 + rows * 13, 10, COLORS.silver2); }
-  button('campaign:scout', 1025, 340, 100, 34, '정찰', mapTool === 'scout', 15); button('campaign:diplomacy', 1135, 340, 100, 34, '외교', mapTool === 'diplomacy', 15);
-  ctx.save(); ctx.strokeStyle = COLORS.gold; ctx.fillStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(1043, 355, 6, 0, TAU); ctx.moveTo(1047.5, 359.5); ctx.lineTo(1054, 366); ctx.stroke();   // 정찰: 돋보기
-  ctx.beginPath(); ctx.moveTo(1153, 366); ctx.lineTo(1153, 349); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1153, 349); ctx.lineTo(1166, 353); ctx.lineTo(1153, 358); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();   // 외교: 백기
-  button('campaign:move', 1025, 388, 210, 36, moveMode === 'city' && !moveSelectOpen ? '지역 선택 중' : '이동', moveSelectOpen || moveMode === 'city', 16);
-  button('campaign:roster', 1025, 430, 100, 36, '군단 편성', false, 15); button('campaign:heroes', 1135, 430, 100, 36, '세력 장수', false, 15);
-  button('campaign:save', 1025, 514, 100, 34, '저장', false, 15); button('campaign:load', 1135, 514, 100, 34, '로드', false, 15);
-  button('campaign:end', 1025, 556, 210, 36, '진행하기', true, 16);   // 이동 버튼과 같은 크기(210×36), 저장·로드 아래
+  { const hd = (t, y) => { label(t, 1025, y, 11, COLORS.dim); const x0 = 1025 + Math.ceil(textPx(t, 11)) + 8; ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(x0, y, 1235 - x0, 1); }; hd('조사', 340); hd('행동', 402); hd('시스템', 464); }   // 명세 80 R2: 그룹 머리글 (그리기만)
+  button('campaign:scout', 1025, 350, 100, 36, '정찰', mapTool === 'scout', 16, { key: 1, off: sprOff('campaign:scout') }); button('campaign:diplomacy', 1135, 350, 100, 36, '외교', mapTool === 'diplomacy', 16, { key: 2, off: sprOff('campaign:diplomacy') });
+  ctx.save(); ctx.globalAlpha = sprOff('campaign:scout') ? 0.45 : 1; ctx.strokeStyle = COLORS.gold; ctx.fillStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(1043, 366, 6, 0, TAU); ctx.moveTo(1047.5, 370.5); ctx.lineTo(1054, 377); ctx.stroke();   // 정찰: 돋보기 (버튼 좌상단 기준 +18,+16)
+  ctx.globalAlpha = sprOff('campaign:diplomacy') ? 0.45 : 1; ctx.beginPath(); ctx.moveTo(1153, 377); ctx.lineTo(1153, 360); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1153, 360); ctx.lineTo(1166, 364); ctx.lineTo(1153, 369); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();   // 외교: 백기 (+18,+10..27)
+  button('campaign:move', 1025, 412, 100, 36, '이동', moveSelectOpen || moveMode === 'city', 16, { key: 3, off: sprOff('campaign:move') }); button('campaign:roster', 1135, 412, 100, 36, '군단 편성', false, 16, { key: 4, off: sprOff('campaign:roster') });   // 라벨 고정 '이동' — 상태는 안내줄·칩이 말한다
+  button('campaign:save', 1025, 474, 100, 36, '저장', false, 16, { key: 5, off: sprOff('campaign:save') }); button('campaign:load', 1135, 474, 100, 36, '로드', false, 16, { key: 6, off: sprOff('campaign:load') });
+  button('campaign:end', 1025, 544, 210, 48, '진행하기', false, 18, { primary: true, off: sprOff('campaign:end') });   // primary(단색 금) — 켜짐(on)과 구분. 위 시스템 줄과 34 띄움, 단축키 없음
   panel(1025, 600, 210, 104, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');   // 진행 안내 문구는 진행하기 버튼 아래
   wrapText(campaign.notice || '', 20).slice(0, 5).forEach((t, i) => label(t, 1130, 616 + i * 15, 12, COLORS.silver, 'center'));
   label('이동 지정 → 저장 → 진행하기', 1130, 692, 11, COLORS.goldSel, 'center');
@@ -2375,7 +2387,7 @@ function drawStageMap() {
   if (moveSelectOpen) drawMoveSelect();
   if (scoutView) drawScoutView();
   if (econView) drawEconView();
-  if (factionStatusOpen) { if (aiRelationsOpen) drawAiRelations(); else drawFactionStatus(); }
+  if (factionStatusOpen && !heroView) { if (aiRelationsOpen) drawAiRelations(); else drawFactionStatus(); }   // 세력 장수 창(모바일 1240×708)이 세력 현황 위에 쌓이면 아래 팝업은 완전히 가려지므로 그리지도 판정하지도 않는다 (닫으면 복귀)
   if (diplomacyView) drawDiplomacyView();
   if (heroView) drawFactionHeroes();
   if (campaign.pendingEncounter) campaign.pendingEncounter.invasion && !campaign.pendingEncounter.intelSeen ? drawInvasionIntel() : drawResponseSelect();
@@ -2395,18 +2407,19 @@ function drawMapPanelMobile(sel, stationedAt) {   // 모바일: 오른쪽 패널
   { const ci = capitalInfo(sel); if (ci) label(ci.line1, 1016, 108, 15, ci.col, 'left', W); else label(`도시수비 ${guardsAt(sel).reduce((n, g) => n + g.army.units.length, 0)}/${guardCap(sel)}명 · Lv${CITY_SIZES[citySize(sel)].level + cityKind(sel).lv}`, 1016, 108, 15, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'left', W); }
   label(st.length ? (st.length === 1 ? `${lead(st[0].c)} 군단` : `${lead(st[0].c)} 군단 외 ${st.length - 1}`) : foes.length ? `${Sim.U[foes[0].army.leader]?.name || foes[0].army.name} 부대${foes.length > 1 ? ' 외 ' + (foes.length - 1) : ''}` : '기동 군단 없음', 1016, 134, 15, COLORS.silver, 'left', W);
   { const ci = capitalInfo(sel); label(ci ? ci.line2 : kindLine(sel).split(' · ').slice(0, 2).join(' · '), 1016, 160, 15, COLORS.silver2, 'left', W); }
-  const rows = [176, 266, 356, 446, 536, 626], bw = 124, xs = [1012, 1138];
+  const rows = [176, 272, 368, 482, 626], bw = 121, xs = [1012, 1141];   // 명세 80 R2: 조사 272 / 행동 368 / 시스템 482 / 진행 626 (열 간격 8, 시스템→진행 58)
   drawGrainChip(1012, rows[0], 250, TOUCH);
-  button('campaign:scout', xs[0], rows[1], bw, TOUCH, '정찰', mapTool === 'scout', 17); button('campaign:diplomacy', xs[1], rows[1], bw, TOUCH, '외교', mapTool === 'diplomacy', 17);
-  button('campaign:move', xs[0], rows[2], 250, TOUCH, moveMode === 'city' && !moveSelectOpen ? '선택 중' : '이동', moveSelectOpen || moveMode === 'city', 17);
-  button('campaign:roster', xs[0], rows[3], bw, TOUCH, '군단 편성', false, 17); button('campaign:heroes', xs[1], rows[3], bw, TOUCH, '세력 장수', false, 17);
-  button('campaign:save', xs[0], rows[4], bw, TOUCH, '저장', false, 17); button('campaign:load', xs[1], rows[4], bw, TOUCH, '로드', false, 17);
-  button('campaign:end', 1012, rows[5], 250, TOUCH, '진행하기', true, 19);
+  const o = id => ({ off: sprOff(id) });
+  button('campaign:scout', xs[0], rows[1], bw, TOUCH, '정찰', mapTool === 'scout', 17, o('campaign:scout')); button('campaign:diplomacy', xs[1], rows[1], bw, TOUCH, '외교', mapTool === 'diplomacy', 17, o('campaign:diplomacy'));
+  button('campaign:move', xs[0], rows[2], bw, TOUCH, '이동', moveSelectOpen || moveMode === 'city', 17, o('campaign:move')); button('campaign:roster', xs[1], rows[2], bw, TOUCH, '군단 편성', false, 17, o('campaign:roster'));
+  button('campaign:save', xs[0], rows[3], bw, TOUCH, '저장', false, 17, o('campaign:save')); button('campaign:load', xs[1], rows[3], bw, TOUCH, '로드', false, 17, o('campaign:load'));
+  button('campaign:end', 1012, rows[4], 250, TOUCH, '진행하기', false, 19, { primary: true, off: sprOff('campaign:end') });
   if (campaign.notice !== noticeSeen) { noticeSeen = campaign.notice; noticeUntil = T + NOTICE_SEC; }   // 알림은 글이 바뀔 때 6초만 띄운다 (같은 글이면 다시 안 띄움). 모드 안내는 아래 칩이 맡는다
   if (!(stratPractice && stratPractice.step >= 1 && stratPractice.step <= 6)) {   // 실습 1~6단계는 배너가 대신한다. 토스트·칩은 버튼이 아니므로 아래 도시·끌기 입력을 막지 않는다
-    const chip = moveMode === 'city' && !moveSelectOpen ? '이동할 도시를 터치하세요 (같은 도시를 다시 터치하면 취소)' : mapTool === 'scout' ? '정찰할 적 도시를 터치하세요' : mapTool === 'diplomacy' ? '외교할 세력의 수도를 터치하세요(빛나는 곳)' : '';
+    const chip = moveMode === 'city' && !moveSelectOpen ? '이동할 도시를 터치하세요 (같은 도시를 다시 터치하면 취소)' : mapTool === 'scout' ? '정찰할 적 도시를 터치하세요 (내 군단과 같거나 이어진 도시)' : mapTool === 'diplomacy' ? '외교할 세력의 수도를 터치하세요(빛나는 곳)' : '';
+    if (!chip) chipNotice = null; else if (chipNotice === null) chipNotice = campaign.notice;   // 칩이 처음 보일 때의 알림은 칩이 같은 말을 하므로 토스트를 생략한다 (글이 바뀌면 다시 6초)
     if (chip) { panel(190, 6, 800, 44, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.82)'); label(chip, 200, 28, 15, COLORS.goldSel, 'left', 780); }
-    if (campaign.notice && T < noticeUntil) { const lines = wrapText(campaign.notice, 36).slice(0, 2), ty = chip ? 56 : 6; panel(190, ty, 800, 12 + lines.length * 28, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.72)'); lines.forEach((t, i) => label(t, 200, ty + 18 + i * 28, 15, COLORS.silver, 'left', 780)); }
+    if (campaign.notice && T < noticeUntil && !(chip && campaign.notice === chipNotice)) { const lines = wrapText(campaign.notice, 36).slice(0, 2), ty = chip ? 56 : 6; panel(190, ty, 800, 12 + lines.length * 28, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.72)'); lines.forEach((t, i) => label(t, 200, ty + 18 + i * 28, 15, COLORS.silver, 'left', 780)); }
   }
 }
 function drawFactionStatus() {   // 명세 78 M1: 모바일 지도 하단의 세력 요약·관계 박스를 대신하는 팝업 (같은 데이터·문구)
@@ -2420,8 +2433,9 @@ function drawFactionStatus() {   // 명세 78 M1: 모바일 지도 하단의 세
     label(`${f}${mine ? '(나)' : ''} · 거점 ${cities} · 기동군단 ${n}${dead ? ' · 멸망' : ''}`, x + 70, ry, 22, FACTION_STYLE[f].light, 'left', 560);
     if (!mine && !dead) label(`${relationText(f)} · ${affinityStage(affinityOf(me, f)).name}`, x + w - 40, ry, 22, REL_COL[relationOf(f).status] || '#fff', 'right', 380);
   });
-  button('campaign:relations', x + 40, fy, 320, TOUCH, '다른 세력 관계', false, 20);
-  button('campaign:factions:close', x + w - 40 - 200, fy, 200, TOUCH, '닫기', true, 20);
+  button('campaign:heroes', x + 40, fy, 240, TOUCH, '세력 장수', false, 20, {});   // 명세 80 R1: 모바일 세력 장수는 세력 관계 정보 곁(2탭)
+  button('campaign:relations', x + 300, fy, 320, TOUCH, '다른 세력 관계', false, 20, {});
+  button('campaign:factions:close', x + w - 40 - 200, fy, 200, TOUCH, '닫기', true, 20, {});
 }
 function drawInvasionIntel() {
   const encounter = campaign.pendingEncounter, forces = enemyForces.filter(f => f.active && f.at === encounter.stage.id), shown = forces.slice(0, mb(13, 7)), x = mb(300, 160), y = mb(80, 6), w = mb(680, 960), h = mb(560, 708);
@@ -2486,7 +2500,9 @@ function drawMoveSelect() {
 const econNow = f => { const income = Math.round(factionIncome(f).total), upkeep = Math.round(factionUnits(f) * ECON.unit), decay = Math.floor(grainOf(f) * ECON.decay); return { income, upkeep, decay, net: income - upkeep - decay }; };   // net 은 예상 창고 손실 포함
 function drawGrainChip(x, y, w, h) {   // 군량 칩: 순수입 음수면 주황, 기근이면 적색. 누르면 상세 창
   const f = playerFaction(), e = econNow(f), famine = campaign.famine[f] || 0, col = famine ? COLORS.danger : e.net < 0 ? '#ffb06a' : COLORS.gold;
-  panel(x, y, w, h, col, 2, 'rgba(8,20,25,.6)'); label(`군량 ${grainOf(f)} (${e.net >= 0 ? '+' : '−'}${Math.abs(e.net)}/턴)${famine ? ' 기근' : ''}`, x + w / 2, y + h / 2, mobile ? 18 : 15, col, 'center', w - 12); btns.push({ id: 'campaign:econ', x, y, w, h });
+  const hover = !mobile && hoverId === 'campaign:econ', press = pressId === 'campaign:econ' && T - pressT < 0.12, off = sprOff('campaign:econ');   // 명세 80: 호버·눌림·실습 비활성 (켜짐 상태는 없다)
+  panel(x, y, w, h, col, 2, 'rgba(8,20,25,.6)'); if (press || hover) { ctx.fillStyle = press ? 'rgba(255,211,77,.28)' : 'rgba(255,255,255,.10)'; ctx.fillRect(x + 1, y + 1, w - 2, h - 2); }
+  label(`군량 ${grainOf(f)} (${e.net >= 0 ? '+' : '−'}${Math.abs(e.net)}/턴)${famine ? ' 기근' : ''}`, x + w / 2, y + h / 2, mobile ? 18 : 15, col, 'center', w - 12); if (off) dimOver({ x, y, w, h }); btns.push({ id: 'campaign:econ', x, y, w, h, on: false, primary: false, off, hover, press });
 }
 function drawEconView() {
   const f = playerFaction(), inc = factionIncome(f), e = econNow(f), l = campaign.econLog[f] || {}, famine = campaign.famine[f] || 0, rest = STAGES.filter(s => stageFaction(s) === f && (campaign.unrest[s.id] || 0) > campaign.turn).length, touch = mobile ? 88 : 44, w = mobile ? 960 : 700, x = (VW - w) / 2;
@@ -2961,7 +2977,7 @@ function uiClick(id) {   // 군단 편성 조작 뒤에는 비어 버린 군단�
 }
 function uiClickCore(id) {
   if (aiRelationsOpen) { if (id === 'campaign:relations:close') aiRelationsOpen = false; return; }
-  if (id === 'campaign:relations') { if (scoutView || diplomacyView || factionStatusOpen) aiRelationsOpen = true; return; }
+  if (id === 'campaign:relations') { if (T - heroCloseT < 0.4) return; if (scoutView || diplomacyView || factionStatusOpen) aiRelationsOpen = true; return; }
   if (id === 'campaign:opt:news') id = 'campaign:news'; else if (id === 'campaign:opt:diff') id = 'campaign:diff';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
   if (id === 'spr:next') { practiceNext(); return; }
   if (stratPractice && state !== 'title' && !practiceAllows(id)) { stratPractice.denyT = T; return; }   // 허용 목록 밖 버튼은 배너만 깜박인다 (명세 76)
@@ -2993,7 +3009,7 @@ function uiClickCore(id) {
   }
   if (id === 'campaign:roster') { state = 'roster'; rosterMode = 'select'; rosterPick = null; campaign.notice = '좌측 군단과 교환할 대상 군단을 선택하세요.'; return; }
   if (id === 'campaign:heroes') { mapTool = null; moveSelectOpen = false; heroView = { faction: playerFaction(), page: 0 }; campaign.notice = '세력별 전체 장수 정보를 확인합니다.'; return; }
-  if (id === 'campaign:heroes:close') { heroView = null; return; }
+  if (id === 'campaign:heroes:close') { heroView = null; heroCloseT = T; return; }
   if (/^campaign:heroes:faction:/.test(id)) { heroView = { faction: id.split(':').pop(), page: 0 }; return; }
   if (id === 'campaign:heroes:prev' || id === 'campaign:heroes:next') { const pages = Math.max(1, Math.ceil(FACTION_HEROES[heroView.faction].length / heroN())), d = id.endsWith('next') ? 1 : -1; heroView.page = (heroView.page + d + pages) % pages; return; }
   if (id === 'campaign:intel:continue') { const encounter = campaign.pendingEncounter; if (!encounter) return; if (encounter.guardDefense) { resolveGuardDefense(encounter); return; } if (encounter.unopposed) { enemyTakesCity(encounter.stage); if (encounter.stage.id === playerCapital()) { defeatCampaign(`${encounter.stage.name}이 함락되어 원정에 패배했습니다.`); return; } campaign.notice = `${encounter.stage.name}이 무방비로 함락되었습니다.`; finishMovementStep(); return; } encounter.intelSeen = true; campaign.notice = `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`; saveCampaign(); return; }
@@ -3132,6 +3148,7 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
   const p = pos(e), b = hitBtn(p.x, p.y); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
+  if (state === 'map' && b && b.id.startsWith('campaign:')) { pressId = b.id; pressT = T; }   // 명세 80 R5: 눌림 0.12초 (PC·모바일)
   if (mapTap && mapTap.pid !== e.pointerId) mapTap = null;   // 다른 손가락이 닿으면 도시 터치 취소
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
   if(state==='play'&&!BATTLE_ART.ready){if(BATTLE_ART.error)loadBattleArt();return;}
@@ -3141,7 +3158,7 @@ cv.addEventListener('pointerdown', e => {
   if (state === 'map' && stratTutStep >= 0) { if (b && b.id.startsWith('stut:')) uiClick(b.id); return; }   // 전략 튜토리얼 중에는 튜토리얼 버튼만
   if (state === 'map' && mapFree()) { if (inMapMini(p)) { mapDrag = { id: e.pointerId, mini: true }; miniJump(p); return; } if (!b && p.x < MAP_VW) { mapDrag = { id: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; return; } }   // 지도: 미니맵을 누르면 그 위치로, 빈 곳을 끌면 지도가 움직인다 (도시 버튼은 pointerdown 한 번에 동작)
   if (state === 'map' && b && isTurnOpt(b.id) && (diplomacyResult || campaign.movement.length || turnSummary)) { uiClick(b.id); return; }   // 턴 진행 중 팝업의 이동·소식 토글
-  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && (b.id.startsWith('campaign:diplomacy:') || b.id.startsWith('campaign:relations')) : heroView ? b && b.id.startsWith('campaign:heroes:') : econView ? b && b.id === 'campaign:econ:close' : scoutView ? b && (b.id === 'campaign:scout:close' || b.id.startsWith('campaign:relations')) : factionStatusOpen ? b && (b.id.startsWith('campaign:factions') || b.id.startsWith('campaign:relations')) : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) { if (mobile && b.id.startsWith('stage:')) { if (!mapDrag && p.x < MAP_VW) mapTap = { id: b.id, pid: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; } else uiClick(b.id); } } return; }   // 모바일 도시는 손을 뗄 때 선택(끌면 지도 이동) — 명세 78 M3
+  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && (b.id.startsWith('campaign:diplomacy:') || b.id.startsWith('campaign:relations')) : heroView ? b && b.id.startsWith('campaign:heroes:') : econView ? b && b.id === 'campaign:econ:close' : scoutView ? b && (b.id === 'campaign:scout:close' || b.id.startsWith('campaign:relations')) : factionStatusOpen ? b && (b.id.startsWith('campaign:factions') || b.id.startsWith('campaign:relations') || b.id === 'campaign:heroes') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) { if (mobile && b.id.startsWith('stage:')) { if (!mapDrag && p.x < MAP_VW) mapTap = { id: b.id, pid: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; } else uiClick(b.id); } } return; }   // 모바일 도시는 손을 뗄 때 선택(끌면 지도 이동) — 명세 78 M3
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { advanceBattleEvent(); return; }
   if (S.over) { if (b && b.id.startsWith('rep:')) { if (b.id === 'rep:side') repToggle(); else if (b.id === 'rep:done') { if (T - overAt > 0.5) finishBattle(); } else repTurn(b.id === 'rep:next' ? 1 : -1); } return; }   // 빈 곳 탭은 아무 일도 없다
@@ -3168,8 +3185,11 @@ cv.addEventListener('pointerdown', e => {
   if (b) { uiClick(b.id); return; }
   if (inView(p.x, p.y)) { if (mobile && !mapClick(p.x, p.y, false)) act(); else if (!mobile) mapClick(p.x, p.y, e.button === 2); }
 });
+const clearHover = () => { hoverId = ''; if (cv.style) cv.style.cursor = ''; };
+cv.addEventListener('pointerleave', clearHover);
 cv.addEventListener('pointermove', e => {
   const p = pos(e); mouse.x = p.x; mouse.y = p.y; mouse.in = true;
+  if (!mobile) { const h = state === 'map' && mapFree() ? hitBtn(p.x, p.y) : null; hoverId = h ? h.id : ''; if (cv.style) cv.style.cursor = h ? 'pointer' : ''; }   // 명세 80 R5: PC 호버·손가락 커서 (팝업 중에는 없음)
   if (mapTap && mapTap.pid === e.pointerId && Math.hypot(p.x - mapTap.x, p.y - mapTap.y) > MAP_TAP_SLOP) { if (mapFree()) mapDrag = { id: e.pointerId, x: mapTap.x, y: mapTap.y, cx: mapTap.cx, cy: mapTap.cy }; mapTap = null; }   // 도시 위에서 시작한 끌기도 지도를 움직인다
   if (mapDrag && mapDrag.id === e.pointerId) { if (mapDrag.mini) miniJump(p); else { mcam.x = mapDrag.cx - (p.x - mapDrag.x); mcam.y = mapDrag.cy - (p.y - mapDrag.y); clampMcam(); } return; }
   if (miniPtr === e.pointerId) { if (mini) lookAt({ x: Math.max(mini.x, Math.min(mini.x + mini.w, p.x)), y: Math.max(mini.y, Math.min(mini.y + mini.h, p.y)) }); return; }
@@ -3200,14 +3220,16 @@ addEventListener('keydown', e => {
   if (state === 'map' && stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) { if (e.key === 'Enter' || e.key === ' ') uiClick('spr:next'); return; }   // 실습 카드: 건너뛰기·Esc 없음
   if (state === 'map' && stratTutStep >= 0) { if (e.key === 'Escape') finishStratTut(); else if (e.key === 'ArrowLeft') stratTutNav('prev'); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) stratTutNav('next'); return; }
   if (state === 'map') { if (e.key.startsWith('Arrow')) mapKeys.add(e.key); else if (e.key === 'Home' && mapFree()) centerMap(); }
-  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (aiRelationsOpen) { aiRelationsOpen = false; return; } if (factionStatusOpen) { factionStatusOpen = false; return; } moveSelectOpen = false; heroView = null; } return; }
+  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (heroView) heroView = null; else if (aiRelationsOpen) aiRelationsOpen = false; else if (factionStatusOpen) factionStatusOpen = false; else if (moveSelectOpen) moveSelectOpen = false; else if (mapFree() && (mapTool || moveMode === 'city')) { mapTool = null; moveMode = 'corps'; } }   // 명세 80: 장수 → 관계 → 현황 → (모드 취소 / 이동 목록) 순
+    else { const m = !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !/^(Arrow|Home|End|Page|Insert|Delete|Clear)/.test(e.key || '') && /^(?:Digit|Numpad)([1-7])$/.exec(e.code || ''); /* NumLock 꺼진 숫자패드(key=Arrow*)는 방향키로 취급 */ if (m && mapFree()) uiClick(STRAT_KEYS[+m[1] - 1]); } return; }   // 숫자 1~7: 전략 화면 버튼 (e.code 라 한글 IME·NumLock 무관, 팝업 중에는 꺼짐, 진행하기 키 없음)
   if (state === 'roster') { if (e.code === 'Escape') uiClick('roster:back'); return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') { if (!tutorialBattle) finishTutorial(); } else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 3 ? finishTutorial() : tutorialStep++; return; }
   if (S.events.length) { if (['Enter', ' ', 'Escape'].includes(e.key)) advanceBattleEvent(); return; }
   if (S.over) { if (e.key === 'ArrowRight') repTurn(1); else if (e.key === 'ArrowLeft') repTurn(-1); else if (e.key === 'Tab') { e.preventDefault(); repToggle(); } else if (e.key.toLowerCase() === 'r' && T - overAt > 1) finishBattle(); return; }
   if (e.code in DIRS) { if (selectMode) confirmSelect(); dirStack = dirStack.filter(c => c !== e.code); dirStack.push(e.code); e.preventDefault(); return; }   // 방향 입력 (NumLock 상태와 무관하게 code 로 판별)
   keys[e.key] = true;
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const kc = e.shiftKey ? ({ BracketLeft: '[', BracketRight: ']' }[e.code] || (/^Digit[1-5]$/.test(e.code) ? e.code.slice(5) : null)) : null;   // Shift 가속 중에도 [ ] 거리·1~5 마법 선택
+  const k = kc || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
   if (selectMode && k === 'Enter') { confirmSelect(); return; }   // 선택 확정 → 전투 재개
   if (selectMode && k === ' ') { const cast = !selTarget; confirmSelect(); if (cast) act(); return; }   // 아군 선택 중 Space 는 확정과 행동을 함께 실행
   if (selectMode && k === 'Escape') { if (selTarget) cancelSelect(); else confirmSelect(); return; }   // 적 정보는 Esc 로 지시 없이 닫는다   // 선택 확정 → 전투 재개
