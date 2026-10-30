@@ -1,0 +1,16 @@
+[
+  {"key":"troop_sword","name":"공통 검보병","file":"troop_sword.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포군 공통병 기준 얼굴·몸·윤곽, 청흑 갑옷과 검 유지, 8방향 대기/보행/찌르기/베기 8x7 투명 시트."},
+  {"key":"troop_spear","name":"공통 창보병","file":"troop_spear.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포군 공통병 기준 얼굴·몸·윤곽, 청흑 갑옷과 장창 유지, 8방향 대기/보행/찌르기/휘두르기 8x7 투명 시트."},
+  {"key":"troop_sword_shield","name":"공통 검방패병","file":"troop_sword_shield.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포군 공통병 기준 얼굴·몸·윤곽, 청흑 갑옷·검·원형 방패 유지, 8방향 8x7 투명 시트."},
+  {"key":"troop_spear_shield","name":"공통 창방패병","file":"troop_spear_shield.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포군 공통병 기준 얼굴·몸·윤곽, 청흑 갑옷·장창·원형 방패 유지, 8방향 8x7 투명 시트."},
+  {"key":"f_xian","name":"함진병","file":"f_xian.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포군 공통병 기준 얼굴·몸·윤곽, 흑갑·백색 깃·장창·장방패 유지, 8방향 8x7 투명 시트."},
+  {"key":"troop_archer","name":"공통 궁병","file":"troop_archer.png","frameCount":56,"grid":true,"actions":["shoot","slash"],"prompt":"여포군 공통병 기준 얼굴·몸·윤곽, 청흑 갑옷·활·화살통 유지, 8방향 사격/회수 8x7 투명 시트."},
+  {"key":"troop_cav","name":"공통 기병","file":"troop_cav.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"병주기병 기준 기수·말 비율과 얼굴·윤곽, 청흑 갑옷·갈색 말·장창 유지, 8방향 8x7 투명 시트."},
+  {"key":"troop_mage","name":"공통 책사","file":"troop_mage.png","frameCount":56,"grid":true,"actions":["cast","heal"],"prompt":"공통병 기준 얼굴·몸·윤곽, 청백 관복·흑 관모·백우선 유지, 8방향 시전/회수 8x7 투명 시트."},
+  {"key":"f_nu","name":"노궁병","file":"f_nu.png","frameCount":56,"grid":true,"actions":["shoot","slash"],"prompt":"공통병 기준 얼굴·몸·윤곽, 금빛 깃·흑청 갑옷·노 유지, 8방향 사격/장전 8x7 투명 시트."},
+  {"key":"f_ji","name":"중장극병","file":"f_ji.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"공통병 기준 얼굴·몸·윤곽, 금빛 깃·흑청 중갑·대극 유지, 8방향 8x7 투명 시트."},
+  {"key":"f_qing","name":"청주병","file":"f_qing.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"공통병 기준 얼굴·몸·윤곽, 청색 두건·은청 갑옷·창 유지, 8방향 8x7 투명 시트."},
+  {"key":"f_hubao","name":"호표기","file":"f_hubao.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"병주기병 기준 기수·말 비율과 얼굴·윤곽, 표범가죽·청색 깃·갈색 말·창 유지, 8방향 8x7 투명 시트."},
+  {"key":"f_bai","name":"백이병","file":"f_bai.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"공통병 기준 얼굴·몸·윤곽, 은갑·녹색 깃과 망토·창 유지, 8방향 8x7 투명 시트."},
+  {"key":"f_dan","name":"단양병","file":"f_dan.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"공통병 기준 얼굴·몸·윤곽, 삿갓·녹색 수건·회녹 갑옷·창 유지, 8방향 8x7 투명 시트."}
+]

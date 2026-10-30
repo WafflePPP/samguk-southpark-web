@@ -1,0 +1,20 @@
+[
+  {"key":"wen","name":"문추","file":"wen.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포 기준 기마 비율·도트 화풍, 문추의 적갈 갑옷·기마·장병기 유지, 8방향 대기/보행/찌르기/베기 8x7 투명 시트."},
+  {"key":"xiahouyuan","name":"하후연","file":"xiahouyuan.png","frameCount":56,"grid":true,"actions":["shoot","slash"],"prompt":"여포 기준 기마 비율·도트 화풍, 하후연의 청색 갑옷·기마·활 유지, 8방향 대기/보행/사격/회수 8x7 투명 시트."},
+  {"key":"xuchu","name":"허저","file":"xuchu.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"장비 기준 보병 얼굴·몸 비율과 도트 화풍, 허저의 거구·중갑·철퇴 유지, 8방향 대기/보행/타격/회수 8x7 투명 시트."},
+  {"key":"guo","name":"곽가","file":"guo.png","frameCount":56,"grid":true,"actions":["cast","heal"],"prompt":"유비 기준 보병 얼굴·몸 비율과 도트 화풍, 곽가의 관모·도포·부채 유지, 8방향 대기/보행/시전/회수 8x7 투명 시트."},
+  {"key":"sima","name":"사마의","file":"sima.png","frameCount":56,"grid":true,"actions":["cast","heal"],"prompt":"유비 기준 보병 얼굴·몸 비율과 도트 화풍, 사마의의 흑자색 관복·부채 유지, 8방향 대기/보행/시전/회수 8x7 투명 시트."},
+  {"key":"kong","name":"공명형 책사","file":"kong.png","frameCount":56,"grid":true,"actions":["cast","heal"],"prompt":"유비 기준 보병 얼굴·몸 비율과 도트 화풍, 백색 도포·관모·부채 유지, 8방향 대기/보행/시전/회수 8x7 투명 시트."},
+  {"key":"zhao","name":"조운","file":"zhao.png","frameCount":56,"grid":true,"reuseFrames":[[46,38],[54,38]],"actions":["thrust","slash"],"prompt":"여포 기준 기마 비율·도트 화풍, 조운의 은청 갑옷·백마·창 유지, 8방향 대기/보행/찌르기/베기 8x7 투명 시트. 후면 회수 2컷은 같은 후면 기준 컷 재사용."},
+  {"key":"diao","name":"초선","file":"diao.png","frameCount":56,"grid":true,"actions":["cast","heal"],"prompt":"여포/여령기 기준 얼굴·몸 비율과 도트 화풍, 초선의 자주색 의상·부채 유지, 8방향 대기/보행/시전/회수 8x7 투명 시트."},
+  {"key":"huang","name":"황충형 궁장","file":"huang.png","frameCount":56,"grid":true,"actions":["shoot","slash"],"prompt":"유비 기준 보병 얼굴·몸 비율과 도트 화풍, 백수염·적색 망토·활 유지, 8방향 대기/보행/사격/회수 8x7 투명 시트."},
+  {"key":"captain","name":"검장","file":"captain.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"장비 기준 보병 얼굴·몸 비율과 도트 화풍, 적색 갑옷·검 유지, 8방향 대기/보행/찌르기/베기 8x7 투명 시트."},
+  {"key":"jang","name":"기마 창장","file":"jang.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포 기준 기마 얼굴·몸·말 비율과 도트 화풍, 흑갑·자색 망토·창·갈색 말 유지, 8방향 8x7 투명 시트."},
+  {"key":"gong","name":"기마 궁장","file":"gong.png","frameCount":56,"grid":true,"actions":["shoot","slash"],"prompt":"여포 기준 기마 얼굴·몸·말 비율과 도트 화풍, 은청 갑옷·백마·활 유지, 8방향 8x7 투명 시트."},
+  {"key":"machao","name":"마초","file":"machao.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포 기준 기마 비율과 도트 화풍, 백은 갑옷·거대 금빛 장식·백마·창 유지, 8방향 8x7 투명 시트."},
+  {"key":"xuhuang","name":"서황","file":"xuhuang.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포 기준 기마 비율과 도트 화풍, 적갈 갑옷·갈색 말·대부 유지, 8방향 8x7 투명 시트."},
+  {"key":"dong","name":"동탁","file":"dong.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"장비 기준 보병 얼굴·몸 비율과 도트 화풍, 거구·흑수염·자금 관복·검 유지, 8방향 8x7 투명 시트."},
+  {"key":"xun","name":"순욱","file":"xun.png","frameCount":56,"grid":true,"actions":["cast","heal"],"prompt":"유비 기준 보병 얼굴·몸 비율과 도트 화풍, 흑색 관모·자색 관복·부채 유지, 8방향 8x7 투명 시트."},
+  {"key":"hua","name":"화웅","file":"hua.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"장비 기준 보병 얼굴·몸 비율과 도트 화풍, 흑수염·적흑 갑옷·대부 유지, 8방향 8x7 투명 시트."},
+  {"key":"zhangliao","name":"장료","file":"zhangliao.png","frameCount":56,"grid":true,"actions":["thrust","slash"],"prompt":"여포 기준 기마 얼굴·몸·말 비율과 도트 화풍, 은적 투구·자색 깃털과 망토·흑마·창 유지, 8방향 8x7 투명 시트."}
+]
