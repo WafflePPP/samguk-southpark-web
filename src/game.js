@@ -1080,8 +1080,8 @@ function aiBattleStep() {   // 타 세력 전투: 시작 → 진행(다음 턴) 
     announceAiBattle(b);
   }
 }
-function turnOptionButtons(x, y, gap = 8) {   // 턴 진행 중 팝업에서도 바꿀 수 있는 이동 안내·소식 표시 토글
-  const bw = mb(112, 280); button('campaign:opt:news', x, y, bw, tb(28), '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 12); button('campaign:opt:diff', x + bw + gap, y, bw, tb(28), '난이도: ' + aiP().name + (campaign.turn > 1 ? ' 🔒' : ''), false, 12);
+function turnOptionButtons(x, y, gap = 8) {   // 턴 진행 중 팝업에서도 바꿀 수 있는 소식 표시 토글 (난이도 버튼은 삭제 — 지도 패널의 난이도 변경만 남긴다). x 는 버튼 2개 폭 기준이라 가운데로 보정
+  const bw = mb(112, 280); button('campaign:opt:news', x + (bw + gap) / 2, y, bw, tb(28), '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 12);
 }
 const isTurnOpt = id => !!id && id.startsWith('campaign:opt:');
 const MOVE_MODES = ['detail', 'skip'], MOVE_NAME = { detail: '상세', skip: '건너뛰기' };   // 턴 진행 중 적 군단 이동 안내: 상세(군단마다 한 장씩) / 건너뛰기(아군과 상호작용하는 것만)
@@ -2162,7 +2162,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.347', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.348', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Shift: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
@@ -2978,7 +2978,7 @@ function uiClick(id) {   // 군단 편성 조작 뒤에는 비어 버린 군단�
 function uiClickCore(id) {
   if (aiRelationsOpen) { if (id === 'campaign:relations:close') aiRelationsOpen = false; return; }
   if (id === 'campaign:relations') { if (T - heroCloseT < 0.4) return; if (scoutView || diplomacyView || factionStatusOpen) aiRelationsOpen = true; return; }
-  if (id === 'campaign:opt:news') id = 'campaign:news'; else if (id === 'campaign:opt:diff') id = 'campaign:diff';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
+  if (id === 'campaign:opt:news') id = 'campaign:news';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
   if (id === 'spr:next') { practiceNext(); return; }
   if (stratPractice && state !== 'title' && !practiceAllows(id)) { stratPractice.denyT = T; return; }   // 허용 목록 밖 버튼은 배너만 깜박인다 (명세 76)
   if ((state === 'map' || state === 'roster') && custodyOpen() && !id.startsWith('custody:') && id !== 'campaign:movemode' && id !== 'campaign:news' && id !== 'campaign:diff') return;
