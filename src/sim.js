@@ -169,8 +169,8 @@ const BOLT = [140, 4, 20], BALL = [35, 1, 5];
 const SPELL = {
   bolt: { name: '장풍', kind: 'homing', mp: 8, range: 260, cd: 1.2, dmg: BOLT, col: '#9fe8ff' },
   phoenix: { name: '불새', kind: 'pierce', mp: 14, range: 260, cd: 1.8, dmg: BOLT, col: '#ff8a3a' },
-  ice: { name: '얼음칼날', kind: 'pierce', mp: 12, range: 260, cd: 1.6, dmg: BOLT, col: '#bfe8ff' },
-  tornado: { name: '회오리바람', kind: 'pierce', mp: 12, range: 260, cd: 1.6, dmg: BOLT, col: '#d8ffd0' },
+  ice: { name: '얼음칼날', short: '얼음', kind: 'pierce', mp: 12, range: 260, cd: 1.6, dmg: BOLT, col: '#bfe8ff' },
+  tornado: { name: '회오리바람', short: '회오리', kind: 'pierce', mp: 12, range: 260, cd: 1.6, dmg: BOLT, col: '#d8ffd0' },
   fireball: { name: '불꽃탄', kind: 'ball', mp: 10, range: 260, cd: 1.5, dmg: BALL, r: 56, col: '#ff7a3a' },
   roll: { name: '불공', kind: 'roll', mp: 8, range: 220, cd: 1.2, dmg: BALL, r: 34, col: '#ff9a4a' },
   thunder: { name: '번개', kind: 'wide', mp: 30, range: 300, cd: 3.0, lock: 7, r: 110, dmg: [120, 3, 20], friendly: true, col: '#fff2a0' },
@@ -183,7 +183,13 @@ const MAGIC = 1;
 const SOLDIER_SPELL = 0.35, SPELL_GRADE = 1;   // 일반 병사 법사 주문 위력 / 장수 군사 주문 위력 = 1 + SPELL_GRADE × (등급 배율 − 1) (명세 42, 설계값)
 const spellPower = u => !u ? 1 : u.generic ? SOLDIER_SPELL : 1 + SPELL_GRADE * ((GRADE_MUL[GRADE[u.key]] || 1) - 1);   // 장풍은 물리 피해 조정 후 일반 궁병 실효 DPS의 약 3~5배 범위, 광역 주문은 다중 타격으로 효율을 얻는다
 const magicDmg = (sp, t, from) => Math.max(sp.dmg[2], sp.dmg[0] - sp.dmg[1] * combatStat(cur, t, 'md') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t)) * MAGIC * (from ? spellPower(from) * combatStat(cur, from, 'ar') / 100 * (1 + skillPct(from, 'dmg') / 100) : 1);   // AR·DR 은 마법에도 적용
-const SPECIAL = { spin: { name: '회전참', cd: 12 }, dash: { name: '돌진', cd: 10, range: TILE * 6 }, volley: { name: '연사', cd: 12 }, bless: { name: '축복', cd: 25 } };
+const SPECIAL = { spin: { name: '회전참', cd: 12 }, thrust: { name: '관통창', cd: 10 }, pike: { name: '찌르기', cd: 14 }, sweep: { name: '베기', cd: 24 }, heavy: { name: '강궁', cd: 18 }, dash: { name: '돌진', cd: 10, range: TILE * 6 }, volley: { name: '다발사격', cd: 12 }, bless: { name: '축복', cd: 25 } };
+// 병종별 특수기 (명세 79, 설계값 — 원작 자료 없음). thrust/pike: 칸별 배율 [1칸, 2칸, …] / sweep: 전방 180° 5칸 배율 / volley: 다발 화살 / heavy: 최종 피해 배수
+const THRUST_MUL = { thrust: [2.2, 1.8, 1.4, 1.1], pike: [1.6, 1.2] }, SWEEP_MUL = 1.4, HEAVY_MUL = 2, VOLLEY = { n: 5, step: 0.13, mul: 1.3 };
+for (const [k, T] of Object.entries(U)) {   // 배정: 창 장수 thrust · 검 장수 spin 유지 · 병사 pike/sweep/heavy · 기병·방패·법사·성직은 변경 없음
+  if (T.cls === 'warrior') { const spear = unitCategory(k) === 'spear'; if (T.generic) T.special = spear ? 'pike' : 'sweep'; else if (spear && T.special === 'spin') T.special = 'thrust'; }
+  else if (T.cls === 'archer' && T.generic) T.special = 'heavy';
+}
 const TRAIT_TIME = 5, AURA_RANGE = 195;
 const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: 'AT', df: 'DF', ad: 'AD', md: 'MD', aa: 'AA', hr: 'HR', sp: 'SP', ar: 'AR', dr: 'DR' };
 // 칭호 효과 (명세 26). aura 반경 안 아군(cats 가 있으면 그 병종만) · passive 상시 · hp 기준 이하 진입 시 5초 버프 · dash 돌진 후 · onSpecial 특수기 발동 시 · skill 군사의 스킬 효율(마법 피해·쿨타임·치유량 %). 수치는 % (자기 능력치 곱).
@@ -199,8 +205,8 @@ const TITLE_EFFECT = {
   비장: { dash: { any: true, self: { atk: 30 }, foeFt: 10 } }, 전신: { dash: { any: true, foeFt: 10 } }, 상승: { dash: { any: true, self: { atk: 30 } } },
   소비장: { dash: { any: true, self: { atk: 30 }, foeFt: 10, scale: 0.7 } },
   금마초: { dash: { self: { sp: 20, atk: 15 } } }, 지용: { dash: { self: { ar: 15, dr: 15 }, glyph: 'guard', col: '#9fdcff' } }, 백마: { dash: { self: { sp: 15 } } },
-  신궁: { onSpecial: { volley: { self: { atk: 30 } } } }, 효장: { onSpecial: { spin: { self: { atk: 20 } } } },
-  만인적: { onSpecial: { spin: { foeFt: 10 } } }, 폭군: { onSpecial: { spin: { foeFt: 10 } } },
+  신궁: { onSpecial: { volley: { self: { atk: 30 } } } }, 효장: { onSpecial: { thrust: { self: { atk: 20 } } } },
+  만인적: { onSpecial: { thrust: { foeFt: 10 } } }, 폭군: { onSpecial: { spin: { foeFt: 10 } } },
   경국: { skill: { heal: 30, cd: 20 }, onSpecial: { bless: { foeFt: 10 } } },
   와룡: { skill: { dmg: 30, cd: 20 } }, 봉추: { skill: { dmg: 20 } }, 왕좌: { skill: { cd: 15 } }, 모주: { skill: { dmg: 10, cd: 10 } }, 귀재: { skill: { dmg: 10 } },
   호치: { passive: { df: 10, ad: 10 } }, 교변: { passive: { sp: 10, aa: 5 } }, 주아부: { passive: { df: 8, ad: 8 } }, 상장: { passive: { atk: 10 } }, 용장: { passive: { df: 10 } }, 총호: { passive: { md: 15, dr: 10 } }, 횡포: { passive: { atk: 5 } },
@@ -570,11 +576,11 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < combatStat(S, t, 'aa') / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
-  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG);
+  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG * (p.dmgMul || 1));
 }
-function shoot(S, u, tx, ty, mul = 1, spread = 0) {
+function shoot(S, u, tx, ty, mul = 1, spread = 0, extra) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
-  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, atk: combatStat(S, u, 'atk') * combatStat(S, u, 'ar') / 100 * mul * ftMul(u), from: u, team: u.team, a });
+  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, atk: combatStat(S, u, 'atk') * combatStat(S, u, 'ar') / 100 * mul * ftMul(u), from: u, team: u.team, a, ...extra });
 }
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
@@ -612,9 +618,27 @@ function castSpell(S, u, key, x, y) {
   u.mp -= sp.mp; u.cdT = sp.cd * (u.key === 'healer' && sp.kind === 'heal' ? 2 : 1) * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = sp.kind === 'heal' ? 'heal' : 'cast'; u.face = ang; tire(u, 'spell');
   return true;
 }
+const dir8 = ang => { const k = Math.round(ang / (Math.PI / 4)); return [Math.round(Math.cos(k * Math.PI / 4)) + 0, Math.round(Math.sin(k * Math.PI / 4)) + 0]; };   // 조준각 → 8방향 (+0: -0 방지)
+const foeAt = (S, u, tx, ty) => { const o = S.units[S.occ[ti(tx, ty)] - 1]; return o && live(o) && o.team !== u.team ? o : null; };
+function lineFoes(S, u, dx, dy, n, fx = true) {   // 정면 직선 n칸의 적 [적, 칸 번호 0..]: 지도 밖·바위에서 끊기고 물은 통과. 걷는 중인 적은 두 칸을 차지하므로 한 번만. fx=false 는 AI 검사용(연출 없음)
+  const out = [], seen = new Set();
+  for (let i = 0; i < n; i++) {
+    const tx = u.tx + (i + 1) * dx, ty = u.ty + (i + 1) * dy; if (!inMap(tx, ty) || S.map[ti(tx, ty)] === ROCK) break;
+    if (fx) ring(S, tcx(tx), tcy(ty), 14, '#ffd34d', 0.3); const e = foeAt(S, u, tx, ty); if (e && !seen.has(e)) { seen.add(e); out.push([e, i]); }
+  }
+  return out;
+}
+function sweepFoes(S, u, dx, dy, fx = true) {   // 인접 8칸 중 정면 쪽 반평면(dot ≥ 0)의 적 — 항상 5칸
+  const out = [], seen = new Set();
+  for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+    if ((!ox && !oy) || ox * dx + oy * dy < 0) continue; const tx = u.tx + ox, ty = u.ty + oy; if (!inMap(tx, ty)) continue;
+    if (fx) ring(S, tcx(tx), tcy(ty), 14, '#ffd34d', 0.3); const e = foeAt(S, u, tx, ty); if (e && !seen.has(e)) { seen.add(e); out.push([e, 0]); }
+  }
+  return out;
+}
 function useSpecial(S, u, x, y) {
   if (!live(u) || !u.special || u.spT > 0 || u.stun > 0 || u.dashQ || u.knockQ) return false;
-  cur = S; const titleDash = u.special === 'dash' && dashAny(u), ang = titleDash ? u.face : Math.atan2(y - u.y, x - u.x), sp = SPECIAL[u.special];
+  cur = S; const titleDash = u.special === 'dash' && dashAny(u), sp = SPECIAL[u.special]; let ang = titleDash ? u.face : Math.atan2(y - u.y, x - u.x);
   if (u.special === 'spin') aoe(S, u, u.x, u.y, 80, e => hurt(S, u, e, phys(u, e, 2.2)), '#ffd34d');
   else if (u.special === 'dash') {   // 칭호 돌진은 6칸 경로의 적을 밀며 통과, 일반 돌진은 빈 칸으로 최대 6칸
     const dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), titled = titleDash, q = []; let cx = u.tx, cy = u.ty;
@@ -623,11 +647,16 @@ function useSpecial(S, u, x, y) {
     if (!q.length) return false;
     u.dashQ = q; u.dashDir = [dx, dy]; u.dashMoved = 0; u.titleDash = titled; u.dashHit = titled ? new Set() : null; ring(S, u.x, u.y, 30, '#7fd0ff', 0.3);
   }
-  else if (u.special === 'volley') for (let k = -2; k <= 2; k++) shoot(S, u, x, y, 1.3, k * 0.13);
+  else if (THRUST_MUL[u.special] || u.special === 'sweep') {   // 격자 특수기: 8방향 정면 직선 관통(thrust/pike) · 전방 180° 5칸(sweep). 아군은 칸만 차지하고 피해 없음
+    const [dx, dy] = dir8(ang); ang = Math.atan2(dy, dx);
+    for (const [e, i] of u.special === 'sweep' ? sweepFoes(S, u, dx, dy) : lineFoes(S, u, dx, dy, THRUST_MUL[u.special].length)) hurt(S, u, e, phys(u, e, u.special === 'sweep' ? SWEEP_MUL : THRUST_MUL[u.special][i]));
+  }
+  else if (u.special === 'heavy') shoot(S, u, x, y, 1, 0, { big: true, dmgMul: HEAVY_MUL });
+  else if (u.special === 'volley') for (let k = 0; k < VOLLEY.n; k++) shoot(S, u, x, y, VOLLEY.mul, (k - (VOLLEY.n - 1) / 2) * VOLLEY.step);
   else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); healTo(u, e, h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   const OS = ((TITLE_EFFECT[u.subclass] || {}).onSpecial || {})[u.special];
   if (OS) { if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d'); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt); }
-  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = u.special; u.face = ang; tire(u, 'special');
+  u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = u.special === 'heavy' ? 'attack' : u.special; u.face = ang; tire(u, 'special');   // heavy: art.js 가 아직 모르는 키라 일반 사격 자세를 재사용(명세 79 §4, 전용 자세는 Codex)
   return true;
 }
 
@@ -873,7 +902,14 @@ function autoAbilities(S, u, aggressive) {   // 성직자 치유 / 법사 광역
   }
   if (u.special && u.spT <= 0 && aggressive) {
     if (u.special === 'bless') { let n = 0; for (const e of S.units) if (live(e) && e.team === u.team && e.hp < e.maxHp * 0.6 && dist(u, e) <= 150) n++; if (n >= 3 && useSpecial(S, u, u.x, u.y)) return true; }
-    else if (u.special !== 'dash') { const t = nearestEnemy(S, u, u.special === 'volley' ? u.range : 70); if (t && useSpecial(S, u, t.x, t.y)) return true; }
+    else if (THRUST_MUL[u.special] || u.special === 'sweep') {   // 맞을 적이 있는 방향으로만 (명세 79 §3.4). 조작 캐릭터는 자동 발동 없음
+      const t = !handCtl(S, u) && nearestEnemy(S, u, TILE * 6); if (!t) return false;
+      const ta = Math.atan2(t.y - u.y, t.x - u.x);
+      if (u.special === 'sweep') { const [dx, dy] = dir8(ta); if (sweepFoes(S, u, dx, dy, false).length && useSpecial(S, u, t.x, t.y)) return true; }
+      else { let best = null, bc = 0, bd = 9; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, [dx, dy] = dir8(a), c = lineFoes(S, u, dx, dy, THRUST_MUL[u.special].length, false).length, ad = Math.abs(Math.atan2(Math.sin(a - ta), Math.cos(a - ta))); if (c > bc || c && c === bc && ad < bd) { bc = c; bd = ad; best = a; } }
+        if (best !== null && useSpecial(S, u, u.x + Math.cos(best) * 100, u.y + Math.sin(best) * 100)) return true; }
+    }
+    else if (u.special !== 'dash') { const t = nearestEnemy(S, u, u.special === 'volley' || u.special === 'heavy' ? u.range : 70); if (t && useSpecial(S, u, t.x, t.y)) return true; }
   }
   return false;
 }
@@ -1054,16 +1090,18 @@ function aimAt(S, u, range) {   // 바라보는 방향 ±55° 안의 가장 가�
   for (const e of S.units) { if (!live(e) || e.team === u.team) continue; const d = dist(u, e), a = Math.atan2(e.y - u.y, e.x - u.x); if (d < bd && Math.cos(a - u.face) > 0.57) { bd = d; best = e; } }
   return best ? [best.x, best.y] : [u.x + Math.cos(u.face) * 150, u.y + Math.sin(u.face) * 150];
 }
-function action(S, u, alt) {   // Space(주): 마법 > 특수기 > 화살 / X(보조): 마법 보유자는 특수기, 그 밖은 화살
+const skills = u => u.special === 'bless' ? [...u.spells, 'bless'] : u.spells;   // 선택 가능한 스킬 목록: 마법 + 축복(초선류). 선택 인덱스 u.spellSel 은 이 목록 기준
+function action(S, u) {   // Space: 선택한 스킬(마법·축복) > 특수기 > (특수기 없는 원거리) 화살
   if (!live(u) || u.stun > 0 || retreating(u)) return false; takeControl(S, u); cur = S;
-  const sel = !alt && u.spells.length, sp = sel ? u.spells[u.spellSel] : null;
+  const sp = skills(u)[u.spellSel];
   if (sp === 'heal') { let t = null, bd = 1; for (const e of S.units) if (live(e) && e.team === u.team && e.hp / e.maxHp < bd && dist(u, e) <= SPELL.heal.range) { bd = e.hp / e.maxHp; t = e; } return t ? castSpell(S, u, 'heal', t.x, t.y) : false; }
+  if (sp === 'bless') return useSpecial(S, u, u.x, u.y);
   if (sp) { const [x, y] = aimAt(S, u, SPELL[sp].range); return castSpell(S, u, sp, x, y); }
-  if (u.special && (!alt || u.spells.length)) { const [x, y] = aimAt(S, u, u.special === 'volley' ? u.range : u.special === 'dash' ? 1e9 : 150); return useSpecial(S, u, x, y); }
+  if (u.special) { const [x, y] = aimAt(S, u, u.special === 'volley' || u.special === 'heavy' ? u.range : u.special === 'dash' ? 1e9 : 150); return useSpecial(S, u, x, y); }
   if (u.range > 0 && u.cdT <= 0 && u.cls !== 'mage') { const [x, y] = aimAt(S, u, u.range); u.face = Math.atan2(y - u.y, x - u.x); u.cdT = u.cd; u.anim = 0.28; u.actionKind = 'attack'; tire(u, 'hit'); shoot(S, u, x, y); return true; }
   return false;
 }
-function selectSpell(u, i) { if (u.spells[i]) u.spellSel = i; }
+function selectSpell(u, i) { if (skills(u)[i]) u.spellSel = i; }
 function setAuto(S, on) {
   S.auto = on;
   for (const u of S.units) if (live(u) && u.team === 'player') {
@@ -1114,6 +1152,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
