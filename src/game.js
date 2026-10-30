@@ -1664,10 +1664,10 @@ function drawToolbar() {
   const u = ctrlOf();
   label('조작: ' + army().name + (u ? ' · ' + u.name : ''), 12, 20, 17, COLORS.gold);
   label('Space 행동 · ← → 장수 · ↑ ↓ 군단', 12, 44, 14, COLORS.silver2);
-  [['화면', 606], ['전투', 774], ['메뉴', 1179]].forEach(([s, x]) => label(s, x, 8, 12, COLORS.silver2, 'center'));
-  button('m:zoomout', 470, 18, 30, 34, '−', false); button('m:zoom', 502, 18, 72, 34, '거리 ×' + Z(), false, 13); button('m:zoomin', 576, 18, 30, 34, '+', false);
-  button('m:speed', 608, 18, 104, 34, '속도 ×' + SPEEDS[speedIdx], false);
-  button('cmd:auto', 722, 18, 104, 34, S.auto ? '자동 ON' : '자동 OFF', S.auto);
+  [['화면', 800], ['전투', 968], ['메뉴', 1179]].forEach(([s, x]) => label(s, x, 8, 12, COLORS.silver2, 'center'));
+  button('m:zoom', 748, 18, 104, 34, '거리 ×' + Z(), false);   // 거리·속도·자동은 시스템 버튼 바로 왼쪽에 붙인다
+  button('m:speed', 860, 18, 104, 34, '속도 ×' + SPEEDS[speedIdx], false);
+  button('cmd:auto', 972, 18, 104, 34, S.auto ? '자동 ON' : '자동 OFF', S.auto);
   button('cmd:menu', 1084, 18, 190, 34, '시스템', false);
 }
 // 능력치 실시간 표기: 버프·오라·피로가 반영된 현재값 하나만 쓰고, 기본값보다 오르면 초록·내리면 주황으로 칠한다.
@@ -1771,8 +1771,8 @@ function drawUnitList() {   // 부대원 팝업(상태창 위에 그린다): 6�
   S.units.filter(u => u.army === army()).slice(0, 18).forEach((u, i) => drawPortrait(u, 4 + (i % 6) * 89, 351 + Math.floor(i / 6) * 89, TOUCH, TOUCH));
 }
 function drawMobileSide() {   // 상단: 화면 → 전투 → 메뉴 순으로 86px 터치 버튼을 한 줄에 둔다 (오른쪽 위는 미니맵)
-  const y = 4, xs = [6, 286, 442, 598];
-  button('m:zoomout', 6, y, 90, TOUCH, '−', false, 26); button('m:zoom', 98, y, 90, TOUCH, '거리 ×' + Z(), false, 15); button('m:zoomin', 190, y, 90, TOUCH, '+', false, 26);
+  const y = 4, xs = [6, 162, 318, 474];
+  button('m:zoom', xs[0], y, 150, TOUCH, '거리 ×' + Z(), false, 17);
   button('m:speed', xs[1], y, 150, TOUCH, '속도 ×' + SPEEDS[speedIdx], false, 17);
   button('cmd:auto', xs[2], y, 150, TOUCH, S.auto ? '자동 ON' : '자동 OFF', S.auto, 17);
   button('cmd:menu', xs[3], y, 150, TOUCH, '시스템', false, 17);
@@ -2162,7 +2162,7 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 function drawTitle() {
   drawArtBackdrop();
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.346', 24, 30, 16, COLORS.silver2);
+  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.347', 24, 30, 16, COLORS.silver2);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
   (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Shift: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
   button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
@@ -3102,8 +3102,7 @@ function uiClickCore(id) {
   else if (id === 'm:act') act();
   else if (id.startsWith('m:skill:')) { const u = ctrlOf(); if (u) { Sim.selectSpell(u, +id.slice(8)); act(); } }   // 스킬 버튼 = 선택 + 즉시 시전
   else if (id === 'm:speed') speedIdx = (speedIdx + 1) % SPEEDS.length; else if (id === 'm:pad') padVisible = !padVisible;
-  else if (id === 'm:zoom') setZoom(2);   // 가운데 표시를 누르면 기본 ×1
-  else if (id === 'm:zoomout') setZoom(zoomIdx - 1); else if (id === 'm:zoomin') setZoom(zoomIdx + 1);
+  else if (id === 'm:zoom') setZoom((zoomIdx + 1) % ZOOMS.length);   // 누를 때마다 한 단계 가까이, 끝에서 처음으로 ([ ] 키는 단계별 증감)
   else if (id === 'm:info') { selTarget = null; selectMode = true; }
   else if (id.startsWith('m:form:')) Sim.setFormation(army(), id.slice(7));
   else if (id === 'm:formation') cycleFormation(army());
