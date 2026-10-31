@@ -98,6 +98,7 @@ const startCity = (f, n) => { const c = factionCities(f); return c[n % c.length]
 if (Object.entries(FACTION_HEROES).some(([f, h]) => { const all = FACTION_MEMBERS[f].flatMap(c => [c.lead, ...Object.values(c.slots)]); return all.length !== h.length || new Set(all).size !== h.length || FACTION_MEMBERS[f].some(c => Object.keys(c.slots).some(k => k >= Sim.ARMY_MAX)); })) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
 // 세력 선택 화면 표시용: 시작 도시 수·군단 수·난이도 표식(설계값 — 유비·장양·공손도는 군단 1~2개·접경 1칸이라 어려움, 4단계 측정 뒤 확정)
 const START_DIFFICULTY = { '여포': '보통', '조조': '보통', '공손찬': '보통', '유비': '어려움', '장양': '어려움', '공손도': '어려움' };
+const START_FACTION_DESC = { '여포': '기병 돌파 · 공격형', '조조': '영토 운영 · 균형형', '유비': '소수 정예 · 결속형' };
 const START_NOTICE = { '여포': '하비에서 소패·북해를 잇고 장양과의 신뢰를 활용한다.', '조조': '허창에서 진류·여남을 지키고 동맹 유비와 협력한다.', '유비': '소패에서 동맹 조조와 협력하며 하비·복양을 노린다.', '장양': '진양에서 호관을 지키고 신뢰하는 여포와 협력한다.', '공손찬': '계에서 북평·남피의 원소군과 맞선다.', '공손도': '양평에서 북평을 거쳐 유주로 진출한다.' };   // 세력별 첫 안내(명세 71 §5, 도시 이름은 시험이 실제 도시와 대조)
 const startFactionInfo = f => ({ cities: INITIAL_FACTIONS.filter(x => x === f).length, corps: FACTION_CORPS[f].length, difficulty: START_DIFFICULTY[f] || '보통' });
 const playerFaction = () => campaign.playerFaction || '여포';
@@ -2159,30 +2160,40 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
   const unit=Sim.U[key];if(!unit)return;
   drawBattlePortrait(ctx,x,y,w,h,styleOf({...unit,key,category:Sim.unitCategory(key),team}),{team});
 }
+function drawTitleMap() {
+  const x = 100, y = 530, w = 1080, h = 165, p = 18, sx = (w - p * 2) / WORLD_W, sy = (h - p * 2) / WORLD_H, px = s => x + p + s.x * sx, py = s => y + p + s.y * sy;
+  panel(x, y, w, h, 'rgba(255,211,77,.48)', 1, 'rgba(6,15,20,.8)'); ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip();
+  ctx.strokeStyle = 'rgba(190,168,115,.55)'; ctx.lineWidth = 2;
+  for (const a of STAGES) for (const id of a.links) if (a.id < id) { const b = stageById(id); ctx.beginPath(); ctx.moveTo(px(a), py(a)); ctx.lineTo(px(b), py(b)); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(105,184,210,.7)'; ctx.lineWidth = 3; ctx.beginPath(); YELLOW_RIVER.forEach(([xx, yy], i) => i ? ctx.lineTo(x + p + xx * sx, y + p + yy * sy) : ctx.moveTo(x + p + xx * sx, y + p + yy * sy)); ctx.stroke();
+  for (const s of STAGES) { const style = FACTION_STYLE[s.faction], r = s.capital ? 7 : 4; ctx.fillStyle = style.main; ctx.strokeStyle = style.light; ctx.lineWidth = s.capital ? 2 : 1; ctx.beginPath(); ctx.arc(px(s), py(s), r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  ctx.restore(); label('전략 지도 · 18거점', x + 14, y + 14, 12, COLORS.silver2);
+}
 function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
-  [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, mb(120,112), mb(92,80), COLORS.gold, 'center'); label('v0.1.351', 24, 30, 16, COLORS.silver2);
-  label('실시간 군단 전투 · 장수를 지휘하고 천하를 다투다',VW/2,mb(202,190),mb(20,22),COLORS.silver,'center');
-  const py=mb(242,226),ph=mb(276,296);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.352', 24, 30, 16, COLORS.silver2);
+  const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
   label(mobile?'조이스틱 이동 · 오른쪽 행동 · 적 탭 집중 공격':'이동 WASD·QEZC · 행동 Space · 군단 변경 ↑↓ · 시스템 Esc',VW/2,by+bh+36,16,COLORS.silver2,'center',550);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,py+ph-22,16,BATTLE_ART.error?COLORS.danger:COLORS.silver2,'center');
   if (titleNotice) label(titleNotice, VW / 2, py+ph+28, 18, COLORS.danger, 'center', 1100);
+  drawTitleMap();
   if (saveSlotMode) drawSaveSlots();
-  if (startFactionSelect) {   // 명세 71: 6세력 3×2 격자(PC·모바일 같은 가상 좌표, 모바일은 버튼 높이 ≥86·글자 ≥22) — 배치 다듬기는 3단계(Codex)
-    const cw = 300, rowH = tb(90) + mb(26, 30) + mb(22, 30) + 24, rows = Math.ceil(PLAYABLE_FACTIONS.length / 3), py = mb(50, 36), ph = mb(560, 612) - (2 - rows) * rowH, by = py + mb(120, 120);
+  if (startFactionSelect) {
+    const cw = 300, ch = tb(190), py = mb(72, 36), ph = mb(520, 540), by = py + 90;
     panel(140, py, 1000, ph, COLORS.gold, 3, 'rgba(8,20,25,.98)'); label('시작 세력 선택', 640, py + mb(45, 42), 30, COLORS.gold, 'center');
-    label('선택한 세력의 수도와 장수로 전략을 시작합니다.', 640, py + mb(85, 82), 17, COLORS.silver2, 'center', 960);
+    label('군주와 세력 성향을 확인하고 원정을 시작하세요.', 640, py + mb(82, 78), 17, COLORS.silver2, 'center', 960);
     PLAYABLE_FACTIONS.forEach((faction, i) => {
-      const x = 170 + (i % 3) * (cw + 20), y = by + Math.floor(i / 3) * rowH, capital = stageById(CAPITALS[faction]), info = startFactionInfo(faction);
-      button(`start-faction:${faction}`, x, y, cw, tb(90), faction, false, 25); drawUnitIcon(INITIAL_RULERS[faction], x + 6, y + 6, 42, tb(90) - 12);
-      label(`${capital.name} · ${Sim.U[INITIAL_RULERS[faction]].name}`, x + cw / 2, y + tb(90) + mb(26, 26), 15, FACTION_STYLE[faction].light, 'center', cw);
-      label(`시작 거점 ${info.cities} · 군단 ${info.corps} · ${info.difficulty}`, x + cw / 2, y + tb(90) + mb(26, 26) + mb(22, 30), 14, info.difficulty === '어려움' ? '#ffb06a' : COLORS.silver, 'center', cw);
+      const x = 170 + i * (cw + 20), y = by, capital = stageById(CAPITALS[faction]), info = startFactionInfo(faction), ruler = INITIAL_RULERS[faction];
+      button(`start-faction:${faction}`, x, y, cw, ch, '', false, 1); drawUnitIcon(ruler, x + 14, y + 12, 92, ch - 24);
+      label(faction, x + 124, y + 34, 27, FACTION_STYLE[faction].light); label(Sim.U[ruler].name, x + 124, y + 70, 18, COLORS.gold);
+      label(START_FACTION_DESC[faction], x + 124, y + 108, 15, COLORS.silver, 'left', 165);
+      label(`${capital.name} · 거점 ${info.cities} · 군단 ${info.corps}`, x + 124, y + 145, 14, COLORS.silver2, 'left', 165);
+      label(info.difficulty, x + cw - 14, y + 174, 13, info.difficulty === '어려움' ? '#ffb06a' : COLORS.silver2, 'right');
     });
-    const ky = by + rows * rowH + mb(6, 20);
+    const ky = by + ch + 32;
     label(mobile ? '세력을 터치하세요' : PLAYABLE_FACTIONS.map((f, i) => (i + 1) + ' ' + f).join(' · ') + ' · Esc 취소', 640, ky, 16, COLORS.silver, 'center', 960);
     button('start-diff', mb(540, 510), ky + mb(18, 20), mb(200, 260), tb(40), '난이도: ' + (AI_PROFILES[startDifficulty] || AI_PROFILES.normal).name, false, 17);
   }
