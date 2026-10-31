@@ -2161,12 +2161,16 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 }
 function drawTitle() {
   drawArtBackdrop();
+  const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   [['guan', 250], ['zhao', 360], ['huang', 470], ['kong', 570], ['diao', 670], ['lubu', 880], ['zhangliao', 1000], ['dian', 1100]].forEach(([k, x]) => drawBody(ctx, x, 670, 30, x < 780 ? 0 : Math.PI, STYLES[k], { t: T }));
-  label('삼국 사우스파크', VW / 2, 150, 100, COLORS.gold, 'center'); label('v0.1.350', 24, 30, 16, COLORS.silver2);
-  if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,570,18,COLORS.silver,'center');
-  (mobile ? ['왼쪽 화면을 누르고 끌기(조이스틱): 캐릭터 이동 · 아군을 탭: 조작 장수 변경', '오른쪽 행동 버튼·빈 곳 탭: 특수기·마법 · 적을 탭: 집중 공격', '상단: 거리·속도·자동·시스템 · 하단: 군단 전환·지원·진형·명령'] : ['조작 캐릭터 이동: 숫자패드 (또는 WASD+QEZC, 화면의 보조키) — 적이 있는 칸으로 밀면 공격', 'Space: 특수기·마법 · 1~5: 마법 선택 · ←→ 조작 캐릭터 변경 · ↑↓ 군단 변경', '돌격 F · 정지 V · 후퇴 R · 자유 B · 자동전투 T · 적을 클릭: 집중 공격 · Shift: 가속 · Esc: 시스템']).forEach((s, i) => label(s, VW / 2, 295 + i * 34, 20, COLORS.silver, 'center'));
-  button('title:new', 430, mb(410, 396), 200, tb(58), '뉴게임', true, 24); button('title:load', 650, mb(410, 396), 200, tb(58), hasCampaign() ? '로드' : '로드 · 저장 없음', false, 22);
-  label(mobile ? '버튼을 터치해 시작' : 'Enter: 뉴게임 · L: 로드', VW / 2, mb(495, 512), 18, COLORS.silver2, 'center'); if (titleNotice) label(titleNotice, VW / 2, mb(535, 552), 20, COLORS.danger, 'center', 1100);
+  label('삼국 사우스파크', VW / 2, mb(120,112), mb(92,80), COLORS.gold, 'center'); label('v0.1.351', 24, 30, 16, COLORS.silver2);
+  label('실시간 군단 전투 · 장수를 지휘하고 천하를 다투다',VW/2,mb(202,190),mb(20,22),COLORS.silver,'center');
+  const py=mb(242,226),ph=mb(276,296);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
+  label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
+  const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
+  label(mobile?'조이스틱 이동 · 오른쪽 행동 · 적 탭 집중 공격':'이동 WASD·QEZC · 행동 Space · 군단 변경 ↑↓ · 시스템 Esc',VW/2,by+bh+36,16,COLORS.silver2,'center',550);
+  if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,py+ph-22,16,BATTLE_ART.error?COLORS.danger:COLORS.silver2,'center');
+  if (titleNotice) label(titleNotice, VW / 2, py+ph+28, 18, COLORS.danger, 'center', 1100);
   if (saveSlotMode) drawSaveSlots();
   if (startFactionSelect) {   // 명세 71: 6세력 3×2 격자(PC·모바일 같은 가상 좌표, 모바일은 버튼 높이 ≥86·글자 ≥22) — 배치 다듬기는 3단계(Codex)
     const cw = 300, rowH = tb(90) + mb(26, 30) + mb(22, 30) + 24, rows = Math.ceil(PLAYABLE_FACTIONS.length / 3), py = mb(50, 36), ph = mb(560, 612) - (2 - rows) * rowH, by = py + mb(120, 120);
