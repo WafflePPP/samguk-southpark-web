@@ -234,7 +234,7 @@ STYLES.zhangliao={...STYLES.jang};
 STYLES.lubu_sword={...STYLES.ally_sword};STYLES.lubu_spear={...STYLES.ally_spear};STYLES.lubu_archer={...STYLES.ally_archer};STYLES.lubu_mage={...STYLES.mage};
 for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
 const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
-const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,attempt:0};
+const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,titleWeapons:[],attempt:0};
 const HERO_REWORK_KEYS=['gao','yuan','cao','xia','dian','yan','wen','xiahouyuan','xuchu','guo','sima','liubei','guan','kong','zhao','diao','huang','captain','jang','gong','zhangfei','machao','xuhuang','dong','xun','hua'];
 const SHU_STYLE_KEYS=['liubei','guan','zhangfei'];
 const LUBU_STYLE_KEYS=['gao','yuan','cao','xia','dian','yan'];
@@ -264,10 +264,11 @@ function extractBattleSprite(image,b,tint=false,cutoff=128) {
 }
 function loadBattleArt() {
   if(typeof Image==='undefined')return Promise.resolve();if(BATTLE_ART.loading)return BATTLE_ART.promise;
-  BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();const attempt=++BATTLE_ART.attempt;
+  BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();BATTLE_ART.titleWeapons=[];const attempt=++BATTLE_ART.attempt;
   const names=['terrain.png','approved-reference.png'];
   const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
+  Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
   const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['heroes-v321',321],['heroes-v318',318],['rework-v303',303],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342]])parts.push(await manifest(folder,version));return parts;};
   BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,remaining,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops])=>{

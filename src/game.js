@@ -2160,26 +2160,23 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
   const unit=Sim.U[key];if(!unit)return;
   drawBattlePortrait(ctx,x,y,w,h,styleOf({...unit,key,category:Sim.unitCategory(key),team}),{team});
 }
-function drawTitleMap() {
-  const x = 100, y = 530, w = 1080, h = 165, p = 18, sx = (w - p * 2) / WORLD_W, sy = (h - p * 2) / WORLD_H, px = s => x + p + s.x * sx, py = s => y + p + s.y * sy;
-  panel(x, y, w, h, 'rgba(255,211,77,.48)', 1, 'rgba(6,15,20,.8)'); ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip();
-  ctx.strokeStyle = 'rgba(190,168,115,.55)'; ctx.lineWidth = 2;
-  for (const a of STAGES) for (const id of a.links) if (a.id < id) { const b = stageById(id); ctx.beginPath(); ctx.moveTo(px(a), py(a)); ctx.lineTo(px(b), py(b)); ctx.stroke(); }
-  ctx.strokeStyle = 'rgba(105,184,210,.7)'; ctx.lineWidth = 3; ctx.beginPath(); YELLOW_RIVER.forEach(([xx, yy], i) => i ? ctx.lineTo(x + p + xx * sx, y + p + yy * sy) : ctx.moveTo(x + p + xx * sx, y + p + yy * sy)); ctx.stroke();
-  for (const s of STAGES) { const style = FACTION_STYLE[s.faction], r = s.capital ? 7 : 4; ctx.fillStyle = style.main; ctx.strokeStyle = style.light; ctx.lineWidth = s.capital ? 2 : 1; ctx.beginPath(); ctx.arc(px(s), py(s), r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
-  ctx.restore(); label('전략 지도 · 18거점', x + 14, y + 14, 12, COLORS.silver2);
+function drawTitleWeapons() {
+  if (BATTLE_ART.titleWeapons.length !== 3) return;
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = .68;
+  [[20, 435, -.05], [445, 445, .03], [870, 435, -.04]].forEach(([x, y, angle], i) => { ctx.save(); ctx.translate(x + 195, y + 130); ctx.rotate(angle); ctx.drawImage(BATTLE_ART.titleWeapons[i], -195, -130, 390, 260); ctx.restore(); });
+  ctx.restore();
 }
 function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.352', 24, 30, 16, COLORS.silver2);
+  drawTitleWeapons();
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.353', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
   label(mobile?'조이스틱 이동 · 오른쪽 행동 · 적 탭 집중 공격':'이동 WASD·QEZC · 행동 Space · 군단 변경 ↑↓ · 시스템 Esc',VW/2,by+bh+36,16,COLORS.silver2,'center',550);
   if(!BATTLE_ART.ready)label(BATTLE_ART.error?'전투 리소스를 불러오지 못했습니다':'전투 리소스를 불러오는 중…',VW/2,py+ph-22,16,BATTLE_ART.error?COLORS.danger:COLORS.silver2,'center');
   if (titleNotice) label(titleNotice, VW / 2, py+ph+28, 18, COLORS.danger, 'center', 1100);
-  drawTitleMap();
   if (saveSlotMode) drawSaveSlots();
   if (startFactionSelect) {
     const cw = 300, ch = tb(190), py = mb(72, 36), ph = mb(520, 540), by = py + 90;
