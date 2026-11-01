@@ -11,7 +11,7 @@ const FRONTLINE_HP = 1.5;  // 보병·방패병은 같은 HP, 방패병 생존�
 const SIZE = 0.6;   // 캐릭터 크기 배율 (몸·무기·체력바·피격 판정 반지름에 모두 적용)
 const HP_SCALE = 0.7;   // v0.1.259: 전 세력 장수·병사 최대 HP만 30% 감소
 const HP_MUL = 2.5;   // v0.1.216: 모든 장수·병사 체력 2배 (1.25→2.5, 고정 회복량도 동일 비율)
-const DMG = 0.45;   // 물리 피해 배율. 적도 아군과 같은 능력치 기준 — 난이도는 군단 수·레벨·AI로 맞춘다
+const DMG = 0.45;   // 물리 피해 배율. 적도 아군과 같은 능력치 기준 — 강도는 군단 수·레벨·AI로 맞춘다
 const DEF_EFF = 1.3;   // 모든 장수·병사의 DF·AD·MD 방어 효율
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -256,7 +256,7 @@ function baseMaxHp(key, team) {
 // ---------- 병사 등급 B·C·D·F (명세 53 §4: 모집 품질, 장수 등급과 별개 축. C = 현행 1.0) ----------
 const SOLDIER_GRADE = { B: { name: '정예', hp: 1.12, st: 1.14 }, C: { name: '정규', hp: 1, st: 1 }, D: { name: '신병', hp: 0.87, st: 0.9 }, F: { name: '징집병', hp: 0.77, st: 0.82 } };
 const SOLDIER_GRADE_COLOR = { B: '#9fdcff', C: '#cfd3e6', D: '#c9a56a', F: '#8a90a6' };
-const GRADE_PATTERN = { low: 'FFDDDDCCCC', mid: 'FDDCCCCCBB', high: 'DCCCCCCBBB', cap: 'CBBBBBBBBB' };   // 인덱스 % 10 · cap: 수도 수비병(명세 62) 정예 B 90%
+const GRADE_PATTERN = { low: 'FFDDDDCCCC', mid: 'FDDCCCCCBB', high: 'DCCCCCCBBB', top: 'CCCCCBBBBB', cap: 'CBBBBBBBBB' };   // 인덱스 % 10 · top: 최상 등급 도시 수비병(명세 81) 정예 B 50% · cap: 수도 수비병(명세 62) 정예 B 90%
 const soldierTier = level => level >= 5 ? 'high' : level >= 3 ? 'mid' : 'low';
 // 군단 안 슬롯 번호(index)와 도시·군단 레벨로 병사 등급을 정한다(결정적). 수도는 한 단계 위.
 function soldierGradeAt(level, index, capital = false) { return GRADE_PATTERN[capital ? 'cap' : soldierTier(level)][index % 10]; }
@@ -349,7 +349,7 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 }
 
 // ---------- 전투 생성 ----------
-const AIDEF = { tactics: 1, retreat: 0.1 };   // 난이도 프로필이 정하는 전투 AI 기본값 (game.js 가 전투 시작 때 갱신) — tactics: 0 기본 / 1 카이팅·지원군 / 2 전부
+const AIDEF = { tactics: 1, retreat: 0.1 };   // 전투 AI 기본값 — tactics: 0 기본 / 1 카이팅·지원군 / 2 전부
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const sourceDefs = opts.armies || ARMIES, teamOrder = { player: 0, enemy: 0 };
