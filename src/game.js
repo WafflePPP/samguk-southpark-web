@@ -414,6 +414,7 @@ let lastHelpIds = [];   // 이번 전투에 데려온 동맹 군단 id — 전�
 let allyChoice = null, allyHelpIds = null;   // 동맹군과 같은 도시에서 전투 직전의 선택 {stage, ids} / 도우기로 정한 동맹 군단 id
 let warnMove = null, diplomacyQueue = [];   // warnMove: 중립 도시 진입 경고 팝업 {id, stage} / diplomacyQueue: 한 번에 여러 외교 결과가 생길 때 순서대로 보여 줄 팝업
 let econView = false, mapTool = null, scoutView = null, heroView = null, diplomacyView = null, diplomacyResult = null;   // heroView: 전략 화면 세력별 전체 장수 정보
+let heroGrowthView = false;   // 장수 상세: false 기본 정보(칭호·특수기·주문) / true 성장 정보(마일스톤·등급·칭호 티어·Lv1 대비)
 let rosterDetailCorps = 0, rosterDetailPage = 0, rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0;
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', thrust: '정면 직선 4칸 관통 · 앞 칸일수록 강함 · 아군 무피해', pike: '정면 직선 2칸 관통', sweep: '전방 180° 5칸 베기', heavy: '크기·피해 2배 화살 1발', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '전방에 화살 5발을 부채꼴로 한 번에 발사 (각 발 독립 명중 판정)', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
 const STAT_DESC = { HP: '생명력', MP: '주문 자원', FT: '피로도', AT: '물리 공격', DF: '물리 방어', AD: '화살 방어', MD: '마법 방어', AA: '화살 회피', HR: '체력 회복', SP: '이동 속도', AR: '공격 효율', DR: '방어 효율' };   // 능력치 설명 — 장수 상세에서 실수치 칸 안에 한 줄로 보여 준다
@@ -2191,7 +2192,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.357', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.358', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2770,7 +2771,17 @@ function drawHeroInfo(key, unit, growth, stats, item) {   // 장수 상세 오�
   label(`병종 ${main}${roleDup ? '' : ' · 역할 ' + role} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`전투력 ⚔${Sim.statPower(stats)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
   const values = [['HP', stats.maxHp], ['MP', growth.maxMp ?? unit.mp ?? 0], ['FT', 0], ['AT', stats.atk], ['DF', stats.df], ['AD', stats.ad], ['MD', stats.md], ['AA', stats.aa], ['HR', stats.hr], ['SP', stats.sp], ['AR', stats.ar], ['DR', stats.dr]];
   const gp = mobile ? 44 : 50, ey0 = mobile ? 430 : 448;
-  values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * gp, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * gp, 15, COLORS.gold); if (!mobile) label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * gp, 17, COLORS.silver, 'right'); });
+  if (!(mobile && heroGrowthView && !unit.generic)) values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * gp, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * gp, 15, COLORS.gold); if (!mobile) label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * gp, 17, COLORS.silver, 'right'); });
+  if (heroGrowthView && !unit.generic) {   // 성장 정보: 마일스톤 표 + 등급 계수 + 칭호 티어 + Lv1 대비 증가량
+    const tier = Sim.titleTier(sub), tl = Sim.titleLv(lv), step = Sim.TITLE_STEP[tier], gg = Sim.GRADE_GROWTH[grade] ?? 1, base = Sim.levelStats(key, 'player', 1), cur = Sim.unitStats(key, 'player', { ...growth, item: undefined });   // 아이템 보정은 빼고 비교
+    const diff = [['HP', 'maxHp'], ['AT', 'atk'], ['DF', 'df'], ['AD', 'ad'], ['MD', 'md'], ['AR', 'ar'], ['DR', 'dr'], ['HR', 'hr'], ['AA', 'aa']].map(([n, k]) => [n, Math.round((cur[k] - base[k]) * 10) / 10]).filter(([, v]) => v).map(([n, v]) => `${n}+${v}`).join(' ');
+    const d1 = `Lv1 대비 ${diff || '증가 없음'}`, rows = [...(mobile ? [d1] : []), `등급 ${grade} ×${gg} · 칭호 티어 T${tier} · 칭호 Lv ${tl}/3 (×${(1 + step * tl).toFixed(2)}, 10레벨마다 +${Math.round(step * 100)}%${tier ? '' : ' AT·DF'})`,
+      ...Sim.MILESTONES.map(m => `${lv >= m.lv ? '✔' : '·'} Lv${m.lv} ${m.name}  ${m.text(key)}`)];
+    const col = i => i >= rows.length - 6 && lv < Sim.MILESTONES[i - rows.length + 6].lv ? COLORS.dim : COLORS.silver;
+    const y0 = mobile ? 290 : ey0;   /* 모바일은 줄이 모자라 능력치 칸을 숨기고(기본 정보에 있다) 그 자리에 쓴다 */ label('성장 정보', 438, y0, 19, COLORS.gold); if (!mobile) label(d1, 560, y0, 15, COLORS.silver, 'left', 680); let yy = y0 + 28;   // PC 는 제목 줄 오른쪽에 Lv1 대비를 붙여 한 줄 아낀다
+    rows.forEach((t, i) => { for (const line of mobile ? wrapText(t, 40) : [t]) { label(line, 438, yy, 15, col(i), 'left', 840); yy += mobile ? 24 : 22; } });
+    ctx.restore(); return;
+  }
   label('칭호·고유 효과', 438, ey0, 19, COLORS.gold); const lp = mobile ? 26 : 24; let effects = [...(Sim.titleDesc(sub, lv, mobile) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.'])]; if (unit.movingShot) effects.push('기마궁술: 이동 중에도 원거리 공격 가능.');
   if (!unit.generic) { const next = Sim.MILESTONES.find(m => m.lv > lv); const marks = Sim.MILESTONES.map(m => m.lv + (lv >= m.lv ? '✔' : '·')).join(' ');   /* 명세 82 B6: 모바일은 줄이 모자라 한 줄(40자 안)로 줄인다 */
     effects.unshift(mobile ? `성장 ${marks}` + (next ? ` → Lv${next.lv} ${next.name}` : ' — 모두 달성') : '성장 보너스 ' + marks + (next ? ` — 다음 Lv${next.lv} ${next.name} (${next.text(key)})` : ' — 모두 달성')); }
@@ -2804,6 +2815,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
   const sel = rosterMode === 'select', bx = sel ? [500, 668, 866, 1074] : [866, 1074], by = 10, bh = TOUCH;
   if (sel) { button('roster:equip', bx[0], by, 160, bh, '장비 관리', false, 16); button('roster:detail', bx[1], by, 190, bh, '장수 상세 ' + rosterHeroes().length, false, 16); }
   button('roster:prisoners', bx[sel ? 2 : 0], by, 200, bh, '포로 관리 ' + campaign.prisoners.filter(p => p.owner === playerFaction()).length, false, 16);
+  if (rosterMode === 'detail') button('roster:growth', 650, by, 200, bh, heroGrowthView ? '기본 정보' : '성장 정보', heroGrowthView, 16);
   button('roster:back', bx[sel ? 3 : 1], by, 190, bh, sel ? '전략으로' : '군단 선택', false, 16);
   const top = 108, bottom = 660;
   if (rosterMode === 'select') {
@@ -2883,6 +2895,7 @@ function drawRoster() {
   if (rosterMode === 'select') button('roster:equip', 545, 25, 145, 36, '장비 관리', false, 16);
   if (rosterMode === 'select') button('roster:detail', 700, 25, 190, 36, '장수 상세 ' + rosterHeroes().length, false, 16);
   button('roster:prisoners', 900, 25, 180, 36, '포로 관리 ' + campaign.prisoners.filter(p => p.owner === playerFaction()).length, false, 16);
+  if (rosterMode === 'detail') button('roster:growth', 700, 25, 190, 36, heroGrowthView ? '기본 정보' : '성장 정보', heroGrowthView, 16);
   button('roster:back', 1095, 25, 145, 36, rosterMode === 'select' ? '전략으로' : '군단 선택', false, 16);
   if (rosterMode === 'select') {
     const corps = roster[rosterSource], count = corps.units.filter(Boolean).length;
@@ -3116,6 +3129,7 @@ function uiClickCore(id) {
   if (/^campaign:move:\d+$/.test(id)) { const index = +id.slice(14), corps = roster[index]; if (!corps) return; if (!combatReadyCorps(corps)) { campaign.notice = '군단장이 없는 군단은 편성 전까지 이동할 수 없습니다.'; return; } campaign.corps = index; campaign.at = corps.at; campaign.destination = corps.target; moveMode = 'city'; moveSelectOpen = false; campaign.notice = `${corpsName(corps)}이 이동할 지역을 지도에서 선택하세요.`; return; }
   if (id === 'campaign:end') { if (stratPractice) { practiceEndTurn(); return; } mapTool = null; moveSelectOpen = false; moveMode = 'corps'; endCampaignTurn(); return; }
   if (id === 'roster:detail') { rosterMode = 'detail'; rosterDetailCorps = rosterSource; const own = roster[rosterSource].units.findIndex(k => k && !Sim.U[k].generic), first = rosterHeroes()[0]; if (own >= 0) rosterDetailSlot = own; else if (first) { rosterDetailCorps = first.ci; rosterDetailSlot = first.slot; } rosterDetailPage = Math.max(0, Math.floor(rosterHeroes().findIndex(x => x.ci === rosterDetailCorps && x.slot === rosterDetailSlot) / 16)); campaign.notice = '왼쪽 목록에서 상세 정보를 볼 장수를 선택하세요. (세력 내 모든 장수)'; return; }
+  if (id === 'roster:growth') { heroGrowthView = !heroGrowthView; return; }
   if (id === 'roster:detail:prev' || id === 'roster:detail:next') { rosterDetailPage = Math.max(0, rosterDetailPage + (id.endsWith('next') ? 1 : -1)); return; }
   if (/^roster:detail:\d+:\d+$/.test(id)) { const [, , ci, slot] = id.split(':'); rosterDetailCorps = +ci; rosterDetailSlot = +slot; return; }
   if (id.startsWith('roster:page:') && id.split(':').length === 4) { const [, , side, q] = id.split(':'); rosterSlotPage[side] = +q; return; }
