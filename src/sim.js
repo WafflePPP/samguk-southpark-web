@@ -214,20 +214,30 @@ const TITLE_EFFECT = {
   호치: { passive: { df: 10, ad: 10 } }, 교변: { passive: { sp: 10, aa: 5 } }, 주아부: { passive: { df: 8, ad: 8 } }, 상장: { passive: { atk: 10 } }, 용장: { passive: { df: 10 } }, 총호: { passive: { md: 15, dr: 10 } }, 횡포: { passive: { atk: 5 } },
 };
 for (const key of RANK_ONLY_KEYS) TITLE_EFFECT[SUBCLASS[key]] = { rank: true };   // 신규 장수는 이번 리밸런싱에서 등급 능력치만 적용
-const modsText = (m, k = 1) => Object.entries(m).map(([s, v]) => STAT_NAME[s] + ' +' + +(v * k).toFixed(1) + '%').join(' ');
-function titleDesc(name) {   // 장수 상세에 쓰는 칭호 효과 문장
-  const T = TITLE_EFFECT[name]; if (!T) return null; const L = [];
-  if (T.rank) L.push('등급 능력치만 적용.');
-  if (T.aura) L.push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${T.aura.pct}%.`);
-  if (T.passive) L.push('상시 자신 ' + modsText(T.passive) + '.');
-  if (T.hp) L.push(`HP ${T.hp.below * 100}% 이하 진입 시 ${modsText(T.hp.mods)} ${TRAIT_TIME}초.`);
-  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '현재 바라보는 방향으로 제자리에서 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + modsText(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + +(T.dash.foeFt * k).toFixed(1) + '% ' + TRAIT_TIME + '초'); if (p.length) L.push(p.join(' · ') + '.'); }
-  if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) L.push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + modsText(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + o.foeFt + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
-  if (T.skill) L.push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + T.skill.dmg + '%', T.skill.cd && '쿨타임 −' + T.skill.cd + '%', T.skill.heal && '치유량 +' + T.skill.heal + '%'].filter(Boolean).join(' · ') + '.');
+const modsText = (m, k = 1, tm = 1) => Object.entries(m).map(([s, v]) => STAT_NAME[s] + ' +' + +(v * k * (s === 'sp' ? 1 : tm)).toFixed(1) + '%').join(' ');   // tm: 칭호 레벨 배수 (sp 는 병종 개성이라 제외)
+// ---------- 칭호 티어 (명세 82 C): 효과 구조에서 계산한다. 3 군단형(aura) · 2 발동형(hp·dash·onSpecial) · 1 보조형(passive·skill) · 0 무명(rank 또는 효과 없음) ----------
+const TITLE_STEP = [0.01, 0.10, 0.06, 0.03];   // 칭호 레벨(Lv10·20·30 마다 +1)당 배수 증가. 약한 칭호일수록 크다(보정). 티어 0 은 칭호 수치가 없어 AT·DF 곱 (설계값)
+const tierMemo = {};
+const titleTier = name => tierMemo[name] ??= (T => !T || T.rank ? 0 : T.aura ? 3 : T.hp || T.dash || T.onSpecial ? 2 : T.passive || T.skill ? 1 : 0)(TITLE_EFFECT[name]);
+const titleLv = lv => Math.floor(Math.min(lv || 1, MAX_LEVEL) / 10);
+const titleMul = u => u.generic ? 1 : 1 + TITLE_STEP[titleTier(u.subclass)] * titleLv(u.lv);   // 일반 병사는 1
+function titleDesc(name, lv, compact = false) {   // 장수 상세에 쓰는 칭호 효과 문장. lv 를 주면 그 레벨의 값(`+20% → +21.8%`, compact 는 현재 값만)을 보인다
+  const T = TITLE_EFFECT[name], tl = lv ? titleLv(lv) : 0, m = 1 + TITLE_STEP[titleTier(name)] * tl, n = x => +x.toFixed(1), L = [];
+  if (!T) return tl ? [`칭호 성장: AT·DF +${tl}%${compact ? '' : ` (Lv${lv})`}.`] : null;
+  const pv = x => m === 1 ? String(n(x)) : compact ? String(n(x * m)) : n(x) + '% → +' + n(x * m);   // "+${pv}%" 로 쓴다
+  const mt = (mods, k = 1) => Object.entries(mods).map(([s, v]) => STAT_NAME[s] + ' +' + (s === 'sp' ? n(v * k) : pv(v * k)) + '%').join(' ');
+  const push = (s, scaled = true) => L.push(scaled && m !== 1 && !compact ? s.replace(/\.$/, ` (Lv${lv}).`) : s);   // compact(모바일)는 줄 수가 모자라 (Lv) 표기를 뺀다
+  if (T.rank) L.push('등급 능력치만 적용.' + (tl ? ` 칭호 성장: AT·DF +${tl}%${compact ? '' : ` (Lv${lv})`}.` : ''));
+  if (T.aura) push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${pv(T.aura.pct)}%.`);
+  if (T.passive) push('상시 자신 ' + mt(T.passive) + '.');
+  if (T.hp) push(`HP ${T.hp.below * 100}% 이하 진입 시 ${mt(T.hp.mods)} ${TRAIT_TIME}초.`);
+  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '현재 바라보는 방향으로 제자리에서 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + mt(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + pv(T.dash.foeFt * k) + '% ' + TRAIT_TIME + '초'); if (p.length) push(p.join(' · ') + '.'); }
+  if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + mt(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + pv(o.foeFt) + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
+  if (T.skill) push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + pv(T.skill.dmg) + '%', T.skill.cd && '쿨타임 −' + pv(T.skill.cd).replace('→ +', '→ −') + '%', T.skill.heal && '치유량 +' + pv(T.skill.heal) + '%'].filter(Boolean).join(' · ') + '.');
   return L;
 }
 const dashAny = u => !!((TITLE_EFFECT[u.subclass] || {}).dash || {}).any;
-const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, ((TITLE_EFFECT[u.subclass] || {}).skill || {})[k] || 0);
+const skillPct = (u, k) => Math.min(k === 'cd' ? 60 : 300, (((TITLE_EFFECT[u.subclass] || {}).skill || {})[k] || 0) * titleMul(u) + (k === 'cd' ? lvCdPct(u) : 0));   // 칭호 값 × 칭호 레벨 배수 + Lv20 마일스톤(cd), 합계 상한 cd 60%·그 밖 300%
 
 // 군단 편성. 한 군단 = 부대 1개, 최대 18명(군단장 1명 + 나머지).
 // at = 진형 중심 타일. 적 군단은 trig 조건(접근·시간·다른 군단 붕괴)이 되면 wait → advance
@@ -245,13 +255,14 @@ const ARMIES = [
 ];
 for (let i = 0; i < 0; i++) ARMIES[2 + i % 9].units.push(['esword', 'eshield', 'earcher'][i % 3]);
 // 모든 장수·군단장급 유닛은 등급 HP를 보존하되 같은 병종 일반 병사보다 최소 50% 높다.
-function baseMaxHp(key, team) {
+function baseHpInfo(key, team) {   // floored: 등급 HP 가 "병사 ×1.5" 바닥보다 낮아 바닥이 적용됨 (등급이 HP 에 반영되지 않은 장수 — 명세 82 마일스톤 HP 계수 판단에 쓴다)
   const T = U[key], frontline = T.generic && (T.cls === 'warrior' || T.cls === 'shield'), ownHp = Math.round(T.hp * HP_MUL * (frontline ? FRONTLINE_HP : T.generic ? SOLDIER_HP : 1));
-  if (T.generic) return Math.round(ownHp * HP_SCALE);
+  if (T.generic) return { hp: Math.round(ownHp * HP_SCALE), floored: false };
   const peerKey = (team === 'enemy' ? { warrior: 'esword', shield: 'eshield', cavalry: 'ecav', archer: 'earcher', mage: 'emage', cleric: 'emage' } : { warrior: 'sword', shield: 'shield', cavalry: 'cav', archer: 'archer', mage: 'mage', cleric: 'mage' })[T.cls], peer = peerKey && U[peerKey];
-  const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP));
-  return Math.round((!peer ? ownHp : Math.max(ownHp, Math.round(peerHp * 1.5))) * HP_SCALE);
+  const peerHp = peer && Math.round(peer.hp * HP_MUL * (['sword', 'shield', 'esword', 'eshield'].includes(peerKey) ? FRONTLINE_HP : SOLDIER_HP)), floor = peer ? Math.round(peerHp * 1.5) : 0;
+  return { hp: Math.round((!peer ? ownHp : Math.max(ownHp, floor)) * HP_SCALE), floored: !!peer && floor > ownHp };
 }
+const baseMaxHp = (key, team) => baseHpInfo(key, team).hp;
 
 // ---------- 병사 등급 B·C·D·F (명세 53 §4: 모집 품질, 장수 등급과 별개 축. C = 현행 1.0) ----------
 const SOLDIER_GRADE = { B: { name: '정예', hp: 1.12, st: 1.14 }, C: { name: '정규', hp: 1, st: 1 }, D: { name: '신병', hp: 0.87, st: 0.9 }, F: { name: '징집병', hp: 0.77, st: 0.82 } };
@@ -411,9 +422,11 @@ const live = u => !u.dead && !u.out;
 let cur = null;   // step() 중인 전투 (phys 의 난수용)
 function combatStat(S, u, key) {
   let value = u[key]; if (!S || !Number.isFinite(value)) return value;
-  const TE = TITLE_EFFECT[u.subclass]; if (TE && TE.passive && TE.passive[key]) value *= 1 + TE.passive[key] / 100;
-  if (u.buffs) for (const b of u.buffs) if (b.mods[key]) value *= 1 + b.mods[key] / 100 * b.mul;
-  for (const a of S.units) if (a !== u && live(a) && a.team === u.team && dist(a, u) <= AURA_RANGE) { const A = (TITLE_EFFECT[a.subclass] || {}).aura; if (A && A.stats.includes(key) && (!A.cats || A.cats.includes(u.category))) value *= 1 + A.pct / 100; }
+  const TE = TITLE_EFFECT[u.subclass], tm = key === 'sp' ? 1 : titleMul(u);   // 명세 82 C: 칭호 수치는 칭호 레벨 배수(titleMul)로 자란다. sp(이동 속도)는 병종 개성이라 배수 제외
+  if (TE && TE.passive && TE.passive[key]) value *= 1 + TE.passive[key] * tm / 100;
+  if (tm !== 1 && titleTier(u.subclass) === 0 && (key === 'atk' || key === 'df')) value *= tm;   // 티어 0(무명): 칭호 수치가 없으니 AT·DF 곱
+  if (u.buffs) for (const b of u.buffs) if (b.mods[key]) value *= 1 + b.mods[key] / 100 * (key === 'sp' ? b.sc ?? b.mul : b.mul);
+  for (const a of S.units) if (a !== u && live(a) && a.team === u.team && dist(a, u) <= AURA_RANGE) { const A = (TITLE_EFFECT[a.subclass] || {}).aura; if (A && A.stats.includes(key) && (!A.cats || A.cats.includes(u.category))) value *= 1 + A.pct * (key === 'sp' ? 1 : titleMul(a)) / 100; }
   return value;
 }
 const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방어 d 를 만났을 때의 유효 공격 (방어가 같으면 절반)
@@ -437,10 +450,10 @@ function updateAuras(S) {
   }
 }
 // 칭호 버프(발동형)와 적 FT 디버프
-function addBuff(S, u, id, mods, glyph, col, scale = 1) {
-  const mul = scale; u.buffs = u.buffs || []; const old = u.buffs.find(b => b.id === id);
-  if (old) { old.t = TRAIT_TIME; old.mods = mods; old.mul = mul; old.glyph = glyph; old.col = col; } else u.buffs.push({ id, t: TRAIT_TIME, mods, mul, glyph, col });
-  buffFx(S, u, glyph, col); text(S, u.x, u.y - u.r * 4, modsText(mods, mul), col, 'buff');
+function addBuff(S, u, id, mods, glyph, col, scale = 1, tm = 1) {   // scale: 칭호 자체 배율(소비장 0.7) · tm: 칭호 레벨 배수(명세 82 C, sp 는 곱하지 않는다)
+  const mul = scale * tm; u.buffs = u.buffs || []; const old = u.buffs.find(b => b.id === id);
+  if (old) { old.t = TRAIT_TIME; old.mods = mods; old.mul = mul; old.sc = scale; old.glyph = glyph; old.col = col; } else u.buffs.push({ id, t: TRAIT_TIME, mods, mul, sc: scale, glyph, col });
+  buffFx(S, u, glyph, col); text(S, u.x, u.y - u.r * 4, modsText(mods, scale, tm), col, 'buff');
 }
 function foeFt(S, e, amt, scale = 1) { e.ftDebuffT = TRAIT_TIME; e.ftDebuffAmt = amt * scale; buffFx(S, e, 'down', '#ff9a4a'); text(S, e.x, e.y - e.r * 4, 'FT +' + +(amt * scale).toFixed(1) + '%', '#ff9a4a', 'buff'); }
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
@@ -453,13 +466,61 @@ function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
 }
 // 레벨업 (원작식, 명세 21): 곱셈 성장 → 가산. 경험치는 "공격을 적중시킨 횟수" 위주(처치·피격·회피 보너스 없음).
 // HP +4~6%(1레벨 기준 최대 체력의 가산), 레벨업 차례마다 AT→DF→AR→DR 순서로 한 항목씩(AT·DF 는 1레벨 기준값의 8%, AR·DR 은 역할별 +1~3, 합 4 — 명세 51), 16의 배수 레벨에 HR→AA→AD→MD 순서로 한 항목(HR·AA +1, AD·MD 는 기준값의 8%).
-const MAX_LEVEL = 99;
+const MAX_LEVEL = 30;   // 명세 82: 이름 있는 장수의 최대 레벨 (16 배수 보너스는 상한 안에서 Lv16 의 HR 만 해당)
 const XP_NEED = lv => lv * 30;
 const lvGain = (T, k, w = 1) => Math.max(1, Math.round((T[k] || 0) * 0.08 * w));
+// ---------- 마일스톤 (명세 82 B): 5·10·15·20·25·30 레벨에 도달하면 한 번씩 추가 성장. 모두 이 프로젝트의 설계값 ----------
+// 등급 계수: 기본 성장은 등급에 비례해 절대량이 커지므로 마일스톤은 하위 등급을 살짝 끌어올린다 (같은 비율의 곱이라 절대량 순서는 그대로).
+const GRADE_GROWTH = { SS: 0.85, S: 0.9, A: 1, B: 1.1, C: 1.2, D: 1.3 };
+const MILESTONE_SCALE = 1;   // 조정 노브: 마일스톤 % 와 쿨타임 감소에 곱한다 (밸런스가 어긋나면 0.75 → 0.5)
+const MILESTONE_HP_ROLE = { '군사': 0.5, '치유': 0.5 };   // 마법사·치유사는 체력 마일스톤을 절반만 (역할 편중 유지)
+// fx: hp·atk·df·ad·md = 1레벨 기준값 대비 비율 / hr·aa = 가산 / ar·dr = 역할 단계(ROLE_GROWTH)의 배수 / cd = 특수기·마법 쿨타임 감소 % (저장하지 않고 레벨에서 계산).
+// sp·range·mp·r·special·spells 는 어디에도 없다 — 병종 개성 불변. 군사는 AT 마일스톤 제외(평타가 장풍이라 AT 를 쓰지 않는다).
+const MILESTONES = [
+  { lv: 5, name: '단련', fx: { hp: 0.04, hr: 1 } },
+  { lv: 10, name: '방비', fx: { ad: 0.06, md: 0.06 } },
+  { lv: 15, name: '주특기', fx: { atk: 0.06, df: 0.06 } },
+  { lv: 20, name: '숙련', fx: { cd: 10, aa: 2 } },
+  { lv: 25, name: '강건', fx: { hp: 0.06, ar: 1, dr: 1 } },
+  { lv: 30, name: '극의', fx: { atk: 0.05, df: 0.05, ad: 0.05, md: 0.05 } },
+];
+const gradeGrowth = key => GRADE_GROWTH[GRADE[key]] ?? 1;
+const hpPct = (key, team = 'player') => (baseHpInfo(key, team).floored ? 1 : gradeGrowth(key)) * MILESTONE_SCALE;   // HP 바닥(병사×1.5)에 걸려 등급이 HP 에 안 들어간 장수는 등급 계수 없이 — 안 그러면 C/D 의 HP 순서가 뒤집힌다
+const lvCdPct = u => u.generic ? 0 : MILESTONES.reduce((n, m) => n + (m.fx.cd && u.lv >= m.lv ? m.fx.cd * MILESTONE_SCALE : 0), 0);   // 일반 병사는 레벨 없음
+function applyMilestone(st, key, team, ms) {   // st: 능력치 객체(levelStats 의 st · 전투 중 유닛 · 저장된 growth 모두 같은 필드명)
+  const T = U[key]; if (T.generic) return st;
+  const role = roleOf(key), g = ROLE_GROWTH[role], pct = gradeGrowth(key) * MILESTONE_SCALE, f = ms.fx, gain = (k, v, w = 1) => Math.max(1, Math.round((T[k] || 0) * v * w * pct));
+  if (f.hp) st.maxHp += Math.max(1, Math.round(baseMaxHp(key, team) * f.hp * (MILESTONE_HP_ROLE[role] ?? 1) * hpPct(key, team)));
+  if (f.atk && role !== '군사') st.atk = Math.round((st.atk + gain('atk', f.atk, g[0])) * 10) / 10;
+  if (f.df) st.df = Math.round((st.df + gain('df', f.df, g[1])) * 10) / 10;
+  if (f.ad) st.ad += gain('ad', f.ad); if (f.md) st.md += gain('md', f.md);
+  if (f.ar) st.ar += g[2] * f.ar; if (f.dr) st.dr += g[3] * f.dr;
+  if (f.hr) st.hr = Math.min(100, st.hr + f.hr); if (f.aa) st.aa = Math.min(80, st.aa + f.aa);
+  return st;
+}
+function grantMilestones(st, key, fromLv, toLv, team = 'player') {   // fromLv 초과 ~ toLv(상한 30) 이하의 마일스톤을 모두 지급 — 옛 저장 소급용 (applyLevelUp 와 같은 내부 함수)
+  for (const ms of MILESTONES) if (ms.lv > fromLv && ms.lv <= Math.min(toLv, MAX_LEVEL)) applyMilestone(st, key, team, ms);
+  return st;
+}
+const fmt1 = x => +x.toFixed(1);
+for (const ms of MILESTONES) ms.text = key => {   // 레벨업 안내·상세 화면 공용 문구 ("AD·MD +6%"). 같은 값의 능력치는 묶는다
+  const role = roleOf(key), g = ROLE_GROWTH[role], pct = gradeGrowth(key) * MILESTONE_SCALE, rows = [];
+  for (const [k, v] of Object.entries(ms.fx)) {
+    if (k === 'atk' && role === '군사') continue;
+    if (k === 'hp') rows.push(['HP', '+' + fmt1(v * 100 * (MILESTONE_HP_ROLE[role] ?? 1) * hpPct(key)) + '%']);
+    else if (k === 'atk' || k === 'df' || k === 'ad' || k === 'md') rows.push([STAT_NAME[k], '+' + fmt1(v * 100 * pct) + '%']);
+    else if (k === 'ar' || k === 'dr') rows.push([STAT_NAME[k], '+' + g[k === 'ar' ? 2 : 3] * v]);
+    else if (k === 'cd') rows.push(['쿨타임', '−' + fmt1(v * MILESTONE_SCALE) + '%']);
+    else rows.push([STAT_NAME[k], '+' + v]);
+  }
+  const out = []; for (const [label, val] of rows) { const last = out[out.length - 1]; if (last && last[1] === val) last[0] += '·' + label; else out.push([label, val]); }
+  return out.map(([label, val]) => label + ' ' + val).join(' · ');
+};
 function applyLevelUp(st, key, team, lv, hpRate) {   // st: 능력치 객체(maxHp·atk·df·ad·md·aa·hr·ar·dr), lv: 오르기 전 레벨. hpRate: 0.04~0.06
   const T = U[key]; st.maxHp += Math.round(baseMaxHp(key, team) * hpRate);
   const g = ROLE_GROWTH[T.generic ? '검' : roleOf(key)], oi = (lv - 1) % 4, o = ['atk', 'df', 'ar', 'dr'][oi]; st[o] = oi > 1 ? st[o] + g[oi] : Math.round((st[o] + lvGain(T, o, g[oi])) * 10) / 10;   // AT·DF 는 역할 가중, AR·DR 은 역할별 정수 단계
   if ((lv + 1) % 16 === 0) { const q = ['hr', 'aa', 'ad', 'md'][((lv + 1) / 16 - 1) % 4]; st[q] = q === 'ad' || q === 'md' ? st[q] + lvGain(T, q) : Math.min(q === 'aa' ? 80 : 100, st[q] + 1); }
+  for (const ms of MILESTONES) if (ms.lv === lv + 1) applyMilestone(st, key, team, ms);   // 명세 82 B: 새 레벨이 마일스톤이면 한 번 지급
   return st;
 }
 // 레벨 L 시점의 평균 능력치(HP 5%): 적 지역 레벨표(명세 15)가 같은 규칙을 쓰도록 공유
@@ -480,7 +541,9 @@ function gainXp(S, u, n) {
     applyLevelUp(u, u.key, u.originTeam, u.lv, 0.04 + S.rnd() * 0.02); u.lv++;
     for (const k of ITEM_STATS) u[k] += bonus(k);
     u.hp = Math.min(u.maxHp, u.hp + (u.maxHp - was) + 20 * HP_MUL);
-    text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); ring(S, u.x, u.y, 30, '#ffd34d', 0.5); S.stats.levelups++;
+    text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); S.stats.levelups++;
+    const ms = u.team === 'player' && MILESTONES.find(m => m.lv === u.lv);   // 명세 82 B5: 아군 마일스톤 도달 연출 (적은 소음이라 생략)
+    if (ms) { text(S, u.x, u.y - u.r * 6.5, `Lv${ms.lv} ${ms.name}`, '#ffd34d', 'sys'); ring(S, u.x, u.y, 46, '#ffd34d', 0.8); }   // 전투를 멈추는 notice 모달은 쓰지 않는다 (QA 명세82: Lv5·10 에 장수 여러 명이 연달아 멈춤) — 필드 글자·링만 else ring(S, u.x, u.y, 30, '#ffd34d', 0.5);
   }
   if (u.lv >= MAX_LEVEL) u.xp = 0;
 }
@@ -657,7 +720,7 @@ function useSpecial(S, u, x, y) {
   else if (u.special === 'volley') for (let k = 0; k < VOLLEY.n; k++) shoot(S, u, x, y, VOLLEY.mul, (k - (VOLLEY.n - 1) / 2) * VOLLEY.step);
   else if (u.special === 'bless') { for (const e of S.units) if (live(e) && e.team === u.team && dist(e, u) <= 150) { const h = Math.round(e.maxHp * 0.3 * (1 + skillPct(u, 'heal') / 100)); healTo(u, e, h); e.ft = Math.max(0, e.ft - 20); text(S, e.x, e.y - e.r * 4, '+' + h, '#7dff9a', 'buff'); buffFx(S, e, 'heal', '#7dff9a'); } ring(S, u.x, u.y, 150, '#7dff9a', 0.6); }
   const OS = ((TITLE_EFFECT[u.subclass] || {}).onSpecial || {})[u.special];
-  if (OS) { if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d'); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt); }
+  if (OS) { const tm = titleMul(u); if (OS.self) addBuff(S, u, 'special', OS.self, 'atk', '#ffd34d', 1, tm); if (OS.foeFt) for (const e of S.units) if (live(e) && e.team !== u.team && dist(e, u) <= (u.special === 'bless' ? 150 : 100)) foeFt(S, e, OS.foeFt, tm); }
   u.spT = sp.cd * (1 - skillPct(u, 'cd') / 100); u.attackT = S.t; u.anim = 0.4; u.actionKind = u.special === 'heavy' ? 'attack' : u.special; u.face = ang; tire(u, 'special');   // heavy: art.js 가 아직 모르는 키라 일반 사격 자세를 재사용(명세 79 §4, 전용 자세는 Codex)
   return true;
 }
@@ -932,7 +995,7 @@ function promoteIdle(S, u) {   // 자동·동맹의 idle→charge 승격. 이동
 }
 function updateUnit(S, u, dt) {
   u.cdT -= dt; u.spT -= dt; u.root -= dt; u.hitT -= dt; u.flash -= dt; u.anim -= dt; u.waitT -= dt; u.repathT -= dt; u.thinkT -= dt; u.passT -= dt; u.kiteT = (u.kiteT || 0) - dt; u.ftDebuffT -= dt; if (u.buffs) { for (const b of u.buffs) b.t -= dt; u.buffs = u.buffs.filter(b => b.t > 0); } u.moving = false;
-  const HT = (TITLE_EFFECT[u.subclass] || {}).hp; if (HT) { if (u.hp <= u.maxHp * HT.below && !u.hpTrig) { u.hpTrig = true; addBuff(S, u, 'hp', HT.mods, HT.glyph, HT.col); text(S, u.x, u.y - u.r * 5, HT.text, HT.col, 'buff'); ring(S, u.x, u.y, 36, HT.col, 0.5); } else if (u.hp > u.maxHp * HT.below) u.hpTrig = false; }
+  const HT = (TITLE_EFFECT[u.subclass] || {}).hp; if (HT) { if (u.hp <= u.maxHp * HT.below && !u.hpTrig) { u.hpTrig = true; addBuff(S, u, 'hp', HT.mods, HT.glyph, HT.col, 1, titleMul(u)); text(S, u.x, u.y - u.r * 5, HT.text, HT.col, 'buff'); ring(S, u.x, u.y, 36, HT.col, 0.5); } else if (u.hp > u.maxHp * HT.below) u.hpTrig = false; }
   if (!u.mv && !u.dashQ && !u.knockQ && u.anim <= 0 && u.hitT <= 0 && S.t - u.lastHurt > 3 && u.hp < u.maxHp) healTo(u, u, u.maxHp * combatStat(S, u, 'hr') * 0.001 * dt);   // HR: 서 있는 동안 체력이 조금씩 찬다
   if (u.maxMp && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 0.6 * dt);
   u.ft = Math.max(0, u.ft - FT.recover * FT.eff * dt);
@@ -945,7 +1008,7 @@ function updateUnit(S, u, dt) {
     if (n && o && u.titleDash && live(o) && o.team !== u.team) {
       if (u.dashHit.has(o.id) && o.mv) return;
       const line = pushDashLine(S, o, u.dashDir[0], u.dashDir[1], Math.max(1, 6 - u.dashMoved)), hit = line || [o], moved = line ? 1 : 0;
-      for (let i = 0; i < hit.length; i++) { const e = hit[i]; if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * (i ? DASH_CHAIN_DAMAGE : 1) * dashPushMul(u.dashPushes))); if (moved) u.dashPushes++; const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, D.scale || 1); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); } }
+      for (let i = 0; i < hit.length; i++) { const e = hit[i]; if (!u.dashHit.has(e.id)) { u.dashHit.add(e.id); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * (i ? DASH_CHAIN_DAMAGE : 1) * dashPushMul(u.dashPushes))); if (moved) u.dashPushes++; const D = (TITLE_EFFECT[u.subclass] || {}).dash; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, (D.scale || 1) * titleMul(u)); ring(S, e.x, e.y, 30, '#7fd0ff', 0.3); } }
       if (!line) u.dashQ.length = 0;
       return;
     }
@@ -954,8 +1017,8 @@ function updateUnit(S, u, dt) {
     const titled = u.titleDash; u.dashQ = null; u.titleDash = false; u.dashHit = null; u.passT = 0;
     const D = (TITLE_EFFECT[u.subclass] || {}).dash, sc = (D && D.scale) || 1;
     let pushes = 0;
-    if (!titled) aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * dashPushMul(pushes))); if (moved) pushes++; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc); }, '#7fd0ff');
-    if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc); return;
+    if (!titled) aoe(S, u, u.x, u.y, 60, e => { const moved = knockBack(S, e, dx, dy, push); hurt(S, u, e, phys(u, e, (DASH_BASE + (1 + moved * 0.5) * DASH_EXTRA) * dashPushMul(pushes))); if (moved) pushes++; if (live(e) && D && D.foeFt) foeFt(S, e, D.foeFt, sc * titleMul(u)); }, '#7fd0ff');
+    if (D && D.self) addBuff(S, u, 'dash', D.self, D.glyph || 'atk', D.col || '#ffd34d', sc, titleMul(u)); return;
   }
   let o = u.order;
   if (o.type === 'retreat' || o.type === 'flee') return leave(S, u);
@@ -1166,6 +1229,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, titleDesc, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

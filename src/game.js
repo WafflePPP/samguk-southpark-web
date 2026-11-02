@@ -23,9 +23,9 @@ const STAGE_ROWS = [
   [2,'ye','업','기주','원소',800,470,'f',22,'상','ji nanpi pingyuan puyang huguan'],
   [3,'puyang','복양','연주','원소',870,700,'p',16,'상','pingyuan beihai xiaopei'],
   [4,'xiaopei','소패','서주','유비',1070,850,'p',8,'초','xiapi'],
-  [5,'xiapi','하비','서주','여포',1280,920,'f',32,'최','beihai guangling'],
+  [5,'xiapi','하비','서주','여포',1280,920,'f',30,'최','beihai guangling'],
   [6,'guangling','광릉','서주','여포',1390,1090,'w',20,'상',''],
-  [7,'xuchang','허창','예주','조조',650,1030,'f',32,'최','runan'],
+  [7,'xuchang','허창','예주','조조',650,1030,'f',30,'최','runan'],
   [8,'luoyang','낙양','사례','조조',400,850,'f',17,'중','hulao huguan'],
   [9,'jinyang','진양','병주','장양',500,390,'m',11,'중','ji huguan'],
   [10,'huguan','호관','병주','장양',620,540,'g',10,'중',''],
@@ -284,6 +284,7 @@ function econWarning() {   // 플레이어 세력 경고: 단계가 올라갈 �
 }
 function enemyGrowth(key, level, sg = 'C') { const st = Sim.levelStats(key, 'enemy', level, sg); return { ...st, xp: 0 }; }   // 레벨업 규칙(명세 21)과 같은 가산 성장
 function setEnemyRole(force, stage, role, level = stage.level) {
+  level = Math.min(level, Sim.MAX_LEVEL);   // 명세 82: 적 장수도 상한 30 — 옛 저장의 Lv32 군단 표기와 growth.lv 를 맞춘다
   const fac = force.fac || stage.faction, unit = Sim.U[force.army.leader];   // 도시 소속이 바뀌어도 군단 이름은 군단의 소속을 따른다
   if (role === 'garrison') force.at = force.home || stage.id;
   force.role = role; force.home = force.home || stage.id; force.level = level; force.army.role = role;
@@ -300,11 +301,12 @@ function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 군단장(�
   });
 }
 const stageEnemyCount = stage => allForces().filter(f => f.active && f.at === stage.id && forceFaction(f) !== playerFaction()).reduce((n, f) => n + f.army.units.length, 0);
-const campaign = { playerFaction: '여포', at: START_STAGE, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: JSON.parse(JSON.stringify(DEFAULT_RELATIONS)), aiRelations: initialAiRelations(), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: START_NOTICE['여포'], ...econInit(), ...dipInit() };
+const campaign = { playerFaction: '여포', at: START_STAGE, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: JSON.parse(JSON.stringify(DEFAULT_RELATIONS)), aiRelations: initialAiRelations(), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, lvCap30: true, milestoneV1: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: START_NOTICE['여포'], ...econInit(), ...dipInit() };
 const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS[faction] || { status: 'neutral', truceUntil: 0 };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 6명 단위 묶음이다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
+const LEGACY_MAX_LEVEL = 99;   // 명세 82: 상한 30 이전 저장의 포로 Lv 검증 한계 (읽을 때 lvCap30 이 30 으로 내린다)
 const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 28, SAVE_SLOTS = 3;   // v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
 let stratPractice = null;   // 명세 76: 전략 화면 실습 상태 {step,flags,snap,stepT,advT,denyT} (저장하지 않는 모듈 변수). null 이 아니면 saveCampaign·startBattle 이 막힌다
 let tutorialBattle = null;   // 명세 70: 새 게임 연습 전투 상태(저장하지 않는 모듈 변수). null 이 아니면 saveCampaign 이 막힌다
@@ -334,7 +336,7 @@ function resetCampaignData(faction = '여포') {
   STAGES.forEach((s, i) => { s.faction = INITIAL_FACTIONS[i]; s.owner = s.faction === faction ? 'player' : 'enemy'; }); enemyForces.length = 0;
   campaign.prisoners = []; campaign.fallen = []; campaign.custodyNews = [];
   const at = CAPITALS[faction];
-  Object.assign(campaign, { playerFaction: faction, at, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: initialPlayerRelations(faction), aiRelations: initialAiRelations(faction), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: `${faction}군의 수도 ${stageById(at).name}에서 원정을 시작한다.` });
+  Object.assign(campaign, { playerFaction: faction, at, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: initialPlayerRelations(faction), aiRelations: initialAiRelations(faction), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, lvCap30: true, milestoneV1: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: `${faction}군의 수도 ${stageById(at).name}에서 원정을 시작한다.` });
   buildPlayerRoster(faction); for (const f of FACTIONS) if (f !== faction) addEnemyFaction(f);
   distributePlayerInfantry(); cityGuards.length = 0; STAGES.forEach(s => resetCityGuards(s));
   campaign.pacified = null; Object.assign(campaign, econInit(), dipInit()); for (const s of STAGES) campaign.econOwner[s.id] = stageFaction(s);
@@ -358,7 +360,7 @@ function restoreCampaign(data) {
   for (const f of FACTIONS) cp.grain[f] = Math.min(cp.grain[f], ECON.cap);   // 명세 61: 상한 300→200 — 이전 v24 저장의 초과분은 상한으로 줄여 불러온다 (구조 변경 없음, 버전 유지)
   const held = new Set();
   for (const p of cp.prisoners) {
-    if (!p || !namedRosterUnit(p.key) || held.has(p.key) || cp.fallen.includes(p.key) || !FACTIONS.includes(p.owner) || !FACTIONS.includes(p.origin) || p.owner === p.origin || !stageById(p.at) || !stageById(p.home) || !validRef(p.heldBy) || !validRef(p.originRef) || !['pending', 'held'].includes(p.status) || !Number.isInteger(p.turn) || p.turn < 1 || p.turn > cp.turn || !Number.isInteger(p.lastAttempt) || p.lastAttempt > cp.turn || !p.growth || !Number.isInteger(p.growth.lv) || p.growth.lv < 1 || p.growth.lv > Sim.MAX_LEVEL || !Number.isFinite(p.growth.maxHp) || p.growth.maxHp <= 0) return false;
+    if (!p || !namedRosterUnit(p.key) || held.has(p.key) || cp.fallen.includes(p.key) || !FACTIONS.includes(p.owner) || !FACTIONS.includes(p.origin) || p.owner === p.origin || !stageById(p.at) || !stageById(p.home) || !validRef(p.heldBy) || !validRef(p.originRef) || !['pending', 'held'].includes(p.status) || !Number.isInteger(p.turn) || p.turn < 1 || p.turn > cp.turn || !Number.isInteger(p.lastAttempt) || p.lastAttempt > cp.turn || !p.growth || !Number.isInteger(p.growth.lv) || p.growth.lv < 1 || p.growth.lv > LEGACY_MAX_LEVEL || !Number.isFinite(p.growth.maxHp) || p.growth.maxHp <= 0) return false;
     for (const key of ['atk','df','ad','md','aa','hr','sp','ar','dr','xp']) if (!Number.isFinite(p.growth[key]) || p.growth[key] < 0) return false;
     held.add(p.key);
   }
@@ -374,6 +376,20 @@ function restoreCampaign(data) {
     const growth = [...data.roster.flatMap(c => c.growth || []), ...data.enemyForces.flatMap(f => f.army.growth || []), ...data.cityGuards.flatMap(f => f.army.growth), ...cp.prisoners.map(p => p.growth)];
     for (const g of new Set(growth)) if (g && Number.isFinite(g.maxHp)) g.maxHp = Math.max(1, Math.round(g.maxHp * Sim.HP_SCALE));
     cp.hpReduced30 = true;
+  }
+  if (!cp.lvCap30) {   // 명세 82 A3: Lv31+ 장수는 Lv30·XP 0 (능력치는 되돌리지 않는다). 병사·도시수비군은 Lv1 이라 대상 아님
+    const growth = [...data.roster.flatMap(c => c.growth || []), ...data.enemyForces.flatMap(f => f.army.growth || []), ...cp.prisoners.map(p => p.growth), ...(cp.hostages || []).map(h => h && h.growth)];
+    for (const g of new Set(growth)) if (g && g.lv > Sim.MAX_LEVEL) { g.lv = Sim.MAX_LEVEL; g.xp = 0; }
+    for (const f of data.enemyForces) f.level = Math.min(f.level, Sim.MAX_LEVEL);
+    cp.lvCap30 = true;
+  }
+  if (!cp.milestoneV1) {   // 명세 82 B4: 이미 도달한 마일스톤(5·10·…·Lv)을 한 번 소급 지급 (levelStats 로 새로 만든 값과 같아진다). 일반 병사는 대상 아님
+    const grant = (key, g) => { if (key && g && Sim.U[key] && !Sim.U[key].generic) Sim.grantMilestones(g, key, 0, g.lv); };
+    for (const c of data.roster) c.units.forEach((k, i) => grant(k, c.growth && c.growth[i]));
+    for (const f of data.enemyForces) f.army.units.forEach((k, i) => grant(k, f.army.growth && f.army.growth[i]));
+    for (const p of cp.prisoners) grant(p.key, p.growth);
+    for (const h of cp.hostages || []) if (h) grant(h.key, h.growth);
+    cp.milestoneV1 = true;
   }
   STAGES.forEach((s, i) => { s.owner = data.owners[i]; s.faction = data.factions && data.factions[i] || INITIAL_FACTIONS[i]; }); enemyForces.splice(0, enemyForces.length, ...data.enemyForces); roster.splice(0, roster.length, ...data.roster);
   for (const force of enemyForces) setEnemyRole(force, stageById(force.home) || stageById(force.at), force.role || 'garrison', force.level);
@@ -2175,7 +2191,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.354', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.357', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2749,13 +2765,15 @@ function drawHeroInfo(key, unit, growth, stats, item) {   // 장수 상세 오�
   ctx.save(); if (mobile) ctx.translate(-22, 16);
   drawUnitIcon(key,430,94,140,150);
   const main = CATEGORY_NAME[Sim.unitCategory(key)], sub = Sim.unitSubclass(key), grade = Sim.GRADE[key] || '일반', lv = growth.lv || 1, xp = growth.xp || 0;
-  label(unit.name, 590, 130, 30, COLORS.goldSel); label(`LV ${lv} · XP ${lv >= Sim.MAX_LEVEL ? 'MAX' : xp + '/' + Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver, 'left', 640);
+  label(unit.name, 590, 130, 30, COLORS.goldSel); label(unit.generic ? `LV ${lv} · XP ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}` : lv >= Sim.MAX_LEVEL ? `LV ${lv} MAX · 등급 ${grade}` : `LV ${lv} / ${Sim.MAX_LEVEL} · XP ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver, 'left', 640);
   const role = Sim.roleOf(key), roleDup = role === main || role + '병' === main;   // 역할이 병종 이름과 같으면(기병·기병) 한 번만 표기
   label(`병종 ${main}${roleDup ? '' : ' · 역할 ' + role} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`전투력 ⚔${Sim.statPower(stats)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
   const values = [['HP', stats.maxHp], ['MP', growth.maxMp ?? unit.mp ?? 0], ['FT', 0], ['AT', stats.atk], ['DF', stats.df], ['AD', stats.ad], ['MD', stats.md], ['AA', stats.aa], ['HR', stats.hr], ['SP', stats.sp], ['AR', stats.ar], ['DR', stats.dr]];
   const gp = mobile ? 44 : 50, ey0 = mobile ? 430 : 448;
   values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * gp, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * gp, 15, COLORS.gold); if (!mobile) label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * gp, 17, COLORS.silver, 'right'); });
-  label('칭호·고유 효과', 438, ey0, 19, COLORS.gold); const lp = mobile ? 26 : 24; let effects = [...(Sim.titleDesc(sub) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.'])]; if (unit.movingShot) effects.push('기마궁술: 이동 중에도 원거리 공격 가능.');
+  label('칭호·고유 효과', 438, ey0, 19, COLORS.gold); const lp = mobile ? 26 : 24; let effects = [...(Sim.titleDesc(sub, lv, mobile) || ['고유 칭호 효과 없음. 기본 병종과 특수기를 사용한다.'])]; if (unit.movingShot) effects.push('기마궁술: 이동 중에도 원거리 공격 가능.');
+  if (!unit.generic) { const next = Sim.MILESTONES.find(m => m.lv > lv); const marks = Sim.MILESTONES.map(m => m.lv + (lv >= m.lv ? '✔' : '·')).join(' ');   /* 명세 82 B6: 모바일은 줄이 모자라 한 줄(40자 안)로 줄인다 */
+    effects.unshift(mobile ? `성장 ${marks}` + (next ? ` → Lv${next.lv} ${next.name}` : ' — 모두 달성') : '성장 보너스 ' + marks + (next ? ` — 다음 Lv${next.lv} ${next.name} (${next.text(key)})` : ' — 모두 달성')); }
   if (mobile) effects = effects.flatMap(t => wrapText(t, 40));   // 글자가 커서 긴 효과는 줄바꿈
   effects.forEach((t, i) => label(t, 438, ey0 + 28 + i * lp, 15, COLORS.silver, 'left', 840)); const ey = ey0 + 28 + effects.length * lp + 10;   // 효과 줄 수에 맞춰 아래 항목을 내려 겹치지 않게 한다
   label(`특수기: ${unit.special ? `${SPECIAL[unit.special]?.name} — ${SPECIAL_EFFECT[unit.special] || '고유 행동'}` : '없음'}`, 438, ey, 15, COLORS.goldSel, 'left', 840);
