@@ -421,6 +421,8 @@ let heroGrowthView = false;   // 장수 상세: false 기본 정보(칭호·특�
 let rosterDetailCorps = 0, rosterDetailPage = 0, rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0;
 const SPECIAL_EFFECT = { spin: '주변 적에게 강한 무기 피해', thrust: '정면 직선 4칸 관통 · 앞 칸일수록 강함 · 아군 무피해', pike: '정면 직선 2칸 관통', sweep: '전방 180° 5칸 베기', heavy: '크기·피해 2배 화살 1발', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '전방에 화살 5발을 부채꼴로 한 번에 발사 (각 발 독립 명중 판정)', bless: '주변 아군 체력 30% 회복·피로 20 감소' };
 const STAT_DESC = { 체력: '생명력', 기력: '술법 자원', 피로: '피로도', 공격: '무기 공격', 방어: '무기 방어', 궁방: '화살 방어', 술방: '술법 방어', 회피: '화살 회피', 회복: '체력 회복', 기동: '이동 속도', 공효: '공격 효율', 방효: '방어 효율' };   // 능력치 설명 — 장수 상세에서 실수치 칸 안에 한 줄로 보여 준다
+const titleOf = key => { const s = Sim.unitSubclass(key); return Sim.U[key].generic || s === Sim.CLS_NAME[Sim.U[key].cls] ? '' : s; };   // 칭호만 분류에 쓴다: 일반 병사의 세부 병과명(보병(검)·방패병 등)과 칭호 없는 장수의 병과 폴백(전사 등)은 쓰지 않는다
+const catTitle = (key, sep = '·') => CATEGORY_NAME[Sim.unitCategory(key)] + (titleOf(key) ? sep + titleOf(key) : '');
 const MU_ORDER = ['cavalry', 'sword', 'spear', 'archer', 'military'];   // 병종 상성 안내 (명세 외 요청): 우위=내가 주는 피해 ×1.2 · 열세=상대가 주는 피해 ×1.2 (내가 주면 ×0.8)
 const muNames = a => a.map(c => Sim.CATEGORY_NAME[c]).join('·');
 const matchupOf = cat => ({ strong: MU_ORDER.filter(c => Sim.classMultiplier(cat, c) > 1), weak: MU_ORDER.filter(c => Sim.classMultiplier(c, cat) > 1) });
@@ -1662,8 +1664,9 @@ const CAO_ART_KEYS=new Set([...FACTION_HEROES['조조'],'f_qing','f_hubao']);
 const LIU_ART_KEYS=new Set([...FACTION_HEROES['유비'],'f_bai','f_dan']);
 const factionUnit=(u,faction,keys)=>keys.has(u.key)||u.army?.name?.startsWith(faction+'군')||!Sim.GRADE[u.key]&&u.team==='player'&&playerFaction()===faction&&!u.army?.name?.includes('동맹군')||u.team==='enemy'&&enemyForces.some(f=>f.id===u.forceId&&forceFaction(f)===faction);
 const lubuFactionUnit=u=>factionUnit(u,'여포',LUBU_ART_KEYS),caoFactionUnit=u=>factionUnit(u,'조조',CAO_ART_KEYS),liuFactionUnit=u=>factionUnit(u,'유비',LIU_ART_KEYS);
+const WEAPON_OF = { sword: ['sword', 'twin'], spear: ['spear', 'lance', 'glaive', 'halberd'] };   // 검병·창병 장수의 무기는 병종에 맞는 것만 고정으로 인정한다 (서황의 도끼·대극사의 극 등 안 맞는 고정 무기는 병종 무기로 바꾼다)
 const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=liuFactionUnit(u),common=(lubu||cao||liu)&&LUBU_COMMON_ART[u.key];let style = STYLES[common||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,sizeScale:LUBU_FACE_SCALE[u.key]};if(cao)style={...style,sizeScale:(u.named||u.key==='f_hubao') ? .95 : .8,caoMotion:true};if(liu)style={...style,sizeScale:(u.named||u.category==='cavalry') ? .95 : .8,liuMotion:true};if(lubu)style={...style,lubuMotion:true};   // 세력별 실제 얼굴 기준, 장식·무기 제외
-  return u.key !== 'guan' && !style.fixedWeapon && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
+  return u.key !== 'guan' && !(style.fixedWeapon && WEAPON_OF[u.category]?.includes(style.weapon)) && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
 const stText = u => u.captured ? '포박' : u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
 const hpCol = (p, current = COLORS.ally) => p > 0.3 ? current : p > 0.1 ? '#999999' : COLORS.danger;
 function actionInfo(u) {   // 현재 Space/행동 버튼이 쓰는 것: 선택한 스킬(마법·축복) > 특수기 > 화살
@@ -1864,7 +1867,7 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   const h = rp * (6 + 3 + 3 + 2) + 22 + (sp.length ? rp * (1 + sp.length) : 0) + 12;
   panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.62)');
   let yy = y + 18; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold), 'left', 150); if (!u.generic) label('레벨 ' + u.lv, x + w - 10, yy, 17, orange, 'right'); else if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 14, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
-  yy += rp; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver, 'left', 190); if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 15, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
+  yy += rp; label(catTitle(u.key), x + 10, yy, 15, COLORS.silver, 'left', 190); if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 15, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
   yy += 22; bar(x + 10, yy - 5, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 17; label('체력', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
   yy += rp; if (u.maxMp) bar(x + 10, yy - 14, w - 20, 6, u.mp / u.maxMp, '#8a6aff'); label('기력', x + 10, yy, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy, fs, COLORS.silver, 'right');
   yy += rp; label('피로', x + 10, yy, fs, orange); label(String(Math.round(Sim.effectiveFt(u))), x + 52, yy, fs, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver); if (!u.generic) { label('경험', x + 110, yy, fs, orange); label(u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 152, yy, fs, COLORS.silver, 'left', 134); }
@@ -2236,7 +2239,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.372', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.373', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2752,7 +2755,7 @@ function drawFactionHeroes() {
     if (i % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.035)'; ctx.fillRect(x + 24, ry - rp / 2 + 2, w - 48, rp - 4); }
     drawUnitIcon(key,x+cx[0],ry-14,26,28,faction===playerFaction()?'player':'enemy');
     label(`${u.name}${ruler} / ${Sim.GRADE[key]}급`, x + cx[0]+32, ry, 15, ruler ? COLORS.goldSel : FACTION_STYLE[faction].light, 'left', cx[1] - cx[0] - 40);
-    label(`${CATEGORY_NAME[Sim.unitCategory(key)]} · ${Sim.unitSubclass(key)}`, x + cx[1], ry, 14, COLORS.silver, 'left', cx[2] - cx[1] - 8);
+    label(catTitle(key, ' · '), x + cx[1], ry, 14, COLORS.silver, 'left', cx[2] - cx[1] - 8);
     label(`Lv${info.lv} 체력${st.maxHp} 공격${st.atk} 방어${st.df}`, x + cx[2], ry, 13, COLORS.silver2, 'left', cx[3] - cx[2] - 8);
     label(info.status, x + cx[3], ry, 13, /전사/.test(info.status) ? COLORS.danger : COLORS.silver, 'left', w - cx[3] - 24);
   });
@@ -2886,8 +2889,7 @@ function drawHeroInfo(key, unit, growth, stats, item) {   // 장수 상세 오�
   drawUnitIcon(key,430,94,140,150);
   const main = CATEGORY_NAME[Sim.unitCategory(key)], sub = Sim.unitSubclass(key), grade = Sim.GRADE[key] || '일반', lv = growth.lv || 1, xp = growth.xp || 0;
   label(unit.name, 590, 130, 30, COLORS.goldSel); label(unit.generic ? `레벨 ${lv} · 경험 ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}` : lv >= Sim.MAX_LEVEL ? `레벨 ${lv} 최고 · 등급 ${grade}` : `레벨 ${lv} / ${Sim.MAX_LEVEL} · 경험 ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver, 'left', 640);
-  const role = Sim.roleOf(key), roleDup = role === main || role + '병' === main;   // 역할이 병종 이름과 같으면(기병·기병) 한 번만 표기
-  label(`병종 ${main}${roleDup ? '' : ' · 역할 ' + role} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`상성 ${matchupLine(Sim.unitCategory(key))}`, 1230, 258, 15, COLORS.silver2, 'right', 560); label(`전투력 ⚔${Sim.statPower(stats)} · 장비 ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
+  label(`병종 ${main} · 칭호 ${titleOf(key) || '없음'}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`상성 ${matchupLine(Sim.unitCategory(key))}`, 1230, 258, 15, COLORS.silver2, 'right', 560); label(`전투력 ⚔${Sim.statPower(stats)} · 장비 ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
   const values = [['체력', stats.maxHp], ['기력', growth.maxMp ?? unit.mp ?? 0], ['피로', 0], ['공격', stats.atk], ['방어', stats.df], ['궁방', stats.ad], ['술방', stats.md], ['회피', stats.aa], ['회복', stats.hr], ['기동', stats.sp], ['공효', stats.ar], ['방효', stats.dr]];
   const gp = mobile ? 44 : 50, ey0 = mobile ? 430 : 448;
   if (!(mobile && heroGrowthView && !unit.generic)) values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * gp, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * gp, 15, COLORS.gold); if (!mobile) label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * gp, 17, COLORS.silver, 'right'); });
@@ -2996,7 +2998,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
         label(String(slot + 1).padStart(2, '0'), cx + 10, cy + 24, 13, COLORS.silver2);drawUnitIcon(key,cx+40,cy+4,48,48); label(unit ? unit.name : '—', cx + 96, cy + 24, 16, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim, 'left', cw - 96 - 84);
         if (slot === 0) label('군단장', cx + cw - 10, cy + 24, 14, COLORS.gold, 'right');
         else if (unit && unit.generic) { const sg = Sim.validGrade(corps.growth[slot]?.sg); label(gradeTag(sg), cx + cw - 10, cy + 24, 14, Sim.SOLDIER_GRADE_COLOR[sg], 'right'); }
-        if (unit) { const st = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, cx + 10, cy + 60, 14, COLORS.silver2, 'left', cw - 20 - 96); label(`체력${st.maxHp}`, cx + cw - 10, cy + 60, 14, COLORS.silver, 'right'); }
+        if (unit) { const st = Sim.unitStats(key, 'player', corps.growth[slot]); label(catTitle(key), cx + 10, cy + 60, 14, COLORS.silver2, 'left', cw - 20 - 96); label(`체력${st.maxHp}`, cx + cw - 10, cy + 60, 14, COLORS.silver, 'right'); }
         btns.push({ id: `roster:unit:${side}:${slot}`, x: cx, y: cy, w: cw, h: TOUCH });
       }
     };
@@ -3068,7 +3070,7 @@ function drawRoster() {
         label(String(slot + 1).padStart(2, '0'), x + 20, ry + 12, 13, COLORS.silver2);
         drawUnitIcon(key,x+98,ry+1,25,22);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
-        if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`체력${stats.maxHp} 공격${stats.atk} 방어${stats.df} 궁방${stats.ad} 술방${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
+        if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(catTitle(key), x + 250, ry + 12, 12, COLORS.silver2); label(`체력${stats.maxHp} 공격${stats.atk} 방어${stats.df} 궁방${stats.ad} 술방${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
         label(commander ? '군단장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right'); if (unit && unit.generic) { const sg = Sim.validGrade(corps.growth[slot]?.sg); label(gradeTag(sg), x + 570, ry + 12, 12, Sim.SOLDIER_GRADE_COLOR[sg], 'right'); }
         btns.push({ id: `roster:unit:${side}:${slot}`, x: x + 10, y: ry, w: 580, h: 24 });
       });
