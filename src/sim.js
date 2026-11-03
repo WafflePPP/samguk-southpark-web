@@ -153,7 +153,7 @@ const DASH_BASE = 1, DASH_EXTRA = 0.5;   // 돌진 충격 피해 = 기본 1배 +
 const classMultiplier = (attacker, defender) => CLASS_DAMAGE[attacker]?.[defender] ?? 1;
 // ITEM: 이름 있는 장수만 장착. owner가 있는 고유 장비는 해당 장수 전용이다.
 const ITEMS = {
-  ironsword: { name: '철검', atk: 12 }, armor: { name: '철갑', df: 12 }, bowguard: { name: '궁갑', ad: 12 }, charm: { name: '마법 부적', md: 12 }, seal_ar: { name: '공격율 인장', ar: 10 }, seal_dr: { name: '방어율 인장', dr: 10 },
+  ironsword: { name: '철검', atk: 12 }, armor: { name: '철갑', df: 12 }, bowguard: { name: '궁갑', ad: 12 }, charm: { name: '술법 부적', md: 12 }, seal_ar: { name: '공격율 인장', ar: 10 }, seal_dr: { name: '방어율 인장', dr: 10 },
   green_dragon: { name: '청룡언월도', atk: 18, ar: 5, owner: 'guan', unique: true }, twin_halberd: { name: '쌍철극', atk: 12, df: 8, owner: 'dian', unique: true }, sky_halberd: { name: '방천화극', atk: 18, ar: 5, owner: 'lubu', unique: true },
 };
 const ITEM_STATS = ['atk', 'df', 'ad', 'md', 'ar', 'dr'];
@@ -193,7 +193,7 @@ for (const [k, T] of Object.entries(U)) {   // 배정: 창 장수 thrust · 검 
   else if (T.cls === 'archer' && T.generic) T.special = 'heavy';
 }
 const TRAIT_TIME = 5, AURA_RANGE = 195;
-const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: 'AT', df: 'DF', ad: 'AD', md: 'MD', aa: 'AA', hr: 'HR', sp: 'SP', ar: 'AR', dr: 'DR' };
+const ALL_STATS = ['atk', 'df', 'ad', 'md', 'aa', 'hr', 'sp', 'ar', 'dr'], STAT_NAME = { atk: '공격', df: '방어', ad: '궁방', md: '술방', aa: '회피', hr: '회복', sp: '기동', ar: '공효', dr: '방효' };
 // 칭호 효과 (명세 26). aura 반경 안 아군(cats 가 있으면 그 병종만) · passive 상시 · hp 기준 이하 진입 시 5초 버프 · dash 돌진 후 · onSpecial 특수기 발동 시 · skill 군사의 스킬 효율(마법 피해·쿨타임·치유량 %). 수치는 % (자기 능력치 곱).
 const TITLE_EFFECT = {
   무신: { aura: { stats: ['atk', 'ad', 'md'], pct: 20 }, col: '#ffb347', glyph: 'atk' },
@@ -223,17 +223,17 @@ const titleLv = lv => Math.floor(Math.min(lv || 1, MAX_LEVEL) / 10);
 const titleMul = u => u.generic ? 1 : 1 + TITLE_STEP[titleTier(u.subclass)] * titleLv(u.lv);   // 일반 병사는 1
 function titleDesc(name, lv, compact = false) {   // 장수 상세에 쓰는 칭호 효과 문장. lv 를 주면 그 레벨의 값(`+20% → +21.8%`, compact 는 현재 값만)을 보인다
   const T = TITLE_EFFECT[name], tl = lv ? titleLv(lv) : 0, m = 1 + TITLE_STEP[titleTier(name)] * tl, n = x => +x.toFixed(1), L = [];
-  if (!T) return tl ? [`칭호 성장: AT·DF +${tl}%${compact ? '' : ` (Lv${lv})`}.`] : null;
+  if (!T) return tl ? [`칭호 성장: 공격·방어 +${tl}%${compact ? '' : ` (Lv${lv})`}.`] : null;
   const pv = x => m === 1 ? String(n(x)) : compact ? String(n(x * m)) : n(x) + '% → +' + n(x * m);   // "+${pv}%" 로 쓴다
   const mt = (mods, k = 1) => Object.entries(mods).map(([s, v]) => STAT_NAME[s] + ' +' + (s === 'sp' ? n(v * k) : pv(v * k)) + '%').join(' ');
   const push = (s, scaled = true) => L.push(scaled && m !== 1 && !compact ? s.replace(/\.$/, ` (Lv${lv}).`) : s);   // compact(모바일)는 줄 수가 모자라 (Lv) 표기를 뺀다
-  if (T.rank) L.push('등급 능력치만 적용.' + (tl ? ` 칭호 성장: AT·DF +${tl}%${compact ? '' : ` (Lv${lv})`}.` : ''));
+  if (T.rank) L.push('등급 능력치만 적용.' + (tl ? ` 칭호 성장: 공격·방어 +${tl}%${compact ? '' : ` (Lv${lv})`}.` : ''));
   if (T.aura) push(`반경 ${AURA_RANGE}px 아군${T.aura.cats ? ' ' + T.aura.cats.map(x => CATEGORY_NAME[x]).join('·') : ''}의 ${T.aura.stats === ALL_STATS ? '전 능력' : T.aura.stats.map(x => STAT_NAME[x]).join('·')} +${pv(T.aura.pct)}%.`);
   if (T.passive) push('상시 자신 ' + mt(T.passive) + '.');
-  if (T.hp) push(`HP ${T.hp.below * 100}% 이하 진입 시 ${mt(T.hp.mods)} ${TRAIT_TIME}초.`);
-  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '현재 바라보는 방향으로 제자리에서 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + mt(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 FT +' + pv(T.dash.foeFt * k) + '% ' + TRAIT_TIME + '초'); if (p.length) push(p.join(' · ') + '.'); }
-  if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + mt(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 FT +' + pv(o.foeFt) + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
-  if (T.skill) push('스킬 효율: ' + [T.skill.dmg && '마법 피해 +' + pv(T.skill.dmg) + '%', T.skill.cd && '쿨타임 −' + pv(T.skill.cd).replace('→ +', '→ −') + '%', T.skill.heal && '치유량 +' + pv(T.skill.heal) + '%'].filter(Boolean).join(' · ') + '.');
+  if (T.hp) push(`체력 ${T.hp.below * 100}% 이하 진입 시 ${mt(T.hp.mods)} ${TRAIT_TIME}초.`);
+  if (T.dash) { const k = T.dash.scale || 1; if (T.dash.any) L.push('최소 거리 제한 없이 돌진. 근접(0칸)에서도 충격 발동.', '현재 바라보는 방향으로 제자리에서 6칸 돌진하며 경로 내 적을 밀쳐 빈칸으로 이동시키고 충격 피해 발동.'); const p = []; if (T.dash.self) p.push('돌진 후 ' + mt(T.dash.self, k) + ' ' + TRAIT_TIME + '초'); if (T.dash.foeFt) p.push('맞은 적 피로 +' + pv(T.dash.foeFt * k) + '% ' + TRAIT_TIME + '초'); if (p.length) push(p.join(' · ') + '.'); }
+  if (T.onSpecial) for (const [sp, o] of Object.entries(T.onSpecial)) push(`${SPECIAL[sp].name} 발동 시 ${[o.self && '자신 ' + mt(o.self) + ' ' + TRAIT_TIME + '초', o.foeFt && '주변 적 피로 +' + pv(o.foeFt) + '% ' + TRAIT_TIME + '초'].filter(Boolean).join(' · ')}.`);
+  if (T.skill) push('스킬 효율: ' + [T.skill.dmg && '술법 피해 +' + pv(T.skill.dmg) + '%', T.skill.cd && '쿨타임 −' + pv(T.skill.cd).replace('→ +', '→ −') + '%', T.skill.heal && '치유량 +' + pv(T.skill.heal) + '%'].filter(Boolean).join(' · ') + '.');
   return L;
 }
 const dashAny = u => !!((TITLE_EFFECT[u.subclass] || {}).dash || {}).any;
@@ -455,7 +455,7 @@ function addBuff(S, u, id, mods, glyph, col, scale = 1, tm = 1) {   // scale: �
   if (old) { old.t = TRAIT_TIME; old.mods = mods; old.mul = mul; old.sc = scale; old.glyph = glyph; old.col = col; } else u.buffs.push({ id, t: TRAIT_TIME, mods, mul, sc: scale, glyph, col });
   buffFx(S, u, glyph, col); text(S, u.x, u.y - u.r * 4, modsText(mods, scale, tm), col, 'buff');
 }
-function foeFt(S, e, amt, scale = 1) { e.ftDebuffT = TRAIT_TIME; e.ftDebuffAmt = amt * scale; buffFx(S, e, 'down', '#ff9a4a'); text(S, e.x, e.y - e.r * 4, 'FT +' + +(amt * scale).toFixed(1) + '%', '#ff9a4a', 'buff'); }
+function foeFt(S, e, amt, scale = 1) { e.ftDebuffT = TRAIT_TIME; e.ftDebuffAmt = amt * scale; buffFx(S, e, 'down', '#ff9a4a'); text(S, e.x, e.y - e.r * 4, '피로 +' + +(amt * scale).toFixed(1) + '%', '#ff9a4a', 'buff'); }
 function ring(S, x, y, r, col, t = 0.4) { S.fx.push({ kind: 'ring', x, y, r, col, t, max: t }); }
 function release(S, u) {   // 점유 중인 칸(출발·도착)을 비운다
   const p = u.mv && u.mv.swap;   // 맞바꾸던 상대가 쓰러지거나 떠나면, 남은 쪽은 그 칸으로 가는 보통 이동으로 바꾸고 도착 칸을 바로 점유한다 (아니면 빈 칸으로 보여 다른 유닛이 겹쳐 들어온다)
@@ -507,7 +507,7 @@ for (const ms of MILESTONES) ms.text = key => {   // 레벨업 안내·상세 �
   const role = roleOf(key), g = ROLE_GROWTH[role], pct = gradeGrowth(key) * MILESTONE_SCALE, rows = [];
   for (const [k, v] of Object.entries(ms.fx)) {
     if (k === 'atk' && role === '군사') continue;
-    if (k === 'hp') rows.push(['HP', '+' + fmt1(v * 100 * (MILESTONE_HP_ROLE[role] ?? 1) * hpPct(key)) + '%']);
+    if (k === 'hp') rows.push(['체력', '+' + fmt1(v * 100 * (MILESTONE_HP_ROLE[role] ?? 1) * hpPct(key)) + '%']);
     else if (k === 'atk' || k === 'df' || k === 'ad' || k === 'md') rows.push([STAT_NAME[k], '+' + fmt1(v * 100 * pct) + '%']);
     else if (k === 'ar' || k === 'dr') rows.push([STAT_NAME[k], '+' + g[k === 'ar' ? 2 : 3] * v]);
     else if (k === 'cd') rows.push(['쿨타임', '−' + fmt1(v * MILESTONE_SCALE) + '%']);
@@ -551,7 +551,7 @@ function gainXp(S, u, n) {
     applyLevelUp(u, u.key, u.originTeam, u.lv, 0.04 + S.rnd() * 0.02); u.lv++;
     for (const k of ITEM_STATS) u[k] += bonus(k);
     u.hp = Math.min(u.maxHp, u.hp + (u.maxHp - was) + 20 * HP_MUL);
-    text(S, u.x, u.y - u.r * 4, 'LEVEL UP', '#ffd34d', 'buff'); S.stats.levelups++;
+    text(S, u.x, u.y - u.r * 4, '레벨 상승', '#ffd34d', 'buff'); S.stats.levelups++;
     const ms = u.team === 'player' && MILESTONES.find(m => m.lv === u.lv);   // 명세 82 B5: 아군 마일스톤 도달 연출 (적은 소음이라 생략)
     if (ms) { text(S, u.x, u.y - u.r * 6.5, `Lv${ms.lv} ${ms.name}`, '#ffd34d', 'sys'); ring(S, u.x, u.y, 46, '#ffd34d', 0.8); }   // 전투를 멈추는 notice 모달은 쓰지 않는다 (QA 명세82: Lv5·10 에 장수 여러 명이 연달아 멈춤) — 필드 글자·링만 else ring(S, u.x, u.y, 30, '#ffd34d', 0.5);
   }

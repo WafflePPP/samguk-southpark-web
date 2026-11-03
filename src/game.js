@@ -419,9 +419,9 @@ let trainView = null;   // 훈련 팝업(명세 83) { page, sel: Set<장수 키>
 let econView = false, mapTool = null, scoutView = null, heroView = null, diplomacyView = null, diplomacyResult = null;   // heroView: 전략 화면 세력별 전체 장수 정보
 let heroGrowthView = false;   // 장수 상세: false 기본 정보(칭호·특수기·주문) / true 성장 정보(마일스톤·등급·칭호 티어·Lv1 대비)
 let rosterDetailCorps = 0, rosterDetailPage = 0, rosterSource = 0, rosterTarget = null, rosterPage = 0, rosterMode = 'select', rosterPick = null, rosterNew = null, rosterDetailSlot = 0, moveSelectOpen = false, moveMode = 'corps', movePage = 0;
-const SPECIAL_EFFECT = { spin: '주변 적에게 강한 물리 피해', thrust: '정면 직선 4칸 관통 · 앞 칸일수록 강함 · 아군 무피해', pike: '정면 직선 2칸 관통', sweep: '전방 180° 5칸 베기', heavy: '크기·피해 2배 화살 1발', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '전방에 화살 5발을 부채꼴로 한 번에 발사 (각 발 독립 명중 판정)', bless: '주변 아군 HP 30% 회복·FT 20 감소' };
-const STAT_DESC = { HP: '생명력', MP: '주문 자원', FT: '피로도', AT: '물리 공격', DF: '물리 방어', AD: '화살 방어', MD: '마법 방어', AA: '화살 회피', HR: '체력 회복', SP: '이동 속도', AR: '공격 효율', DR: '방어 효율' };   // 능력치 설명 — 장수 상세에서 실수치 칸 안에 한 줄로 보여 준다
-const STAT_NOTE = 'FT 높을수록 전투 효율 감소 · HR 정지 중 회복 · AR·DR 은 효율 배율(%)';
+const SPECIAL_EFFECT = { spin: '주변 적에게 강한 무기 피해', thrust: '정면 직선 4칸 관통 · 앞 칸일수록 강함 · 아군 무피해', pike: '정면 직선 2칸 관통', sweep: '전방 180° 5칸 베기', heavy: '크기·피해 2배 화살 1발', dash: '최대 6칸 돌진·밀치기·거리 비례 추가 피해', volley: '전방에 화살 5발을 부채꼴로 한 번에 발사 (각 발 독립 명중 판정)', bless: '주변 아군 체력 30% 회복·피로 20 감소' };
+const STAT_DESC = { 체력: '생명력', 기력: '술법 자원', 피로: '피로도', 공격: '무기 공격', 방어: '무기 방어', 궁방: '화살 방어', 술방: '술법 방어', 회피: '화살 회피', 회복: '체력 회복', 기동: '이동 속도', 공효: '공격 효율', 방효: '방어 효율' };   // 능력치 설명 — 장수 상세에서 실수치 칸 안에 한 줄로 보여 준다
+const STAT_NOTE = '피로가 높을수록 전투 효율 감소 · 회복은 정지 중 체력 회복 · 공효·방효는 효율 배율(%)';
 const namedRosterUnit = key => { const u = Sim.U[key]; return u && !u.generic && !u.name.startsWith('적 '); };
 const combatReadyCorps = corps => !!corps && namedRosterUnit(corps.units[0]);
 const corpsName = corps => corps.units[0] ? Sim.U[corps.units[0]].name + ' 군단' : corps.name;
@@ -575,7 +575,7 @@ function startNewFromTitle() { activeSaveSlot = Array.from({ length: SAVE_SLOTS 
 const TUTORIAL_BATTLE = { on: true, ratio: 1.0, min: 8, max: 36, gap: 19, xs: [15, 23], kinds: ['esword', 'eshield', 'earcher'] };   // ratio: 적 전투력/아군 전투력 (명세 기본안 0.4 는 자동 15~21초라 목표 40~75초 미달 → 측정으로 1.0: 1.4 는 가벼운 수동 플레이 승률 25% 로 너무 어려움), min·max: 적 병사 수 한계(max=ENEMY_FIELD_MAX 36), gap: 양군 시작 거리(칸), xs: 적 두 부대의 가로 칸 (설계값, tools/tutorial-battle.js 로 측정)
 const TUT_STEPS = [   // [이름, PC 문구, 모바일 문구] — 완료 감지는 tutorialTick·act·useCommand·confirmSelect 가 tutorialBattle.flags 에 기록
   ['이동', '숫자패드/WASD 로 조작 장수를 움직여 보세요', '왼쪽을 끌어 가상패드로 움직여 보세요'],
-  ['특수기', 'Space 로 특수기·마법을 쓰세요', '오른쪽 행동 버튼을 눌러 보세요'],
+  ['특수기', 'Space 로 특수기·술법을 쓰세요', '오른쪽 행동 버튼을 눌러 보세요'],
   ['부대 명령', '하단 부대 명령의 돌격(F)·정지(V)를 눌러 보세요', '아래 부대 명령 버튼(돌격 등)을 눌러 보세요'],
   ['집중 공격', '적을 클릭해 정보를 보고 Enter 로 확정하세요', "적을 탭한 뒤 '확정 · 집중 공격'을 누르세요"],
   ['마무리', '적을 모두 물리치세요', '적을 모두 물리치세요']];
@@ -1419,7 +1419,7 @@ function processTraining() {   // endCampaignTurn 맨 앞: 예약 장수에게 �
     const h = rosterHeroes().find(x => x.key === k), name = Sim.U[k] ? Sim.U[k].name : k, g0 = h && roster[h.ci].growth[h.slot];
     if (!h || (g0 && g0.lv >= TRAIN.maxLv)) { campaign.grain[P] = grainOf(P) + p; const why = !h ? ((campaign.prisoners || []).some(x => x.key === k) ? '포로' : (campaign.fallen || []).includes(k) ? '전사' : '부대 밖') : '최대 레벨'; news.push(`  ${name} 훈련 취소 — ${why} (군량 +${p} 환불)`); continue; }
     const g = roster[h.ci].growth[h.slot] ||= { ...Sim.levelStats(k, 'player', 1), xp: 0 }, r = Sim.trainGain(k, g, TRAIN.gain(Math.max(1, g.lv || 1)), 'player'); n++; spent += p;
-    news.push(r.to > r.from ? `  ${name} Lv${r.from} → Lv${r.to} (${r.ms.map(m => `${m.name}: ${Sim.MILESTONES.find(x => x.lv === m.lv).text(k)}`).join(' · ')})`.replace(' ()', '') + (r.to >= Sim.MAX_LEVEL ? ' · 최대 레벨' : '') : `  ${name} +${r.add} XP (${g.xp}/${Sim.XP_NEED(g.lv)})`);
+    news.push(r.to > r.from ? `  ${name} Lv${r.from} → Lv${r.to} (${r.ms.map(m => `${m.name}: ${Sim.MILESTONES.find(x => x.lv === m.lv).text(k)}`).join(' · ')})`.replace(' ()', '') + (r.to >= Sim.MAX_LEVEL ? ' · 최대 레벨' : '') : `  ${name} +${r.add} 경험 (${g.xp}/${Sim.XP_NEED(g.lv)})`);
   }
   campaign.trainNews = [n ? `■ 훈련 — ${n}명 · 군량 −${spent}` : '■ 훈련 — 실행된 훈련 없음', ...news]; campaign.training = [];
 }
@@ -1737,17 +1737,17 @@ const combatStat = (u, key) => Sim.combatStat(S, u, key);
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
-  const rows = [['HP', `${Math.ceil(u.hp)}/${u.maxHp}`], ['MP', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['FT', Math.round(Sim.effectiveFt(u))], ...(u.generic ? [] : [['XP', u.lv >= Sim.MAX_LEVEL ? 'MAX' : `${u.xp}/${Sim.XP_NEED(u.lv)}`]]), ['AT', statShow(u, 'atk')], ['DF', statShow(u, 'df')], ['AR', statShow(u, 'ar')], ['DR', statShow(u, 'dr')], ['AD', statShow(u, 'ad')], ['MD', statShow(u, 'md')], ['AA', statShow(u, 'aa')], ['HR', statShow(u, 'hr')], ['SP', statShow(u, 'sp')], ['상태', stText(u)]];
+  const rows = [['체력', `${Math.ceil(u.hp)}/${u.maxHp}`], ['기력', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['피로', Math.round(Sim.effectiveFt(u))], ...(u.generic ? [] : [['경험', u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`]]), ['공격', statShow(u, 'atk')], ['방어', statShow(u, 'df')], ['공효', statShow(u, 'ar')], ['방효', statShow(u, 'dr')], ['궁방', statShow(u, 'ad')], ['술방', statShow(u, 'md')], ['회피', statShow(u, 'aa')], ['회복', statShow(u, 'hr')], ['기동', statShow(u, 'sp')], ['상태', stText(u)]];
   label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); if (u.sg) label(gradeTag(u.sg), LEFT_W - 6, TB_H + 18, 13, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right'); label(`${CATEGORY_NAME[u.category]}·${u.subclass}${u.generic ? '' : ' Lv' + u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
-  rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[1] && r[1].col ? r[1].col : r[0] === 'HP' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === 'FT' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
+  rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[1] && r[1].col ? r[1].col : r[0] === '체력' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === '피로' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
 }
 function drawSpellPanel() {
   const u = ctrlOf(), sk = u ? Sim.skills(u) : []; if (!sk.length) return;
   const x = LEFT_W + 8, y = TB_H + 8, locked = S.lock.player > 0;
   panel(x, y, 210, 30 + sk.length * 28, locked ? COLORS.danger : COLORS.gold, 2);
-  label(locked ? `마법 잠금 ${Math.ceil(S.lock.player)}초` : `${u.name} 마법 (Space)`, x + 8, y + 15, 16, locked ? COLORS.danger : COLORS.gold);
-  sk.forEach((k, i) => { const q = skillInfo(u, k), ok = k === 'bless' ? q.ok : u.mp >= q.mp && !locked; label(k === 'bless' ? `${i + 1} ${q.name}  ${q.cd > 0 ? Math.ceil(q.cd) + '초' : '—'}` : `${i + 1} ${q.name}  ${q.mp}MP`, x + 8, y + 44 + i * 28, 16, u.spellSel === i ? COLORS.gold : ok ? COLORS.silver : COLORS.dim); if (u.spellSel === i) label('◀', x + 196, y + 44 + i * 28, 16, COLORS.gold, 'right'); btns.push({ id: 'spell:' + i, x, y: y + 30 + i * 28, w: 210, h: 28 }); });
+  label(locked ? `술법 잠금 ${Math.ceil(S.lock.player)}초` : `${u.name} 술법 (Space)`, x + 8, y + 15, 16, locked ? COLORS.danger : COLORS.gold);
+  sk.forEach((k, i) => { const q = skillInfo(u, k), ok = k === 'bless' ? q.ok : u.mp >= q.mp && !locked; label(k === 'bless' ? `${i + 1} ${q.name}  ${q.cd > 0 ? Math.ceil(q.cd) + '초' : '—'}` : `${i + 1} ${q.name}  기력 ${q.mp}`, x + 8, y + 44 + i * 28, 16, u.spellSel === i ? COLORS.gold : ok ? COLORS.silver : COLORS.dim); if (u.spellSel === i) label('◀', x + 196, y + 44 + i * 28, 16, COLORS.gold, 'right'); btns.push({ id: 'spell:' + i, x, y: y + 30 + i * 28, w: 210, h: 28 }); });
 }
 function drawStick() {   // 맹장전 조이스틱: 누른 자리에 반투명 링, 노브가 손가락을 따라간다 (방향이 잡히면 금색)
   if (!stick) {   // 손가락이 없을 때는 어디를 눌러 끌면 되는지 희미하게 안내
@@ -1778,7 +1778,7 @@ function fitText(s, size, maxW, minSize = 10) {   // 열 폭에 맞춰 글자를
 function dimOver(b) { ctx.fillStyle = 'rgba(8,10,18,.55)'; ctx.fillRect(b.x, b.y, b.w, b.h); }   // 눌러도 아무 일 없는 버튼을 흐리게
 function drawTable() {
   const y0 = TB_H + vh; ctx.fillStyle = COLORS.ink; ctx.fillRect(0, y0, VW, tblH); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, y0, VW, 2);
-  const A = army(), compact = tblCompact, names = tblAbility ? ['NAME', 'AT', 'DF', 'AD', 'MD', 'AA', 'HR', 'ST'] : ['NAME', '병종', 'HP', 'MP', 'LV', 'FT', 'XP', 'ST'], rh = 22, headH = 54, cw = VPW / 18, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2, hy = y0 + 6;
+  const A = army(), compact = tblCompact, names = tblAbility ? ['이름', '공격', '방어', '궁방', '술방', '회피', '회복', '상태'] : ['이름', '병종', '체력', '기력', '레벨', '피로', '경험', '상태'], rh = 22, headH = 54, cw = VPW / 18, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2, hy = y0 + 6;
   if (!compact) names.forEach((r, i) => label(r, 10, dataY + 12 + i * rh, 15, COLORS.silver2));
   panel(LEFT_W + 1, y0 + 2, VPW - 2, tblH - 4, 'rgba(255,255,255,.35)', 2, 'rgba(10,12,20,.7)');
   // 머리줄: 진형 · 행동지침 · 군단 전환 · 지원 · 전투력 (명세 75)
@@ -1793,7 +1793,7 @@ function drawTable() {
     if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
     if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? 'MAX' : u.xp, stText(u)];
+    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? '최고' : u.xp, stText(u)];
     cells.forEach((v, i) => {
       const [txt, size] = fitText(v, 13, cw - 4);
       label(txt, x + cw / 2, dataY + 12 + i * rh, size, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center');
@@ -1846,7 +1846,7 @@ function drawActionsMobile() {   // 오른쪽 행동 영역: 행동 버튼 + (�
   roundBtn('m:act', 1196, 526, 68, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
   if (sk.length > 1) sk.forEach((k, i) => {
     const q = skillInfo(u, k), sel = u.spellSel === i, bless = k === 'bless', short = u.mp < q.mp;
-    const sub = q.locked ? '잠금' : q.cd > 0 ? q.cd.toFixed(1) : bless ? '준비' : short ? '부족' : q.mp + 'MP';
+    const sub = q.locked ? '잠금' : q.cd > 0 ? q.cd.toFixed(1) : bless ? '준비' : short ? '부족' : '기력 ' + q.mp;
     roundBtn('m:skill:' + i, SKILL_X(sk.length, i), 550, 44, q.short, sub, sel ? COLORS.gold : q.locked ? COLORS.danger : q.ok ? COLORS.silver : COLORS.silver2, sel);
   });
 }
@@ -1856,18 +1856,18 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   const w = 290, x = 6, y = 96, rp = 27, fs = 16, orange = '#ff9a3c', pr = actionInfo(u), sp = Sim.skills(u);
   const h = rp * (6 + 3 + 3 + 1) + 22 + (sp.length ? rp * (1 + sp.length) : 0) + 12;
   panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.62)');
-  let yy = y + 18; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold), 'left', 150); if (!u.generic) label('LV ' + u.lv, x + w - 10, yy, 17, orange, 'right'); else if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 14, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
+  let yy = y + 18; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold), 'left', 150); if (!u.generic) label('레벨 ' + u.lv, x + w - 10, yy, 17, orange, 'right'); else if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 14, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
   yy += rp; label(`${CATEGORY_NAME[u.category]}·${u.subclass}`, x + 10, yy, 15, COLORS.silver, 'left', 190); if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 15, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
-  yy += 22; bar(x + 10, yy - 5, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 17; label('HP', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
-  yy += rp; if (u.maxMp) bar(x + 10, yy - 14, w - 20, 6, u.mp / u.maxMp, '#8a6aff'); label('MP', x + 10, yy, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy, fs, COLORS.silver, 'right');
-  yy += rp; label('FT', x + 10, yy, fs, orange); label(String(Math.round(Sim.effectiveFt(u))), x + 44, yy, fs, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver); if (!u.generic) { label('XP', x + 110, yy, fs, orange); label(u.lv >= Sim.MAX_LEVEL ? 'MAX' : `${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 146, yy, fs, COLORS.silver, 'left', 140); }
+  yy += 22; bar(x + 10, yy - 5, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 17; label('체력', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
+  yy += rp; if (u.maxMp) bar(x + 10, yy - 14, w - 20, 6, u.mp / u.maxMp, '#8a6aff'); label('기력', x + 10, yy, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy, fs, COLORS.silver, 'right');
+  yy += rp; label('피로', x + 10, yy, fs, orange); label(String(Math.round(Sim.effectiveFt(u))), x + 44, yy, fs, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver); if (!u.generic) { label('경험', x + 110, yy, fs, orange); label(u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 146, yy, fs, COLORS.silver, 'left', 140); }
   const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rp, fs, orange); label(String(v), x + 10 + i * c + 36, yy + r * rp, fs, v && v.col ? v.col : COLORS.silver, 'left', c - 38); };
-  yy += rp; cell('AT', statShow(u, 'atk'), 0, 0); cell('DF', statShow(u, 'df'), 1, 0); cell('AA', statShow(u, 'aa'), 2, 0);
-  cell('AR', statShow(u, 'ar'), 0, 1); cell('DR', statShow(u, 'dr'), 1, 1); cell('AD', statShow(u, 'ad'), 2, 1);
-  cell('MD', statShow(u, 'md'), 0, 2); cell('HR', statShow(u, 'hr'), 1, 2); cell('SP', statShow(u, 'sp'), 2, 2);
-  yy += 3 * rp; label('ST', x + 10, yy, fs, orange); label(stText(u), x + 46, yy, fs, COLORS.silver); label('지형', x + 140, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 190, yy, fs, COLORS.silver);
-  yy += rp; label('ITEM', x + 10, yy, fs, orange); label(itemName(u), x + 70, yy, fs, COLORS.silver, 'left', w - 80);
-  if (sp.length) { yy += rp; label('마법 (아래 스킬 버튼)', x + 10, yy, fs, orange, 'left', w - 20); sp.forEach((k, i) => { yy += rp; label(`${u.spellSel === i ? '▶' : ' '} ${i + 1} ${skillInfo(u, k).name}  ${k === 'bless' ? '—' : SPELL[k].mp + 'MP'}`, x + 10, yy, 14, u.spellSel === i ? COLORS.gold : COLORS.silver, 'left', w - 20); }); }
+  yy += rp; cell('공격', statShow(u, 'atk'), 0, 0); cell('방어', statShow(u, 'df'), 1, 0); cell('회피', statShow(u, 'aa'), 2, 0);
+  cell('공효', statShow(u, 'ar'), 0, 1); cell('방효', statShow(u, 'dr'), 1, 1); cell('궁방', statShow(u, 'ad'), 2, 1);
+  cell('술방', statShow(u, 'md'), 0, 2); cell('회복', statShow(u, 'hr'), 1, 2); cell('기동', statShow(u, 'sp'), 2, 2);
+  yy += 3 * rp; label('상태', x + 10, yy, fs, orange); label(stText(u), x + 46, yy, fs, COLORS.silver); label('지형', x + 140, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 190, yy, fs, COLORS.silver);
+  yy += rp; label('장비', x + 10, yy, fs, orange); label(itemName(u), x + 70, yy, fs, COLORS.silver, 'left', w - 80);
+  if (sp.length) { yy += rp; label('술법 (아래 스킬 버튼)', x + 10, yy, fs, orange, 'left', w - 20); sp.forEach((k, i) => { yy += rp; label(`${u.spellSel === i ? '▶' : ' '} ${i + 1} ${skillInfo(u, k).name}  ${k === 'bless' ? '—' : '기력 ' + SPELL[k].mp}`, x + 10, yy, 14, u.spellSel === i ? COLORS.gold : COLORS.silver, 'left', w - 20); }); }
   yy += rp - 2; label('행동 ' + pr.name, x + 10, yy, 15, COLORS.silver2, 'left', 170); label(pr.cd > 0 ? cooldownText(pr) : '가능', x + w - 10, yy, 15, pr.ready ? COLORS.gold : COLORS.silver2, 'right');
 }
 
@@ -1875,14 +1875,14 @@ const itemName = u => u.item ? `${Sim.ITEMS[u.item].unique ? '★ ' : ''}${Sim.I
 const TERRAIN_NAME = ['평지', '숲', '바위', '물', '여울'], WEAPON_NAME = { glaive: '청룡언월도', halberd: '방천화극', lance: '창', twin: '쌍철극', sword: '검', spear: '창', bow: '활', crossbow: '쇠뇌', fan: '부채' };
 function drawStatGrid(u, x, y, w, fs, col = COLORS.gold) {   // 원작 능력치 창과 같은 줄 구성
   const rh = fs + 9, top = rh * 1.5 + 6, c = w / 3, orange = '#ff9a3c', cell = (k, v, i, r, span = 1) => { label(k, x + 8 + i * c, y + top + r * rh, fs, orange); label(String(v), x + 8 + i * c + fs * 2.2, y + top + r * rh, fs, v && v.col ? v.col : COLORS.silver); };
-  label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, hpCol(u.hp / u.maxHp, col)); if (!u.generic) label('LV ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
+  label(u.name, x + 8, y + 2 + rh * 0.5, fs + 2, hpCol(u.hp / u.maxHp, col)); if (!u.generic) label('레벨 ' + u.lv, x + w - 8, y + 2 + rh * 0.5, fs, orange, 'right');
   const tile = Sim.ti(u.tx, u.ty), terrain = TERRAIN_NAME[S.map[tile]] || '—', wp = itemName(u);
-  const hr = statShow(u, 'hr'); label('HP', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('HR', x + 8 + 2 * c, y + top, fs, orange); label(String(hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, hr.col || COLORS.silver);
-  cell('AT', statShow(u, 'atk'), 0, 1); cell('DF', statShow(u, 'df'), 1, 1); cell('AA', statShow(u, 'aa'), 2, 1);
-  cell('AR', statShow(u, 'ar'), 0, 2); cell('DR', statShow(u, 'dr'), 1, 2); cell('AD', statShow(u, 'ad'), 2, 2);
-  cell('MD', statShow(u, 'md'), 0, 3); cell('FT', Math.round(Sim.effectiveFt(u)), 1, 3); cell('SP', statShow(u, 'sp'), 2, 3);
-  label('ST', x + 8, y + top + 4 * rh, fs, orange); label(stText(u), x + 8 + fs * 2.2, y + top + 4 * rh, fs, COLORS.silver); label('지형', x + 8 + 1.6 * c, y + top + 4 * rh, fs, orange); label(terrain, x + 8 + 1.6 * c + fs * 2.6, y + top + 4 * rh, fs, COLORS.silver);
-  label('ITEM', x + 8, y + top + 5 * rh, fs, orange); label(wp, x + 8 + fs * 3, y + top + 5 * rh, fs, COLORS.silver);
+  const hr = statShow(u, 'hr'); label('체력', x + 8, y + top, fs, orange); label(Math.ceil(u.hp) + '/' + u.maxHp, x + 8 + fs * 2.2, y + top, fs, hpCol(u.hp / u.maxHp, COLORS.silver)); label('회복', x + 8 + 2 * c, y + top, fs, orange); label(String(hr), x + 8 + 2 * c + fs * 2.2, y + top, fs, hr.col || COLORS.silver);
+  cell('공격', statShow(u, 'atk'), 0, 1); cell('방어', statShow(u, 'df'), 1, 1); cell('회피', statShow(u, 'aa'), 2, 1);
+  cell('공효', statShow(u, 'ar'), 0, 2); cell('방효', statShow(u, 'dr'), 1, 2); cell('궁방', statShow(u, 'ad'), 2, 2);
+  cell('술방', statShow(u, 'md'), 0, 3); cell('피로', Math.round(Sim.effectiveFt(u)), 1, 3); cell('기동', statShow(u, 'sp'), 2, 3);
+  label('상태', x + 8, y + top + 4 * rh, fs, orange); label(stText(u), x + 8 + fs * 2.2, y + top + 4 * rh, fs, COLORS.silver); label('지형', x + 8 + 1.6 * c, y + top + 4 * rh, fs, orange); label(terrain, x + 8 + 1.6 * c + fs * 2.6, y + top + 4 * rh, fs, COLORS.silver);
+  label('장비', x + 8, y + top + 5 * rh, fs, orange); label(wp, x + 8 + fs * 3, y + top + 5 * rh, fs, COLORS.silver);
   return top + 5 * rh + 14;
 }
 function drawSelectUI() {   // 선택 단계: 원작 상태창처럼 능력치 창 + 확정 버튼, 전투는 멈춰 있다 (적을 눌렀으면 그 적의 정보)
@@ -1921,7 +1921,7 @@ const STRAT_TUT = [
   ['이동', ['이동 버튼 → 군단 선택 → 지도에서 도시를 고릅니다.', '도시를 고르면 군단 선택으로 돌아옵니다. 끝나면 닫기를 누릅니다.', '정한 이동은 진행하기를 눌러야 한 턴으로 실행됩니다.'], [[1025, 400, 100, 36], [1025, 564, 210, 48]], [[1012, 308, 121, 86], [1012, 626, 250, 86]]],
   ['외교', ['외교 버튼을 누르고 지도에서 세력 수도를 선택합니다.', '휴전·동맹·전쟁 중에서 고르고 성공 확률이 표시됩니다.', '거절당하면 그 세력과 3턴간 쿨다운이 있습니다.', '중립 세력의 도시에 들어가면 전쟁이 시작됩니다.'], [[1135, 338, 100, 36]], [[1141, 214, 121, 86]]],
   ['군량', ['군량 칩에 보유량과 턴당 증감(+N/턴)이 나옵니다.', '기동 군단은 병사 수만큼 유지비가 들고 이동하면 더 듭니다.', '이동하지 않고 아군 도시에 머문 군단은 병력이 보충됩니다.', '군량 0 이면 기근: 보충 중단, 2턴째부터 병사가 탈영합니다.'], [[1025, 220, 210, 44]], [[1012, 120, 250, 86]]],
-  ['전투와 포로', ['적 도시로 이동하면 도착한 턴에 교전이 시작됩니다.', '이름 있는 장수는 HP 0 이 되면 전사하거나 포박됩니다.', '포박한 적 장수는 전투 뒤 처형·포로·투항을 고릅니다.', '일반 병사의 전사·투항은 결과 화면에서 정리됩니다.'], [], []],
+  ['전투와 포로', ['적 도시로 이동하면 도착한 턴에 교전이 시작됩니다.', '이름 있는 장수는 체력 0 이 되면 전사하거나 포박됩니다.', '포박한 적 장수는 전투 뒤 처형·포로·투항을 고릅니다.', '일반 병사의 전사·투항은 결과 화면에서 정리됩니다.'], [], []],
   ['저장과 편성', ['저장·로드는 전략 화면에서만 할 수 있습니다.', ['군단 편성에서 배치하고, 세력 장수 버튼(관계 상자 위)에서 상세를 봅니다.', '군단 편성에서 배치하고, 세력 현황 → 세력 장수에서 상세를 봅니다.'], '턴이 끝나면 N턴 요약이 나오고 정찰로 도시를 살핍니다.', ['이 안내는 오른쪽 위 제목줄의 도움말 버튼으로 다시 봅니다.', '이 안내는 왼쪽 아래의 도움말 버튼으로 다시 봅니다.']], [[1025, 504, 210, 36], [1180, 26, 66, 30], [870, 604, 120, 32]], [[1012, 502, 250, 86], [10, 630, 86, 86], [104, 630, 160, 86]]],
 ];
 function finishStratTut() {
@@ -2105,12 +2105,12 @@ function finishTutorial() {
 function drawTutorial() {
   const pages = mobile ? [
     ['이동과 카메라', '전장 왼쪽을 누른 채 끌면 가상패드가 생기고, 손을 떼면 멈춥니다.', '끌지 않고 짧게 터치만 하면 그 자리의 장수 정보가 나옵니다.'],
-    ['공격과 기술', '오른쪽 행동 버튼으로 특수기·마법을 사용합니다. 버튼 아래 숫자는 남은 쿨타임입니다.', '마법은 행동 버튼 왼쪽의 스킬 버튼을 눌러 바로 씁니다.'],
+    ['공격과 기술', '오른쪽 행동 버튼으로 특수기·술법을 사용합니다. 버튼 아래 숫자는 남은 쿨타임입니다.', '술법은 행동 버튼 왼쪽의 스킬 버튼을 눌러 바로 씁니다.'],
     ['부대 지휘', '오른쪽 아래에 부대들이 있습니다. 초상으로 조작 장수를, 아래 버튼으로 부대 명령을 내립니다.', '오른쪽 진형 버튼으로 기본·횡대·쐐기를 선택합니다.'],
     ['전투 정보', '왼쪽 위 전투 설정 아래에 조작 중인 장수의 능력치가 항상 표시됩니다.', '왼쪽 위의 화면·전투·군단·메뉴 그룹에서 필요한 기능을 선택합니다.']
   ] : [
     ['이동과 카메라', '숫자패드 또는 WASD·QEZC로 8방향 이동합니다.', '[ · ] 키나 상단의 카메라 거리로 화면을 조정합니다.'],
-    ['공격과 기술', 'Space로 특수기·마법을 사용합니다.', '1~5 키로 마법을 고릅니다. 보조키의 가운데 버튼으로도 사용할 수 있습니다.'],
+    ['공격과 기술', 'Space로 특수기·술법을 사용합니다.', '1~5 키로 술법을 고릅니다. 보조키의 가운데 버튼으로도 사용할 수 있습니다.'],
     ['부대 지휘', '하단 부대 명령에서 자유·정지·돌격·후퇴를 지시합니다.', '후퇴한 병력은 해당 전투에 다시 돌아올 수 없습니다.'],
     ['전투 정보', '하단 상태창과 왼쪽 능력치 창에서 병력을 확인합니다.', '상단에서 자동·거리·속도를 조정하고 Esc로 시스템을 엽니다.']
   ];
@@ -2225,7 +2225,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.359', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.360', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2651,7 +2651,7 @@ function drawTrainView() {
     if (mobile) {
       label(`${u.name} ${Sim.GRADE[r.key] || '-'}급 · ${r.ci + 1}군단${tag}`, rx + 60, ry + 27, 22, hold ? COLORS.goldSel : nameCol, 'left', rw - 72);
       if (lock) label(trainShort(why), rx + 60, ry + 60, 22, COLORS.danger, 'left', rw - 72);
-      else { label(`Lv${r.lv} ${r.xp}/${r.need} · +${r.gain}XP${up2 ? ' ▲Lv' + pv.to : ''}`, rx + 60, ry + 60, 22, up2 ? COLORS.gold : COLORS.silver2, 'left', 400); label(`−${r.cost}`, rx + 586, ry + 60, 22, sel ? COLORS.goldSel : COLORS.silver, 'right', 100); }
+      else { label(`Lv${r.lv} ${r.xp}/${r.need} · +${r.gain}경험${up2 ? ' ▲Lv' + pv.to : ''}`, rx + 60, ry + 60, 22, up2 ? COLORS.gold : COLORS.silver2, 'left', 400); label(`−${r.cost}`, rx + 586, ry + 60, 22, sel ? COLORS.goldSel : COLORS.silver, 'right', 100); }
     } else {
       drawUnitIcon(r.key, 234, cy - 14, 26, 28, 'player');
       label(`${u.name} / ${Sim.GRADE[r.key] || '-'}급${tag}`, 270, cy, 15, hold ? COLORS.goldSel : nameCol, 'left', 170);
@@ -2659,7 +2659,7 @@ function drawTrainView() {
       label(`Lv${r.lv}`, 612, cy, 14, nameCol, 'left', 56);
       bar(672, cy - 4, 96, 8, r.xp / r.need, '#7cc4ff'); label(`${r.xp}/${r.need}`, 776, cy, 13, COLORS.silver2, 'left', 80);
       if (lock) label(trainShort(why), 866, cy, 13, COLORS.danger, 'left', 210);
-      else { label(`+${r.gain} XP${up2 ? ' ▲Lv' + pv.to : ''}`, 866, cy, 13, up2 ? COLORS.gold : COLORS.silver, 'left', 110); label(`군량 −${r.cost}`, 1074, cy, 14, sel ? COLORS.goldSel : COLORS.silver, 'right', 110); }
+      else { label(`+${r.gain} 경험${up2 ? ' ▲Lv' + pv.to : ''}`, 866, cy, 13, up2 ? COLORS.gold : COLORS.silver, 'left', 110); label(`군량 −${r.cost}`, 1074, cy, 14, sel ? COLORS.goldSel : COLORS.silver, 'right', 110); }
     }
     if (lock) dimOver({ x: rx, y: ry, w: rw, h: rh });
     btns.push({ id: 'campaign:train:pick:' + r.key, x: rx, y: ry, w: rw, h: rh, on: sel, off: lock });
@@ -2742,7 +2742,7 @@ function drawFactionHeroes() {
     drawUnitIcon(key,x+cx[0],ry-14,26,28,faction===playerFaction()?'player':'enemy');
     label(`${u.name}${ruler} / ${Sim.GRADE[key]}급`, x + cx[0]+32, ry, 15, ruler ? COLORS.goldSel : FACTION_STYLE[faction].light, 'left', cx[1] - cx[0] - 40);
     label(`${CATEGORY_NAME[Sim.unitCategory(key)]} · ${Sim.unitSubclass(key)}`, x + cx[1], ry, 14, COLORS.silver, 'left', cx[2] - cx[1] - 8);
-    label(`Lv${info.lv} HP${st.maxHp} AT${st.atk} DF${st.df}`, x + cx[2], ry, 13, COLORS.silver2, 'left', cx[3] - cx[2] - 8);
+    label(`Lv${info.lv} 체력${st.maxHp} 공격${st.atk} 방어${st.df}`, x + cx[2], ry, 13, COLORS.silver2, 'left', cx[3] - cx[2] - 8);
     label(info.status, x + cx[3], ry, 13, /전사/.test(info.status) ? COLORS.danger : COLORS.silver, 'left', w - cx[3] - 24);
   });
   const fy = y + h - mb(55, TOUCH + 10);
@@ -2874,16 +2874,16 @@ function drawHeroInfo(key, unit, growth, stats, item) {   // 장수 상세 오�
   ctx.save(); if (mobile) ctx.translate(-22, 16);
   drawUnitIcon(key,430,94,140,150);
   const main = CATEGORY_NAME[Sim.unitCategory(key)], sub = Sim.unitSubclass(key), grade = Sim.GRADE[key] || '일반', lv = growth.lv || 1, xp = growth.xp || 0;
-  label(unit.name, 590, 130, 30, COLORS.goldSel); label(unit.generic ? `LV ${lv} · XP ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}` : lv >= Sim.MAX_LEVEL ? `LV ${lv} MAX · 등급 ${grade}` : `LV ${lv} / ${Sim.MAX_LEVEL} · XP ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver, 'left', 640);
+  label(unit.name, 590, 130, 30, COLORS.goldSel); label(unit.generic ? `레벨 ${lv} · 경험 ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}` : lv >= Sim.MAX_LEVEL ? `레벨 ${lv} 최고 · 등급 ${grade}` : `레벨 ${lv} / ${Sim.MAX_LEVEL} · 경험 ${xp}/${Sim.XP_NEED(lv)} · 등급 ${grade}`, 590, 166, 18, COLORS.silver, 'left', 640);
   const role = Sim.roleOf(key), roleDup = role === main || role + '병' === main;   // 역할이 병종 이름과 같으면(기병·기병) 한 번만 표기
-  label(`병종 ${main}${roleDup ? '' : ' · 역할 ' + role} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`전투력 ⚔${Sim.statPower(stats)} · ITEM ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
-  const values = [['HP', stats.maxHp], ['MP', growth.maxMp ?? unit.mp ?? 0], ['FT', 0], ['AT', stats.atk], ['DF', stats.df], ['AD', stats.ad], ['MD', stats.md], ['AA', stats.aa], ['HR', stats.hr], ['SP', stats.sp], ['AR', stats.ar], ['DR', stats.dr]];
+  label(`병종 ${main}${roleDup ? '' : ' · 역할 ' + role} · 칭호 ${sub}`, 590, 200, 21, COLORS.gold, 'left', 640); label(`전투력 ⚔${Sim.statPower(stats)} · 장비 ${item ? item.name : '없음'}`, 590, 234, 17, COLORS.silver2, 'left', 640);
+  const values = [['체력', stats.maxHp], ['기력', growth.maxMp ?? unit.mp ?? 0], ['피로', 0], ['공격', stats.atk], ['방어', stats.df], ['궁방', stats.ad], ['술방', stats.md], ['회피', stats.aa], ['회복', stats.hr], ['기동', stats.sp], ['공효', stats.ar], ['방효', stats.dr]];
   const gp = mobile ? 44 : 50, ey0 = mobile ? 430 : 448;
   if (!(mobile && heroGrowthView && !unit.generic)) values.forEach(([name, value], i) => { const col = i % 4, row = Math.floor(i / 4); panel(438 + col * 194, 282 + row * gp, 178, 38, COLORS.silver2, 1, 'rgba(15,44,52,.8)'); label(name, 448 + col * 194, 301 + row * gp, 15, COLORS.gold); if (!mobile) label(STAT_DESC[name], 480 + col * 194, 302 + row * 50, 11, COLORS.silver2); label(String(Math.round(value * 10) / 10), 606 + col * 194, 301 + row * gp, 17, COLORS.silver, 'right'); });
   if (heroGrowthView && !unit.generic) {   // 성장 정보: 마일스톤 표 + 등급 계수 + 칭호 티어 + Lv1 대비 증가량
     const tier = Sim.titleTier(sub), tl = Sim.titleLv(lv), step = Sim.TITLE_STEP[tier], gg = Sim.GRADE_GROWTH[grade] ?? 1, base = Sim.levelStats(key, 'player', 1), cur = Sim.unitStats(key, 'player', { ...growth, item: undefined });   // 아이템 보정은 빼고 비교
-    const diff = [['HP', 'maxHp'], ['AT', 'atk'], ['DF', 'df'], ['AD', 'ad'], ['MD', 'md'], ['AR', 'ar'], ['DR', 'dr'], ['HR', 'hr'], ['AA', 'aa']].map(([n, k]) => [n, Math.round((cur[k] - base[k]) * 10) / 10]).filter(([, v]) => v).map(([n, v]) => `${n}+${v}`).join(' ');
-    const d1 = `Lv1 대비 ${diff || '증가 없음'}`, rows = [...(mobile ? [d1] : []), `등급 ${grade} ×${gg} · 칭호 티어 T${tier} · 칭호 Lv ${tl}/3 (×${(1 + step * tl).toFixed(2)}, 10레벨마다 +${Math.round(step * 100)}%${tier ? '' : ' AT·DF'})`,
+    const diff = [['체력', 'maxHp'], ['공격', 'atk'], ['방어', 'df'], ['궁방', 'ad'], ['술방', 'md'], ['공효', 'ar'], ['방효', 'dr'], ['회복', 'hr'], ['회피', 'aa']].map(([n, k]) => [n, Math.round((cur[k] - base[k]) * 10) / 10]).filter(([, v]) => v).map(([n, v]) => `${n}+${v}`).join(' ');
+    const d1 = `Lv1 대비 ${diff || '증가 없음'}`, rows = [...(mobile ? [d1] : []), `등급 ${grade} ×${gg} · 칭호 티어 T${tier} · 칭호 Lv ${tl}/3 (×${(1 + step * tl).toFixed(2)}, 10레벨마다 +${Math.round(step * 100)}%${tier ? '' : ' 공격·방어'})`,
       ...Sim.MILESTONES.map(m => `${lv >= m.lv ? '✔' : '·'} Lv${m.lv} ${m.name}  ${m.text(key)}`)];
     const col = i => i >= rows.length - 6 && lv < Sim.MILESTONES[i - rows.length + 6].lv ? COLORS.dim : COLORS.silver;
     const y0 = mobile ? 290 : ey0;   /* 모바일은 줄이 모자라 능력치 칸을 숨기고(기본 정보에 있다) 그 자리에 쓴다 */ label('성장 정보', 438, y0, 19, COLORS.gold); if (!mobile) label(d1, 560, y0, 15, COLORS.silver, 'left', 680); let yy = y0 + 28;   // PC 는 제목 줄 오른쪽에 Lv1 대비를 붙여 한 줄 아낀다
@@ -2960,7 +2960,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
     const corps = roster[rosterSource], named = corps.units.map((key, slot) => ({ key, slot })).filter(x => x.key && !Sim.U[x.key].generic), N = rosterEquipN(), pages = Math.max(1, Math.ceil(named.length / N));
     rosterEquipPage = Math.max(0, Math.min(rosterEquipPage, pages - 1));
     panel(6, top, 1268, bottom - top, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
-    label(`${rosterSource + 1}군단 · ${corpsName(corps)} · ITEM 탈부착`, 20, top + 26, 17, COLORS.gold, 'left', 700);
+    label(`${rosterSource + 1}군단 · ${corpsName(corps)} · 장비 탈부착`, 20, top + 26, 17, COLORS.gold, 'left', 700);
     label('보유: ' + (Object.entries(Sim.ITEMS).filter(([k]) => campaign.items[k] > 0).map(([k, it]) => `${it.unique ? '★' : ''}${it.name} ${campaign.items[k]}`).join(' · ') || '없음'), 20, top + 106, 15, COLORS.silver, 'left', 1000);
     button('roster:equip:prev', 920, top + 6, 160, TOUCH, '◀ 이전', false, 17); button('roster:equip:next', 1092, top + 6, 170, TOUCH, '다음 ▶', false, 17); label(`${rosterEquipPage + 1}/${pages}`, 1180, top + 104, 15, COLORS.silver2, 'center');
     if (!named.length) label('이 군단에는 장비할 수 있는 장수가 없습니다.', 640, top + 250, 20, COLORS.dim, 'center');
@@ -2985,7 +2985,7 @@ function drawRosterMobile() {   // 모바일 군단 편성: 모든 버튼 86px �
         label(String(slot + 1).padStart(2, '0'), cx + 10, cy + 24, 13, COLORS.silver2);drawUnitIcon(key,cx+40,cy+4,48,48); label(unit ? unit.name : '—', cx + 96, cy + 24, 16, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim, 'left', cw - 96 - 84);
         if (slot === 0) label('군단장', cx + cw - 10, cy + 24, 14, COLORS.gold, 'right');
         else if (unit && unit.generic) { const sg = Sim.validGrade(corps.growth[slot]?.sg); label(gradeTag(sg), cx + cw - 10, cy + 24, 14, Sim.SOLDIER_GRADE_COLOR[sg], 'right'); }
-        if (unit) { const st = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, cx + 10, cy + 60, 14, COLORS.silver2, 'left', cw - 20 - 96); label(`HP${st.maxHp}`, cx + cw - 10, cy + 60, 14, COLORS.silver, 'right'); }
+        if (unit) { const st = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, cx + 10, cy + 60, 14, COLORS.silver2, 'left', cw - 20 - 96); label(`체력${st.maxHp}`, cx + cw - 10, cy + 60, 14, COLORS.silver, 'right'); }
         btns.push({ id: `roster:unit:${side}:${slot}`, x: cx, y: cy, w: cw, h: TOUCH });
       }
     };
@@ -3035,7 +3035,7 @@ function drawRoster() {
     if (unit) drawHeroInfo(key, unit, growth, stats, item);
   } else if (rosterMode === 'equip') {
     const corps = roster[rosterSource]; panel(28, 92, 1224, 548, COLORS.silver2, 2, 'rgba(8,20,25,.92)');
-    label(`${rosterSource + 1}군단 · ${corpsName(corps)} · 장수 ITEM 탈부착`, 46, 120, 22, COLORS.gold);
+    label(`${rosterSource + 1}군단 · ${corpsName(corps)} · 장수 장비 탈부착`, 46, 120, 22, COLORS.gold);
     label('보유: ' + Object.entries(Sim.ITEMS).filter(([k]) => campaign.items[k] > 0).map(([k, it]) => `${it.unique ? '★' : ''}${it.name} ${campaign.items[k]}`).join(' · '), 1236, 120, 15, COLORS.silver, 'right');
     const named = corps.units.map((key, slot) => ({ key, slot })).filter(x => x.key && !Sim.U[x.key].generic);
     if (!named.length) label('이 군단에는 장비할 수 있는 장수가 없습니다.', 640, 360, 20, COLORS.dim, 'center');
@@ -3057,7 +3057,7 @@ function drawRoster() {
         label(String(slot + 1).padStart(2, '0'), x + 20, ry + 12, 13, COLORS.silver2);
         drawUnitIcon(key,x+98,ry+1,25,22);
         label(unit ? unit.name : '—', x + 130, ry + 12, 15, unit && !unit.generic ? COLORS.goldSel : unit ? COLORS.silver : COLORS.dim);
-        if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`HP${stats.maxHp} AT${stats.atk} DF${stats.df} AD${stats.ad} MD${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
+        if (unit) { const stats = Sim.unitStats(key, 'player', corps.growth[slot]); label(`${CATEGORY_NAME[Sim.unitCategory(key)]}·${Sim.unitSubclass(key)}`, x + 250, ry + 12, 12, COLORS.silver2); label(`체력${stats.maxHp} 공격${stats.atk} 방어${stats.df} 궁방${stats.ad} 술방${stats.md}`, x + 340, ry + 12, 10, COLORS.silver); }
         label(commander ? '군단장' : '', x + 570, ry + 12, 13, COLORS.gold, 'right'); if (unit && unit.generic) { const sg = Sim.validGrade(corps.growth[slot]?.sg); label(gradeTag(sg), x + 570, ry + 12, 12, Sim.SOLDIER_GRADE_COLOR[sg], 'right'); }
         btns.push({ id: `roster:unit:${side}:${slot}`, x: x + 10, y: ry, w: 580, h: 24 });
       });
@@ -3091,7 +3091,7 @@ function draw() {
   if (!mobileSelect) drawMinimap();
   if (S.auto && !mobileSelect) label('자동 전투', VW - 10, (mini ? mini.y + mini.h : TB_H) + 20, 18, COLORS.gold, 'right');
   if (tutorialBattle && !S.over && tutorialStep < 0) drawTutorialBanner();
-  if (S.t < 14 && !S.over && !mobileSelect && !tutorialBattle) label(mobile ? '왼쪽 화면을 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/마법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 112 : 16), 16, COLORS.silver2, 'center');
+  if (S.t < 14 && !S.over && !mobileSelect && !tutorialBattle) label(mobile ? '왼쪽 화면을 눌러 끌면 이동 · 적에게 부딪치면 공격 · 오른쪽 행동 버튼' : '숫자패드(또는 WASD+QEZC)로 조작 캐릭터 이동 · 적에게 부딪치면 공격 · Space 특수기/술법', LEFT_W + VPW / 2, TB_H + vh - (mobile ? 112 : 16), 16, COLORS.silver2, 'center');
   if (tutorialStep >= 0) { drawTutorial(); return; }
   if (S.events.length) { drawEvent(S.events[0]); return; }
   if (selectMode && !menuOpen && !S.over) drawSelectUI();
@@ -3133,7 +3133,7 @@ function cycleUnit(dir) {
   const list = army().units.filter(alive); if (!list.length) return;
   const i = list.indexOf(ctrlOf()); pick(list[i < 0 ? 0 : (i + dir + list.length) % list.length]);
 }
-function act() { const u = ctrlOf(); if (u && Sim.action(S, u)) { if (tutorialBattle) tutorialBattle.flags.act = true; } else if (u) floatText(u, u.spells.length ? (S.lock.player > 0 ? '마법 잠금' : '사용 불가') : '준비중', '#cfd3e6'); }
+function act() { const u = ctrlOf(); if (u && Sim.action(S, u)) { if (tutorialBattle) tutorialBattle.flags.act = true; } else if (u) floatText(u, u.spells.length ? (S.lock.player > 0 ? '술법 잠금' : '사용 불가') : '준비중', '#cfd3e6'); }
 function useCommand(id, A = army()) {
   if (['charge', 'stop', 'retreat', 'idle'].includes(id)) { const before = A.order; Sim.armyOrder(S, A, id, A === army() ? ctrlOf() : null); if (tutorialBattle && A.order !== before) tutorialBattle.flags.order = true; return; }
   if (id === 'act') act(); else if (id === 'auto') { if (!tutorialBattle) Sim.setAuto(S, !S.auto); }   else if (id === 'support') supportOpen = !supportOpen; else if (id === 'menu') menuOpen = true;   // 연습 전투는 직접 조작을 배우는 곳이라 자동 전투를 막는다
@@ -3152,7 +3152,7 @@ function cycleItem(slot, d) {   // 장수의 ITEM 을 보유 목록에서 앞뒤
   const corps = roster[rosterSource], key = corps.units[slot]; if (!key || Sim.U[key].generic) return;
   const g = corps.growth[slot] || (corps.growth[slot] = {}), cur = g.item || null, opts = [null, ...Object.keys(Sim.ITEMS)].filter(k => k === null || k === cur || ((!Sim.ITEMS[k].owner || Sim.ITEMS[k].owner === key) && (campaign.items[k] || 0) > 0)), next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
   if (cur) campaign.items[cur] = (campaign.items[cur] || 0) + 1; if (next) campaign.items[next]--; g.item = next;
-  campaign.notice = next ? `${Sim.U[key].name}에게 ${Sim.ITEMS[next].name}을 장착했습니다.` : `${Sim.U[key].name}의 ITEM을 해제했습니다.`;
+  campaign.notice = next ? `${Sim.U[key].name}에게 ${Sim.ITEMS[next].name}을 장착했습니다.` : `${Sim.U[key].name}의 장비를 해제했습니다.`;
 }
 function uiClick(id) {   // 군단 편성 조작 뒤에는 비어 버린 군단을 자동 해제한다
   const P = stratPractice; if (mobile && state === 'map' && T >= noticeUntil) { campaign.notice = ''; noticeSeen = ''; }   // 지난 토스트 글을 비워 같은 안내가 다시 나와도 띄운다 (QA 명세78 경미2)
@@ -3244,7 +3244,7 @@ function uiClickCore(id) {
   if (/^roster:detail:\d+:\d+$/.test(id)) { const [, , ci, slot] = id.split(':'); rosterDetailCorps = +ci; rosterDetailSlot = +slot; return; }
   if (id.startsWith('roster:page:') && id.split(':').length === 4) { const [, , side, q] = id.split(':'); rosterSlotPage[side] = +q; return; }
   if (id === 'roster:equip:prev' || id === 'roster:equip:next') { rosterEquipPage = Math.max(0, rosterEquipPage + (id.endsWith('next') ? 1 : -1)); return; }
-  if (id === 'roster:equip') { rosterMode = 'equip'; rosterEquipPage = 0; campaign.notice = '◀ ▶ 로 장수의 ITEM 을 바꿉니다.'; return; }
+  if (id === 'roster:equip') { rosterMode = 'equip'; rosterEquipPage = 0; campaign.notice = '◀ ▶ 로 장수의 장비를 바꿉니다.'; return; }
   if (id.startsWith('roster:item:')) { const [, , slot, d] = id.split(':'); cycleItem(+slot, +d); return; }
   if (id === 'roster:back') {
     if (rosterMode === 'equip' || rosterMode === 'detail') { const save = rosterMode === 'equip'; rosterMode = 'select'; campaign.notice = '교환할 군단을 선택하세요.'; if (save) saveCampaign(); return; }
