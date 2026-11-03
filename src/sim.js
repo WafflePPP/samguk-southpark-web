@@ -651,14 +651,16 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
   ring(S, x, y, r, col, 0.45);
   for (const e of S.units) if (live(e) && e !== from && (friendly || e.team !== from.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
 }
+const ARROW_FALLOFF = 0.4;   // 화살 거리 감쇠(사용자 지정, v0.1.365): 쏜 자리에서 맞은 곳까지 거리 ÷ 사거리 에 비례해 피해가 줄어 사거리 끝에서 ×0.6
+const arrowFalloff = (p, t) => !p.rng ? 1 : 1 - ARROW_FALLOFF * Math.min(1, Math.hypot(t.x - p.ox, t.y - p.oy) / p.rng);
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < combatStat(S, t, 'aa') / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
-  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG * (p.dmgMul || 1));
+  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG * (p.dmgMul || 1) * arrowFalloff(p, t));
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0, extra) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
-  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, atk: combatStat(S, u, 'atk') * combatStat(S, u, 'ar') / 100 * mul * ftMul(u), from: u, team: u.team, a, ...extra });
+  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, ox: u.x, oy: u.y, rng: u.range || 1, atk: combatStat(S, u, 'atk') * combatStat(S, u, 'ar') / 100 * mul * ftMul(u), from: u, team: u.team, a, ...extra });
 }
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
@@ -1242,6 +1244,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, trainGain, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { ARROW_FALLOFF, HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, trainGain, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
