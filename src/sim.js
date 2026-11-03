@@ -28,14 +28,14 @@ const U = {
   kong: { name: '제갈량', cls: 'mage', mp: 999, aa: 18, hr: 8, sp: 166, hp: 300, atk: 30, df: 18, ad: 18, md: 30, cd: 1.4, range: 200, r: 12, style: 'kong', spells: ['bolt', 'phoenix', 'fireball', 'thunder', 'web'] },
   sword: { name: '보병', cls: 'warrior', hp: 120, atk: 16, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
   spear: { name: '보병(창)', cls: 'warrior', hp: 120, atk: 18, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'ally_sword', generic: true },
-  shield: { name: '방패병', cls: 'shield', hp: 120, atk: 18, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
+  shield: { name: '방패병', cls: 'shield', hp: 120, atk: 13, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'ally_shield', shield: true, generic: true },
   archer: { name: '궁병', cls: 'archer', hp: 128, atk: 30, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'ally_archer', generic: true },
   cav: { name: '기마병', cls: 'cavalry', hp: 144, atk: 21, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 1.0, r: 13, style: 'ally_cav', generic: true },
   mage: { name: '법사', cls: 'mage', hp: 70, mp: 999, atk: 8, df: 2, ad: 2, md: 10, aa: 12, hr: 5, sp: 166, cd: 1.5, range: 190, r: 11, style: 'mage', spells: ['bolt', 'fireball', 'ice'], generic: true },
   lubu: { name: '여포', cls: 'cavalry', aa: 14, hr: 12, sp: 252, hp: 760, atk: 84, df: 48, ad: 32, md: 24, cd: 0.8, r: 15, style: 'lubu', special: 'dash', fanatic: true },
   ecap: { name: '적 장수', cls: 'warrior', aa: 12, hr: 10, sp: 173, hp: 400, atk: 64, df: 40, ad: 24, md: 20, cd: 1.0, r: 14, style: 'captain', special: 'spin' },
   esword: { name: '적 보병', cls: 'warrior', hp: 120, atk: 15, df: 8, ad: 5, md: 4, aa: 12, hr: 5, sp: 180, cd: 1.0, r: 11, style: 'soldier', generic: true },
-  eshield: { name: '적 방패', cls: 'shield', hp: 120, atk: 17, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
+  eshield: { name: '적 방패', cls: 'shield', hp: 120, atk: 16, df: 14, ad: 14, md: 5, aa: 6, hr: 5, sp: 153, cd: 1.1, r: 12, style: 'shield', shield: true, generic: true },
   earcher: { name: '적 궁병', cls: 'archer', hp: 128, atk: 29, df: 4, ad: 3, md: 4, aa: 16, hr: 5, sp: 173, cd: 0.9, range: 250, r: 11, style: 'archer', generic: true },
   ecav: { name: '적 기마', cls: 'cavalry', hp: 144, atk: 20, df: 8, ad: 4, md: 4, aa: 4, hr: 5, sp: 270, cd: 1.0, r: 13, style: 'cav', generic: true },
   hua: { name: '화웅', cls: 'warrior', sp: 173, cd: 1.0, r: 14, aa: 10, hr: 10, style: 'hua', special: 'spin', fanatic: true },
@@ -52,7 +52,7 @@ const unitCategory = key => UNIT_CATEGORY[key] || CATEGORY[U[key].cls];
 // 세력 고유 병종 8종(명세 53 §3): 일반 병사, 팀 무관 한 키. 특수기 없음 — 능력치·속도·사거리만 다르다.
 const FU = { generic: true, hr: 5, md: 4 };
 Object.assign(U, {
-  f_xian: { ...FU, name: '함진병', cls: 'shield', hp: 126, atk: 16, df: 15, ad: 14, md: 5, aa: 6, sp: 153, cd: 1.1, r: 12, style: 'f_xian', shield: true },
+  f_xian: { ...FU, name: '함진병', cls: 'shield', hp: 126, atk: 12, df: 15, ad: 14, md: 5, aa: 6, sp: 153, cd: 1.1, r: 12, style: 'f_xian', shield: true },
   f_bing: { ...FU, name: '병주 기병', cls: 'cavalry', hp: 132, atk: 23, df: 8, ad: 4, aa: 4, sp: 285, cd: 1.0, r: 13, style: 'f_bing' },
   f_nu: { ...FU, name: '선등강노병', cls: 'archer', hp: 128, atk: 33, df: 4, ad: 3, aa: 16, sp: 166, cd: 1.1, range: 265, r: 11, style: 'f_nu' },
   f_ji: { ...FU, name: '대극사', cls: 'warrior', hp: 114, atk: 17, df: 8, ad: 5, aa: 12, sp: 166, cd: 1.0, r: 11, style: 'f_ji' },
@@ -652,16 +652,14 @@ function aoe(S, from, x, y, r, fn, col, friendly = false) {   // friendly: 시�
   for (const e of S.units) if (live(e) && e !== from && (friendly || e.team !== from.team) && Math.hypot(e.x - x, e.y - y) <= r + e.r) fn(e);
 }
 const SHIELD_ARROW_EVADE = { sword: 2.5, spear: 4 };   // 방패병의 화살 회피 배율 (사용자 지정, v0.1.368): 검 방패병 ×2.5 · 창 방패병 ×4
-const ARROW_FALLOFF = 0.6;   // 화살 거리 감쇠(사용자 지정, v0.1.365): 쏜 자리에서 맞은 곳까지 거리 ÷ 사거리 에 비례해 피해가 줄어 사거리 끝에서 ×0.4
-const arrowFalloff = (p, t) => !p.rng ? 1 : 1 - ARROW_FALLOFF * Math.min(1, Math.hypot(t.x - p.ox, t.y - p.oy) / p.rng);
 function arrowHit(S, p, t) {   // 방패: 정면 화살은 정지 중 항상, 이동 중 35% 막는다. 회피: 기마는 낮다 (퍼스트퀸4 의 화살 규칙)
   if (t.shield && Math.cos(t.face - p.a - Math.PI) > 0.2 && (!t.moving || S.rnd() < 0.35)) { text(S, t.x, t.y - t.r * 4, '방어', '#9aa7b8', 'buff'); ring(S, t.x, t.y, 14, '#cfd3e6', 0.2); return; }
   if (S.rnd() < combatStat(S, t, 'aa') * (t.shield ? SHIELD_ARROW_EVADE[t.category] || 1 : 1) / 100) { text(S, t.x, t.y - t.r * 4, '회피', '#cfd3e6', 'buff'); return; }
-  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG * (p.dmgMul || 1) * arrowFalloff(p, t));
+  hurt(S, p.from, t, Math.max(1, mitigate(p.atk * (0.85 + S.rnd() * 0.3), combatStat(S, t, 'ad') * DEF_EFF * combatStat(S, t, 'dr') / 100 * ftDef(t))) * DMG * (p.dmgMul || 1));
 }
 function shoot(S, u, tx, ty, mul = 1, spread = 0, extra) {
   const a = Math.atan2(ty - u.y, tx - u.x) + spread;
-  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, ox: u.x, oy: u.y, rng: u.range || 1, atk: combatStat(S, u, 'atk') * combatStat(S, u, 'ar') / 100 * mul * ftMul(u), from: u, team: u.team, a, ...extra });
+  S.proj.push({ kind: 'arrow', x: u.x, y: u.y - u.r * 1.4, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, left: u.range * 1.25, atk: combatStat(S, u, 'atk') * combatStat(S, u, 'ar') / 100 * mul * ftMul(u), from: u, team: u.team, a, ...extra });
 }
 function attack(S, u, t) {
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
@@ -1245,6 +1243,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { SHIELD_ARROW_EVADE, ARROW_FALLOFF, HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, trainGain, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { SHIELD_ARROW_EVADE, HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, trainGain, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
