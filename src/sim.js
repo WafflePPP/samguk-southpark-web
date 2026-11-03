@@ -531,6 +531,16 @@ function levelStats(key, team, level, sg = 'C') {
   for (let lv = 1; lv < level; lv++) applyLevelUp(st, key, team, lv, 0.05);
   st.maxHp = Math.round(st.maxHp); st.lv = level; return st;
 }
+function trainGain(key, g, xp, team = 'player') {   // 명세 83 R2: 전략 화면 훈련 경험치 — 저장용 growth(g, 아이템 보정을 뺀 값)를 제자리 수정. 난수 없음(HP 5% 고정), 초과 XP 는 다음 레벨로 이월
+  const out = { from: 0, to: 0, add: 0, over: 0, capped: false, ms: [] };
+  if (!g || !U[key] || U[key].generic) return out;
+  g.lv = clamp(Math.floor(g.lv) || 1, 1, MAX_LEVEL); g.xp = Math.max(0, g.xp || 0); out.from = g.lv;
+  if (g.lv >= MAX_LEVEL) { g.xp = 0; out.to = g.lv; out.over = xp; out.capped = true; return out; }
+  out.add = xp; g.xp += xp;
+  while (g.lv < MAX_LEVEL && g.xp >= XP_NEED(g.lv)) { g.xp -= XP_NEED(g.lv); applyLevelUp(g, key, team, g.lv, 0.05); g.lv++; const ms = MILESTONES.find(m => m.lv === g.lv); if (ms) out.ms.push({ lv: ms.lv, name: ms.name }); }
+  if (g.lv >= MAX_LEVEL) { out.over = g.xp; g.xp = 0; out.capped = true; }
+  g.maxHp = Math.round(g.maxHp); out.to = g.lv; return out;
+}
 function gainXp(S, u, n) {
   if (!live(u) || u.generic) return;   // 병사는 경험치·레벨업 없음(명세 54)
   if (u.lv >= MAX_LEVEL) { u.xp = 0; return; }
@@ -1229,6 +1239,6 @@ function unitAt(S, wx, wy, team) {   // 월드 좌표에서 (몸+머리 높이�
   return best;
 }
 
-return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
+return { HP_SCALE, MAX_LEVEL, spellPower, AIDEF, pickTarget, die, unitRetreat, TITLE_EFFECT, skillPct, titleDesc, titleTier, titleLv, titleMul, TITLE_STEP, addBuff, effectiveFt, AURA_RANGE, XP_NEED, levelStats, trainGain, MILESTONES, GRADE_GROWTH, gainXp, MILESTONE_SCALE, grantMilestones, gradeGrowth, SOLDIER_GRADE, SOLDIER_GRADE_COLOR, GRADE_PATTERN, soldierTier, soldierGradeAt, validGrade, GRADE, GRADE_MUL, ITEMS, ITEM_STATS, itemBase, unitCategory, ROLE_CAPTAIN, roleOf, ROLE_GROWTH, ROLE_AUX, unitSubclass, combatStat, MATCHUP_BONUS, RETREAT_HP, RETREAT_CORPS_HP, baseMaxHp, statPower, unitStats, unitPower, corpsPower, battlePower, POWER_W, CAPTAIN, ELITE, CLONES, stepToward, prof, fatigueMultiplier: ftMul, TILE, MW, MH, WW, WH, U, CLS_NAME, CATEGORY_NAME, FORMATION_NAME, SPELL, SPECIAL, ARMIES, ARMY_MAX, matchup, classMultiplier, createBattle, step, setCtrl, setFormation, setAuto, control, action, selectSpell, skills, armyOrder, focus, castSpell, useSpecial, recall, deployArmy, unitAt, live, ti };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
