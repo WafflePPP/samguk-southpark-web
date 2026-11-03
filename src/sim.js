@@ -180,6 +180,9 @@ const SPELL = {
   web: { name: '거미줄', kind: 'web', mp: 20, range: 240, cd: 3.0, lock: 7, r: 70, root: 3, col: '#e8e8e8' },
   heal: { name: '치유', kind: 'heal', mp: 6, range: 130, cd: 1.2 },
 };
+const RANGE_MUL = 0.8;   // 궁병·군사 사거리 하향 (사용자 지정, v0.1.364): 궁병·법사 계열 기본 사거리와 공격 주문 사거리에 곱한다. 치유·지진·기마궁병은 그대로
+for (const u of Object.values(U)) if (u.range > 0 && (u.cls === 'archer' || u.cls === 'mage')) u.range = Math.round(u.range * RANGE_MUL);
+for (const [k, sp] of Object.entries(SPELL)) if (k !== 'heal' && sp.range > 0) sp.range = Math.round(sp.range * RANGE_MUL);
 const AI_LOCK_GAP = 20;   // AI 가 전체 쿨 마법을 다시 쓰기까지의 간격(초, 설계값)
 const MAGIC = 1;
 const SOLDIER_SPELL = 0.35, SPELL_GRADE = 1;   // 일반 병사 법사 주문 위력 / 장수 군사 주문 위력 = 1 + SPELL_GRADE × (등급 배율 − 1) (명세 42, 설계값)
