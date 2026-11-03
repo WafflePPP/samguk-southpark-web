@@ -1,0 +1,12 @@
+[
+  {
+    "key": "lulingqi",
+    "name": "여령기",
+    "kind": "hero",
+    "file": "lulingqi.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "성인 여성 기마 장수. 긴 흑발을 묶고 작은 은장 머리관을 착용한다. 담은색 은빛 찰갑과 절제된 보라색 장식, 빨간 술이 달린 장창, 작고 단단한 흑마. 수채화 안료 질감과 유기적인 색 클러스터를 사용하는 1990년대 후반 JRPG 도트 화풍.",
+    "prompt": "Restyle the exact 8-column by 8-row 64-frame Lu Lingqi atlas with late-1990s hand-painted watercolor pixel art. Preserve every silhouette, pose, facing direction, idle/walk/thrust/slash frame, grid position, rider/horse scale, costume, black horse and single spear. Adult female mounted warrior, tied long dark hair, small silver hair crown, pale silver lamellar armor, restrained violet trim, red spear tassel. Organic mottled color clusters, subtle warm/cool variation, soft painted highlights, restrained dark outlines, readable face. True transparent background. No text, grid, scenery, shadows, glow, particles, extra weapons, duplicated limbs, cropping, merged sprites, glossy 3D or oversized anime head."
+  }
+]
