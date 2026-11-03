@@ -46,7 +46,7 @@ const U = {
 };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 // 이름 있는 검병 51명 중 장병기 성격의 26명을 창병으로 분배한다. 전위는 사용자 지정대로 검병을 유지한다.
-const UNIT_CATEGORY = { yangfeng: 'spear', yangang: 'spear', gongsunkang: 'spear', zhangnan_yuan: 'spear', wenpin: 'spear', guan: 'spear', wen: 'spear', hua: 'spear', yan: 'spear', gao: 'spear', zhanghe: 'spear', xuhuang: 'spear', lijue: 'spear', zhangfei: 'spear', yuantan: 'spear', weiyan: 'spear', yujin: 'spear', yuejin: 'spear', zangba: 'spear', gaolan: 'spear', songxian: 'spear', weixu: 'spear', hanmeng: 'spear', jiangyiqu: 'spear', zhangchao: 'spear', xuelan: 'spear', lifeng_lu: 'spear', lvweihuang: 'spear', mayan: 'spear', zhangyi_yuan: 'spear', jiaochu: 'spear', guanping: 'spear', zhoucang: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', spear: 'spear', esword: 'sword', eshield: 'spear', f_xian: 'spear', f_bai: 'spear' };
+const UNIT_CATEGORY = { yangfeng: 'spear', yangang: 'spear', gongsunkang: 'spear', zhangnan_yuan: 'spear', wenpin: 'spear', guan: 'spear', wen: 'spear', hua: 'spear', yan: 'spear', gao: 'spear', zhanghe: 'spear', lijue: 'spear', zhangfei: 'spear', yuantan: 'spear', weiyan: 'spear', yujin: 'spear', yuejin: 'spear', zangba: 'spear', gaolan: 'spear', songxian: 'spear', weixu: 'spear', hanmeng: 'spear', jiangyiqu: 'spear', zhangchao: 'spear', xuelan: 'spear', lifeng_lu: 'spear', lvweihuang: 'spear', mayan: 'spear', zhangyi_yuan: 'spear', jiaochu: 'spear', guanping: 'spear', zhoucang: 'spear', f_ji: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', spear: 'spear', esword: 'sword', eshield: 'spear', f_xian: 'spear', f_bai: 'spear' };
 const unitCategory = key => UNIT_CATEGORY[key] || CATEGORY[U[key].cls];
 // 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 이름 있는 장수는 같은 병종 일반 대장 × SS~D 등급 배율.
 // 세력 고유 병종 8종(명세 53 §3): 일반 병사, 팀 무관 한 키. 특수기 없음 — 능력치·속도·사거리만 다르다.
@@ -55,7 +55,7 @@ Object.assign(U, {
   f_xian: { ...FU, name: '함진병', cls: 'shield', hp: 126, atk: 12, df: 15, ad: 14, md: 5, aa: 6, sp: 153, cd: 1.1, r: 12, style: 'f_xian', shield: true },
   f_bing: { ...FU, name: '병주 기병', cls: 'cavalry', hp: 132, atk: 23, df: 8, ad: 4, aa: 4, sp: 285, cd: 1.0, r: 13, style: 'f_bing' },
   f_nu: { ...FU, name: '선등강노병', cls: 'archer', hp: 128, atk: 33, df: 4, ad: 3, aa: 16, sp: 166, cd: 1.1, range: 265, r: 11, style: 'f_nu' },
-  f_ji: { ...FU, name: '대극사', cls: 'warrior', hp: 114, atk: 16, df: 8, ad: 5, aa: 12, sp: 166, cd: 1.0, r: 11, style: 'f_ji' },
+  f_ji: { ...FU, name: '대극사', cls: 'warrior', hp: 114, atk: 17, df: 8, ad: 5, aa: 12, sp: 166, cd: 1.0, r: 11, style: 'f_ji' },
   f_qing: { ...FU, name: '청주병', cls: 'warrior', hp: 132, atk: 13, df: 8, ad: 5, aa: 12, sp: 180, cd: 1.0, r: 11, style: 'f_qing' },
   f_hubao: { ...FU, name: '호표기', cls: 'cavalry', hp: 144, atk: 21, df: 9, ad: 4, aa: 4, sp: 245, cd: 1.0, r: 13, style: 'f_hubao' },
   f_bai: { ...FU, name: '백이병', cls: 'warrior', hp: 126, atk: 16, df: 9, ad: 5, aa: 12, sp: 173, cd: 1.0, r: 11, style: 'f_bai' },
