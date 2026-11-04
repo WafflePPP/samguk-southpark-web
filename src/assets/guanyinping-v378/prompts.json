@@ -1,0 +1,11 @@
+[
+  {
+    "key": "guanyinping",
+    "name": "관은병",
+    "file": "guanyinping.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "붉은 장발·회색 겹갑옷·연녹색 완갑·짙은 각반·큰 갈색 장화를 갖춘 성인 여성 비기마 창병. 잎 모양 강철 창날과 어두운 목제 장창을 사용한다.",
+    "prompt": "Create a brand-new adult female non-mounted spear hero Guan Yinping in chunky low-resolution JRPG pixel art. Preserve the reference design: long voluminous red-orange hair, pale stern face, dark gray layered tunic and armor, muted green-gray arm guards, dark leggings and oversized brown boots. Add one long Chinese spear with a steel leaf-shaped tip and dark wooden shaft. Use large square pixels, crisp hard edges, bold silhouettes, restrained palettes and two-to-four-step shading. Preserve an exact 1024x1536 transparent 8x8 atlas with 64 isolated sprites. Rows: idle, three walking rows, spear thrust strike, thrust recovery, spear sweep strike, sweep recovery. Directions: E, SE, S, SW, W, NW, N, NE. No horse, shield, helmet, extra weapon, backdrop, shadow, grid, text, blur, gradients, smoothing or anti-aliasing."
+  }
+]

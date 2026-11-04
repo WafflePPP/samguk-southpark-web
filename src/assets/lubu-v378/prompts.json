@@ -1,0 +1,11 @@
+[
+  {
+    "key": "lubu",
+    "name": "여포",
+    "file": "lubu.png",
+    "frameCount": 64,
+    "actions": ["thrust", "slash"],
+    "design": "무수염의 강인한 기마 장수 여포. 적흑 중갑·은빛 흉갑·붉은 두건·금색 쌍깃·방천화극·적갈색 말을 유지하고 큰 정사각 픽셀과 제한 팔레트로 단순화한다.",
+    "prompt": "Re-render only Lü Bu in chunky low-resolution JRPG pixel art. Images 1–4 are style references only; the existing heroes-v321 Lü Bu atlas is the exact character, horse, weapon, layout and animation reference. Preserve the stern masculine clean-shaven rider, red-black heavy armor, silver chest accents, red headband, gold double feather crest, Fangtian halberd with red tassel and brown-red horse. Use large square pixels, crisp hard edges, simplified color clusters, restrained palettes, two-to-four-step shading and bold readable silhouettes. Preserve the exact 1024x1536 transparent 8x8 atlas, all 64 isolated sprites, directions, poses, actions, footprints, spacing and order: idle, three walk rows, thrust strike/recovery and slash strike/recovery in E, SE, S, SW, W, NW, N, NE order. No backdrop, shadow, grid, text, extra objects, blur, gradients, painterly texture, smoothing or anti-aliasing."
+  }
+]
