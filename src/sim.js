@@ -46,7 +46,7 @@ const U = {
 };
 const CATEGORY = { warrior: 'sword', shield: 'spear', cavalry: 'cavalry', archer: 'archer', mage: 'military', cleric: 'military' };
 // 이름 있는 검병 51명 중 장병기 성격의 26명을 창병으로 분배한다. 전위는 사용자 지정대로 검병을 유지한다.
-const UNIT_CATEGORY = { yangfeng: 'spear', yangang: 'spear', gongsunkang: 'spear', zhangnan_yuan: 'spear', wenpin: 'spear', guan: 'spear', wen: 'spear', hua: 'spear', yan: 'spear', gao: 'spear', zhanghe: 'spear', lijue: 'spear', zhangfei: 'spear', yuantan: 'spear', weiyan: 'spear', yujin: 'spear', yuejin: 'spear', zangba: 'spear', gaolan: 'spear', songxian: 'spear', weixu: 'spear', hanmeng: 'spear', jiangyiqu: 'spear', zhangchao: 'spear', xuelan: 'spear', lifeng_lu: 'spear', lvweihuang: 'spear', mayan: 'spear', zhangyi_yuan: 'spear', jiaochu: 'spear', guanping: 'spear', zhoucang: 'spear', f_ji: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', spear: 'spear', esword: 'sword', eshield: 'spear', f_xian: 'spear', f_bai: 'spear' };
+const UNIT_CATEGORY = { yangfeng: 'spear', yangang: 'spear', zhangnan_yuan: 'spear', wenpin: 'spear', guan: 'spear', hua: 'spear', gao: 'spear', zhanghe: 'spear', lijue: 'spear', zhangfei: 'spear', yuantan: 'spear', weiyan: 'spear', yujin: 'spear', yuejin: 'spear', zangba: 'spear', gaolan: 'spear', songxian: 'spear', weixu: 'spear', hanmeng: 'spear', jiangyiqu: 'spear', zhangchao: 'spear', xuelan: 'spear', lifeng_lu: 'spear', lvweihuang: 'spear', mayan: 'spear', zhangyi_yuan: 'spear', guanping: 'spear', zhoucang: 'spear', f_ji: 'spear', dian: 'sword', sword: 'sword', shield: 'sword', xia: 'sword', spear: 'spear', esword: 'sword', eshield: 'spear', f_xian: 'spear', f_bai: 'spear' };
 const unitCategory = key => UNIT_CATEGORY[key] || CATEGORY[U[key].cls];
 // 장수 등급. 일반 대장(적 장수·적 군사)은 병종별 기준 능력치 [hp, atk, df, ad, md]. 이름 있는 장수는 같은 병종 일반 대장 × SS~D 등급 배율.
 // 세력 고유 병종 8종(명세 53 §3): 일반 병사, 팀 무관 한 키. 특수기 없음 — 능력치·속도·사거리만 다르다.
@@ -94,18 +94,18 @@ const CLONES = {
   yan: ['hua', '안량'], wen: ['hua', '문추'], gao: ['hua', '고순'], xia: ['hua', '하후돈'], guo: ['xun', '곽가'],
   gong: ['jang', '공손찬'], yuan: ['hua', '원소'], cao: ['hua', '조조'], dong: ['hua', '동탁'], zhanghe: ['hua', '장합'],
   xuhuang: ['hua', '서황'], xuchu: ['hua', '허저'], sima: ['xun', '사마의'], lijue: ['hua', '이각'],
-  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['hua', '유비'], zhangfei: ['hua', '장비'], caopi: ['hua', '조비'], liushan: ['hua', '유선'], yuantan: ['hua', '원담'],
+  chengong: ['xun', '진궁'], lulingqi: ['jang', '여령기'], liubei: ['hua', '유비'], zhangfei: ['hua', '장비'], caopi: ['huang', '조비'], liushan: ['hua', '유선'], yuantan: ['hua', '원담'],
   machao: ['jang', '마초'], pangtong: ['xun', '방통'], jiangwei: ['jang', '강유'], weiyan: ['hua', '위연'],
   fazheng: ['xun', '법정'], xiahouyuan: ['huang', '하후연'], caoren: ['hua', '조인'], mizhu: ['xun', '미축'], lady_mi: ['diao', '미씨'], haomeng: ['hua', '학맹'], yujin: ['hua', '우금'],
-  yuejin: ['hua', '악진'], caohong: ['hua', '조홍'], caozhen: ['hua', '조진'], caoxiu: ['jang', '조휴'], yanyan: ['huang', '엄안'], zangba: ['hua', '장패'], gaolan: ['hua', '고람'], quyi: ['huang', '국의'],
-  jushou: ['xun', '저수'], tianfeng: ['xun', '전풍'], shenpei: ['xun', '심배'], caoxing: ['huang', '조성'], yuanxi: ['hua', '원희'], chenglian: ['jang', '성렴'], songxian: ['hua', '송헌'],
+  yuejin: ['hua', '악진'], caohong: ['huang', '조홍'], caozhen: ['hua', '조진'], caoxiu: ['jang', '조휴'], yanyan: ['huang', '엄안'], zangba: ['hua', '장패'], gaolan: ['hua', '고람'], quyi: ['huang', '국의'],
+  jushou: ['xun', '저수'], tianfeng: ['xun', '전풍'], shenpei: ['huang', '심배'], caoxing: ['huang', '조성'], yuanxi: ['hua', '원희'], chenglian: ['jang', '성렴'], songxian: ['hua', '송헌'],
   weixu: ['hua', '위속'], houcheng: ['hua', '후성'], chunyuqiong: ['hua', '순우경'], hanmeng: ['hua', '한맹'], jiangyiqu: ['hua', '장의거'], guotu: ['xun', '곽도'], fengji: ['xun', '봉기'], mifang: ['hua', '미방'],
-  zhangmiao: ['xun', '장막'], zhangchao: ['hua', '장초'], zhangyang: ['jang', '장양'], xuelan: ['hua', '설란'], lifeng_lu: ['hua', '이봉'], wangkai: ['xun', '왕해'], yinli: ['hua', '윤례'], xusi: ['xun', '허사'],
-  yuanshang: ['hua', '원상'], gaogan: ['jang', '고간'], xinping: ['xun', '신평'], chenlin: ['xun', '진림'], lvweihuang: ['hua', '여위황'], lvkuang: ['hua', '여광'], lvxiang: ['hua', '여상'], mayan: ['hua', '마연'], zhangyi_yuan: ['hua', '장의'], jiaochu: ['hua', '초촉'], lvyang: ['hua', '여양'], guoyuan: ['hua', '곽원'],
-  lidian: ['hua', '이전'], chengyu: ['xun', '정욱'], xunyou: ['xun', '순유'], manchong: ['xun', '만총'], liuye: ['xun', '유엽'], lvqian: ['hua', '여건'], guanping: ['hua', '관평'], zhoucang: ['hua', '주창'], sunqian: ['xun', '손건'], jianyong: ['xun', '간옹'],
-  yangchou: ['hua', '양추'], dongzhao: ['xun', '동소'], yangfeng: ['hua', '양봉'], tiankai: ['hua', '전해'], yangang: ['hua', '엄강'], gongsunxu: ['hua', '공손속'], guanjing: ['xun', '관정'], gongsunfan: ['jang', '공손범'],
-  gongsundu: ['hua', '공손도'], gongsunkang: ['hua', '공손강'], gongsungong: ['hua', '공손공'], gongsunyuan: ['jang', '공손연'],   // 명세 71: 외형은 기존 모델 공유(전용 외형 없음)
-  xuyou: ['xun', '허유'], xunchen: ['xun', '순심'], xinpi: ['xun', '신비'], chenzhen: ['xun', '진진'], gaorou: ['xun', '고유'], qianzhao: ['jang', '견초'], hanjuzi: ['jang', '한거자'], suiyuanjin: ['hua', '수원진'], zhaorui: ['hua', '조예'], zhangnan_yuan: ['hua', '장남'], lifu: ['xun', '이부'], yinkui: ['xun', '음기'], shenrong: ['hua', '심영'], jiaxu: ['xun', '가후'], caoang: ['jang', '조앙'], caozhi: ['xun', '조식'], simalang: ['xun', '사마랑'], haozhao: ['hua', '학소'], wenpin: ['hua', '문빙'],
+  zhangmiao: ['huang', '장막'], zhangchao: ['hua', '장초'], zhangyang: ['jang', '장양'], xuelan: ['hua', '설란'], lifeng_lu: ['hua', '이봉'], wangkai: ['xun', '왕해'], yinli: ['hua', '윤례'], xusi: ['xun', '허사'],
+  yuanshang: ['hua', '원상'], gaogan: ['jang', '고간'], xinping: ['xun', '신평'], chenlin: ['xun', '진림'], lvweihuang: ['hua', '여위황'], lvkuang: ['hua', '여광'], lvxiang: ['hua', '여상'], mayan: ['hua', '마연'], zhangyi_yuan: ['hua', '장의'], jiaochu: ['huang', '초촉'], lvyang: ['hua', '여양'], guoyuan: ['huang', '곽원'],
+  lidian: ['huang', '이전'], chengyu: ['xun', '정욱'], xunyou: ['xun', '순유'], manchong: ['huang', '만총'], liuye: ['xun', '유엽'], lvqian: ['huang', '여건'], guanping: ['hua', '관평'], zhoucang: ['hua', '주창'], sunqian: ['xun', '손건'], jianyong: ['xun', '간옹'],
+  yangchou: ['hua', '양추'], dongzhao: ['xun', '동소'], yangfeng: ['hua', '양봉'], tiankai: ['hua', '전해'], yangang: ['hua', '엄강'], gongsunxu: ['huang', '공손속'], guanjing: ['xun', '관정'], gongsunfan: ['jang', '공손범'],
+  gongsundu: ['jang', '공손도'], gongsunkang: ['jang', '공손강'], gongsungong: ['hua', '공손공'], gongsunyuan: ['jang', '공손연'],   // 명세 71: 외형은 기존 모델 공유(전용 외형 없음)
+  xuyou: ['xun', '허유'], xunchen: ['xun', '순심'], xinpi: ['huang', '신비'], chenzhen: ['xun', '진진'], gaorou: ['xun', '고유'], qianzhao: ['jang', '견초'], hanjuzi: ['jang', '한거자'], suiyuanjin: ['hua', '수원진'], zhaorui: ['huang', '조예'], zhangnan_yuan: ['hua', '장남'], lifu: ['xun', '이부'], yinkui: ['xun', '음기'], shenrong: ['hua', '심영'], jiaxu: ['xun', '가후'], caoang: ['jang', '조앙'], caozhi: ['xun', '조식'], simalang: ['xun', '사마랑'], haozhao: ['huang', '학소'], wenpin: ['hua', '문빙'],
 };   // 이름만 다른 고유 장수를 스테이지 제2군단장으로 사용
 for (const [k, [src, name]] of Object.entries(CLONES)) U[k] = { ...U[src], name };   // 복제 장수: 외형·병종은 원본, 능력치는 GRADE 로 따로
 for (const k of ['gao', 'lulingqi', 'cao', 'xia', 'xiahouyuan', 'liubei', 'zhangfei', 'machao', 'xuhuang', 'yuan', 'yan', 'wen', 'sima', 'xuchu', 'dong', 'guo', 'gong']) U[k].style = k;
