@@ -11,7 +11,7 @@ const COLORS = {
 // 영웅 6명(TKC HEROES.style 그대로) + 적 병종(TKC ENEMY 스타일) + 이 프로젝트용 병종
 const STYLES = {
   guan: { body: '#2f8f5b', trim: '#d4a73a', skin: '#c9553f', cape: '#1f6a42', beard: true, hat: true, weapon: 'glaive' },
-  lubu: { body: '#2a2030', trim: '#c9302c', skin: '#e0b08a', helm: true, feathers: true, pauldrons: true, weapon: 'halberd', horse: '#a8321f' },
+  lubu: { body: '#5c5962', trim: '#9f343b', skin: '#e0b08a', helm: false, feathers: false, pauldrons: false, weapon: 'spear', horse: false },
   zhao: { body: '#2b6a6e', trim: '#c9cfd8', skin: '#e0b08a', cape: '#1f4a50', hair: true, band: true, pauldrons: true, weapon: 'lance', horse: '#f0ece0' },
   diao: { body: '#c86aa8', trim: '#ffd34d', skin: '#f4d9bd', sleeves: '#f7b3d3', hairCap: true, longHair: true, crown: true, flower: true, weapon: 'fan', weaponScale: 0.5 },
   dian: { body: '#8a3a22', trim: '#d4a73a', skin: '#c98a6a', beard: true, wrap: true, pauldrons: true, cape: '#5a2418', weapon: 'twin' },
@@ -270,7 +270,7 @@ function loadBattleArt() {
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
-  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v378',378],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342]])parts.push(await manifest(folder,version));return parts;};
+  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v380',380],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342]])parts.push(await manifest(folder,version));return parts;};
   BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
@@ -296,7 +296,7 @@ function loadBattleArt() {
     });
     await each(strongLubu,async h=>{
       if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('강인한 여포 동작 누락');
-      const image=await load('src/assets/lubu-v378/'+h.file,378),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      const image=await load('src/assets/lubu-v380/'+h.file,380),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,[h.key]);
     });
     await each(strongGao,async h=>{
@@ -336,11 +336,11 @@ function loadBattleArt() {
 }
 // 시뮬레이션의 판정 반경과 독립된 공통 외형 크기. 기병은 말까지 포함한다.
 const BATTLE_UNIT_RADIUS=8.5;
-// 여포의 기수·말을 기준으로 원본마다 다른 머리/갑옷 비중을 시각 보정한다.
-// 머리(투구·머리카락 포함) 가로폭을 여포(=1) 기준으로 맞춘 배율. 전투 정면 확대 비교에서 여포 머리 폭 58px 기준선에 맞춰 눈대중(±8%)으로 정함 — 새 외형을 추가하면 같은 방식으로 다시 맞춘다
+// 원본마다 다른 머리/갑옷 비중을 공통 화면 크기에 맞춰 시각 보정한다.
+// 머리(투구·머리카락 포함) 가로폭 배율. 전투 정면 확대 비교에서 눈대중(±8%)으로 정함 — 새 외형을 추가하면 같은 방식으로 다시 맞춘다
 const FACE_SCALE={ally_sword:.8,ally_shield:.8,liubei:.67,guan:.8,zhao:.95,jang:.95,gong:.95,lulingqi:.95,xiahouyuan:.95,machao:.95,xuhuang:.95,yan:1,wen:.95,zhangliao:.95,diao:.95,dian:1,huang:.95,kong:.95,captain:.95,hua:.95,gao:1,cao:1,xia:1,zhangfei:.9,xun:.95,ally_archer:.8,ally_cav:.8,mage:.8,f_xian:.8,f_bing:.97,f_nu:.8,f_ji:.8,f_qing:.8,f_hubao:.8,f_bai:.8,f_dan:.8,yuan:1,sima:.95,xuchu:.95,dong:.95,guo:.95,soldier:.8,archer:.8,shield:.8,cav:.8,emage:.8,lubu_sword:.8,lubu_spear:.8,lubu_archer:.8,lubu_mage:.8};
 const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=1.03;
-// 얼굴 비율은 리소스 내부에서 맞추고, 표시는 기마4.8·보병3.6의 병과 크기 차이를 유지한다.
+// 얼굴 비율은 리소스 내부에서 맞추고, 표시는 기마4.8·보병3.6의 외형 크기 차이를 유지한다.
 const LUBU_FACE_SCALE={lubu:LUBU_SCALE,jang:.95,diao:LULINGQI_SCALE,gao:LULINGQI_SCALE,chengong:LULINGQI_SCALE,lulingqi:LULINGQI_SCALE,f_xian:.8,f_bing:.97};
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}

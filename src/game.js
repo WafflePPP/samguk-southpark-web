@@ -17,38 +17,74 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false, supportOpen = false, titleNotice = '';
 // 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
-// 명세73: 삼국지14/PK 북동부 도시16·관문2. [번호,id,이름,주,세력,x,y,지형,Lv,등급,양방향 연결].
+// 명세84: 도시48·관문6 (12주). 명세73 의 북동부 18거점 좌표는 (+800,+200) 이동. [번호,id,이름,주,세력,x,y,지형,Lv,등급,양방향 연결].
 const STAGE_ROWS = [
-  [1,'chenliu','진류','연주','조조',740,850,'f',18,'상','puyang xiaopei xuchang ye hulao'],
-  [2,'ye','업','기주','원소',800,470,'f',22,'상','ji nanpi pingyuan puyang huguan'],
-  [3,'puyang','복양','연주','원소',870,700,'p',16,'상','pingyuan beihai xiaopei'],
-  [4,'xiaopei','소패','서주','유비',1070,850,'p',8,'초','xiapi'],
-  [5,'xiapi','하비','서주','여포',1280,920,'f',30,'최','beihai guangling'],
-  [6,'guangling','광릉','서주','여포',1390,1090,'w',20,'상',''],
-  [7,'xuchang','허창','예주','조조',650,1030,'f',30,'최','runan'],
-  [8,'luoyang','낙양','사례','조조',400,850,'f',17,'중','hulao huguan'],
-  [9,'jinyang','진양','병주','장양',500,390,'m',11,'중','ji huguan'],
-  [10,'huguan','호관','병주','장양',620,540,'g',10,'중',''],
-  [11,'nanpi','남피','기주','원소',1040,400,'r',12,'중','ji beiping pingyuan'],
-  [12,'pingyuan','평원','청주','원소',1010,570,'p',12,'중','beihai'],
-  [13,'beihai','북해','청주','여포',1280,690,'p',22,'상',''],
-  [14,'ji','계','유주','공손찬',960,200,'f',14,'중','beiping'],
-  [15,'beiping','북평','유주','원소',1160,260,'m',15,'중','xiangping'],
-  [16,'xiangping','양평','유주','공손도',1340,120,'m',16,'중',''],
-  [17,'runan','여남','예주','조조',880,1100,'p',6,'초',''],
-  [18,'hulao','호뢰관','사례','조조',560,850,'g',10,'중',''],
+  [1,'chenliu','진류','연주','조조',1540,1050,'f',18,'상','hulao ye puyang xuchang handan dingtao qiao'],
+  [2,'ye','업','기주','원소',1600,670,'f',22,'상','huguan puyang pingyuan zhongshan hejian handan'],
+  [3,'puyang','복양','연주','원소',1670,900,'p',16,'상','pingyuan handan changyi'],
+  [4,'xiaopei','소패','서주','유비',1870,1050,'p',8,'초','xiapi changyi dingtao'],
+  [5,'xiapi','하비','서주','여포',2080,1120,'f',30,'최','beihai guangling donghai'],
+  [6,'guangling','광릉','서주','여포',2190,1290,'w',20,'상','donghai jianye'],
+  [7,'xuchang','허창','예주','조조',1450,1230,'f',30,'최','runan qiao wan'],
+  [8,'luoyang','낙양','사례','조조',1200,1050,'f',17,'중','huguan hulao pingyang hangu'],
+  [9,'jinyang','진양','병주','장양',1300,590,'m',11,'중','ji huguan shangdang pingyang'],
+  [10,'huguan','호관','병주','장양',1420,740,'g',10,'중','shangdang handan'],
+  [11,'nanpi','남피','기주','원소',1840,600,'r',12,'중','ji beiping pingyuan hejian'],
+  [12,'pingyuan','평원','청주','원소',1810,770,'p',12,'중','beihai linzi jinan'],
+  [13,'beihai','북해','청주','여포',2080,890,'p',22,'상','linzi jinan langya'],
+  [14,'ji','계','유주','공손찬',1760,400,'f',14,'중','beiping zhongshan zhuo yuyang'],
+  [15,'beiping','북평','유주','원소',1960,460,'m',15,'중','xiangping yuyang'],
+  [16,'xiangping','양평','유주','공손도',2140,320,'m',16,'중','pinggu'],
+  [17,'runan','여남','예주','유비',1680,1300,'p',6,'초','qiao wan shouchun'],
+  [18,'hulao','호뢰관','사례','조조',1360,1050,'g',10,'중',''],
+  [19,'shangdang','상당','병주','장양',1290,780,'m',10,'중','pingyang'],
+  [20,'pingyang','평양','병주','장양',1110,760,'p',9,'초',''],
+  [21,'zhongshan','중산','기주','원소',1700,540,'p',11,'중','zhuo'],
+  [22,'handan','한단','기주','원소',1480,850,'p',8,'초',''],
+  [23,'hejian','하간','기주','원소',1740,660,'p',10,'중',''],
+  [24,'zhuo','탁','유주','공손찬',1650,350,'p',13,'중',''],
+  [25,'yuyang','어양','유주','공손찬',1900,310,'m',12,'중',''],
+  [26,'pinggu','평곽','유주','공손도',2300,380,'r',17,'중',''],
+  [27,'linzi','임치','청주','원소',1960,730,'f',24,'상','jinan'],
+  [28,'jinan','제남','청주','원소',1900,880,'p',18,'상','changyi'],
+  [29,'changyi','창읍','연주','원소',1760,1000,'p',9,'초','dingtao'],
+  [30,'dingtao','정도','연주','유비',1720,1110,'w',5,'초','qiao'],
+  [31,'qiao','초','예주','유비',1620,1195,'p',6,'초',''],
+  [32,'langya','낭야','서주','여포',2230,920,'p',26,'상','donghai'],
+  [33,'donghai','동해','서주','여포',2250,1110,'r',20,'상',''],
+  [34,'hangu','함곡관','사례','조조',1040,1050,'g',12,'중','hongnong'],
+  [35,'hongnong','홍농','사례','조조',880,1070,'f',15,'중','tongguan'],
+  [36,'tongguan','동관','사례','조조',720,1070,'g',14,'중','changan'],
+  [37,'changan','장안','사례','조조',560,1050,'f',26,'상','anding tianshui yangpingguan'],
+  [38,'anding','안정','서량','조조',460,880,'m',11,'중',''],
+  [39,'tianshui','천수','서량','조조',330,1090,'m',14,'중','wuwei'],
+  [40,'wuwei','무위','서량','조조',150,950,'p',16,'중',''],
+  [41,'yangpingguan','양평관','익주','조조',620,1210,'g',16,'중','hanzhong'],
+  [42,'hanzhong','한중','익주','조조',700,1320,'f',28,'상','jiange'],
+  [43,'jiange','검각','익주','유비',730,1500,'g',24,'상','chengdu'],
+  [44,'chengdu','성도','익주','유비',760,1670,'f',30,'최','jiangzhou'],
+  [45,'jiangzhou','강주','익주','유비',1000,1700,'r',18,'상','jiangling'],
+  [46,'wan','완','형주','유비',1520,1400,'p',15,'중','xinye'],
+  [47,'xinye','신야','형주','유비',1400,1520,'p',10,'중','xiangyang'],
+  [48,'xiangyang','양양','형주','유비',1380,1650,'f',28,'상','jiangling changsha'],
+  [49,'jiangling','강릉','형주','유비',1220,1750,'r',22,'상','changsha'],
+  [50,'changsha','장사','형주','유비',1500,1830,'r',14,'중',''],
+  [51,'shouchun','수춘','양주','여포',1930,1430,'f',22,'상','jianye chaisang'],
+  [52,'jianye','건업','양주','여포',2150,1500,'r',26,'상','chaisang kuaiji'],
+  [53,'chaisang','시상','양주','여포',1960,1640,'w',16,'중',''],
+  [54,'kuaiji','회계','양주','여포',2330,1690,'r',12,'중',''],
 ];
 
-const WORLD_W = 1700, WORLD_H = 1200;   // 지도 월드 크기 (카메라로 1000×720 만 보인다)
+const WORLD_W = 2600, WORLD_H = 1900;   // 지도 월드 크기 (카메라로 1000×720 만 보인다)
 // 참조 지도의 상대 위치를 현재 도시 격자에 맞춘 개략 지형이다.
-const YELLOW_RIVER = [[0,620],[300,640],[480,700],[600,720],[740,650],[860,620],[980,625],[1120,610],[1250,580],[1340,500]];
+const YELLOW_RIVER = [[0,760],[300,790],[550,810],[800,820],[1100,840],[1280,920],[1400,850],[1540,820],[1660,825],[1800,810],[1920,810],[2050,780],[2140,700],[2300,730],[2420,790]];   // 명세84: 기존 점은 (+800,+200) 이동, 서쪽(서량~낙양)·동쪽(황해 입구) 연장
 const MAP_MOUNTAINS = [
-  { name: '태행산맥', x: 575, y: 200, n: 8, dx: 0, dy: 44, h: 54, lx: 605, ly: 200 },
-  { name: '연산산맥', x: 820, y: 35, n: 8, dx: 95, dy: 0, h: 32, lx: 1190, ly: 135 },
-  { name: '진령산맥', x: 40, y: 875, n: 7, dx: 46, dy: 2, h: 44, lx: 170, ly: 930 },
-  { name: '화산', x: 155, y: 790, n: 2, dx: 27, dy: 4, h: 58, lx: 170, ly: 830 },
-  { name: '숭산', x: 410, y: 865, n: 3, dx: 28, dy: -4, h: 43, lx: 438, ly: 900 },
-  { name: '태산', x: 1100, y: 560, n: 3, dx: 26, dy: -6, h: 48, lx: 1130, ly: 600 },
+  { name: '태행산맥', x: 1375, y: 400, n: 8, dx: 0, dy: 44, h: 54, lx: 1405, ly: 400 },
+  { name: '연산산맥', x: 1620, y: 235, n: 8, dx: 95, dy: 0, h: 32, lx: 1990, ly: 335 },
+  { name: '진령산맥', x: 300, y: 1190, n: 5, dx: 46, dy: 2, h: 44, lx: 390, ly: 1250 },
+  { name: '화산', x: 955, y: 990, n: 2, dx: 27, dy: 4, h: 58, lx: 970, ly: 950 },
+  { name: '숭산', x: 1210, y: 1065, n: 3, dx: 28, dy: -4, h: 43, lx: 1238, ly: 1100 },
+  { name: '태산', x: 1900, y: 760, n: 3, dx: 26, dy: -6, h: 48, lx: 1930, ly: 800 },
 ];
 const OLD_STAGE = { chenliu: ['연주 중심 도시', 5], ye: ['원소군 수도', 13], puyang: ['연주 전초', 17], xiaopei: ['유비군 수도', 23], guangling: ['강가 관문', 37], xiapi: ['여포군 수도', 47], xuchang: ['조조군 수도·예주 영천군', 43] };
 const STAGES = STAGE_ROWS.map(([stage, id, name, region, faction, x, y, t, level, d, links]) => ({
@@ -59,8 +95,8 @@ const STAGES = STAGE_ROWS.map(([stage, id, name, region, faction, x, y, t, level
 }));
 for (const s of STAGES) for (const id of s.links) { const t = STAGES.find(x => x.id === id); if (!t) throw new Error(`${s.id}: 없는 도시 ${id}`); if (!t.links.includes(s.id)) t.links.push(s.id); }   // 길은 양방향
 const INITIAL_FACTIONS = STAGES.map(s => s.faction);
-// 주(州) 8개 (명세73): 표시·평정 표식용 파생 데이터. 이동·전투·외교·승리는 도시 단위 그대로이고 저장 필드는 없다.
-const PROVINCES = ['병주', '기주', '유주', '청주', '서주', '연주', '예주', '사례'].map(name => ({ name, ids: STAGES.filter(s => s.region === name).map(s => s.id) }));
+// 주(州) 12개 (명세73·84): 표시·평정 표식용 파생 데이터. 이동·전투·외교·승리는 도시 단위 그대로이고 저장 필드는 없다.
+const PROVINCES = ['병주', '기주', '유주', '청주', '연주', '서주', '예주', '사례', '서량', '형주', '익주', '양주'].map(name => ({ name, ids: STAGES.filter(s => s.region === name).map(s => s.id) }));
 const provinceOf = s => s.region;
 function checkProvinceWins() {   // 평정 소식(명세 71 §2-1): 플레이어가 한 주의 도시를 전부 갖게 되는 순간 1줄. campaign.pacified(이미 알린 주)로 중복 방지, 처음 보는 판(새 게임·구 저장)은 이미 가진 주를 조용히 기록
   const full = PROVINCES.filter(p => p.ids.every(id => stageById(id).owner === 'player')).map(p => p.name);
@@ -71,10 +107,14 @@ function checkProvinceWins() {   // 평정 소식(명세 71 §2-1): 플레이어
 const START_STAGE = 'xiapi', CAPITALS = { '여포': 'xiapi', '원소': 'ye', '조조': 'xuchang', '유비': 'xiaopei', '장양': 'jinyang', '공손찬': 'ji', '공손도': 'xiangping' }, PLAYABLE_FACTIONS = ['여포', '조조', '유비'];   // 새 게임 선택 가능 세력. 원소·장양·공손찬·공손도는 AI 전용 (명세 71 원소 → v0.1.344 장양·공손찬·공손도 제거)
 const FACTIONS = ['여포', '원소', '조조', '유비', '장양', '공손찬', '공손도'], INITIAL_RULERS = { '여포': 'lubu', '원소': 'yuan', '조조': 'cao', '유비': 'liubei', '장양': 'zhangyang', '공손찬': 'gong', '공손도': 'gongsundu' }, SUCCESSORS = { lubu: ['lulingqi'], yuan: ['yuantan'], cao: ['caopi'], liubei: ['guan'], zhangyang: ['yangchou'], gong: ['gongsunxu'], gongsundu: ['gongsunkang'] };   // 양추→장양·공손속→공손찬·공손강→공손도 후계 (혈연 아님 포함, 명세 71)
 const FACTION_HEROES = {   // 명세 71: 도시 수 × 2 (원소 10도시 : 20명 기준) = 52명. 제거 장수는 Sim.U·GRADE·art 데이터를 지우지 않고 여기서만 뺀다(ARMIES·시험이 직접 사용)
-  '여포': ['lubu', 'jang', 'diao', 'gao', 'chengong', 'lulingqi'],
-  '원소': ['yuan', 'yan', 'wen', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'yuantan', 'yuanxi', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'yuanshang', 'xinping', 'lvkuang', 'xuyou', 'hanjuzi'],
-  '조조': ['cao', 'xia', 'xiahouyuan', 'dian', 'zhanghe', 'guo', 'xun', 'caopi'],
-  '유비': ['liubei', 'guan', 'zhangfei', 'zhao', 'mizhu', 'jianyong', 'sunqian'],   // v0.1.299: 제갈량·유선 제외, 장비·조운·미축·간옹·손건 추가 (사용자 지시)
+  '여포': ['lubu', 'jang', 'diao', 'gao', 'chengong', 'lulingqi',
+    'haomeng', 'caoxing', 'weixu', 'houcheng', 'songxian', 'chenglian', 'xusi', 'wangkai', 'zhangmiao', 'zhangchao', 'xuelan', 'lifeng_lu', 'dong', 'lijue', 'hua'],
+  '원소': ['yuan', 'yan', 'wen', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'yuantan', 'yuanxi', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'yuanshang', 'xinping', 'lvkuang', 'xuyou', 'hanjuzi',
+    'gaogan', 'chenlin', 'lvweihuang', 'xunchen', 'xinpi', 'gaorou', 'qianzhao', 'suiyuanjin', 'zhangnan_yuan', 'zhangyi_yuan', 'jiaochu', 'lifu', 'yinkui', 'shenrong', 'mayan', 'lvyang', 'guoyuan', 'lvxiang'],
+  '조조': ['cao', 'xia', 'xiahouyuan', 'dian', 'zhanghe', 'guo', 'xun', 'caopi',
+    'sima', 'simalang', 'xuchu', 'caoren', 'caohong', 'caozhen', 'caoxiu', 'caoang', 'caozhi', 'zhaorui', 'xuhuang', 'yujin', 'yuejin', 'lidian', 'manchong', 'chengyu', 'xunyou', 'liuye', 'jiaxu', 'haozhao', 'wenpin', 'zangba', 'yinli', 'lvqian'],
+  '유비': ['liubei', 'guan', 'zhangfei', 'zhao', 'mizhu', 'jianyong', 'sunqian',
+    'kong', 'pangtong', 'fazheng', 'weiyan', 'huang', 'machao', 'jiangwei', 'guanping', 'zhoucang', 'yanyan', 'liushan', 'mifang', 'lady_mi', 'chenzhen'],   // v0.1.299: 제갈량·유선 제외, 장비·조운·미축·간옹·손건 추가 (사용자 지시)
   '장양': ['zhangyang', 'yangchou', 'dongzhao', 'yangfeng'],
   '공손찬': ['gong', 'tiankai', 'yangang', 'gongsunxu', 'guanjing', 'gongsunfan'],
   '공손도': ['gongsundu', 'gongsunkang', 'gongsungong', 'gongsunyuan'],
@@ -86,10 +126,11 @@ const CORPS_RATIO = 0.3, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 
 const gradeMul = k => Sim.GRADE_MUL[Sim.GRADE[k]];
 const CORPS_OVERRIDE = { '유비': [{ lead: 'liubei', slots: { 6: 'guan', 12: 'zhangfei', 1: 'zhao' } }, { lead: 'mizhu', slots: { 6: 'jianyong', 12: 'sunqian' } }] };   // 사용자 지정 편성: 군주 군단(유비·관우·장비·조운) / 2군단(미축·간옹·손건)
 const FACTION_MEMBERS = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, list]) => {
-  if (CORPS_OVERRIDE[f]) return [f, CORPS_OVERRIDE[f].map(c => ({ lead: c.lead, slots: { ...c.slots } }))];
-  const n = Math.max(1, Math.round(list.length * CORPS_RATIO)), rest = list.slice(1).sort((a, b) => gradeMul(b) - gradeMul(a)), corps = [list[0], ...rest.slice(0, n - 1)].map(lead => ({ lead, slots: {} }));
-  rest.slice(n - 1).forEach((key, i) => { const r = Math.floor(i / n), pos = i % n; corps[r % 2 ? n - 1 - pos : pos].slots[MEMBER_SLOTS[r]] = key; });   // snake: 1→N, N→1 순환
-  return [f, corps];
+  const fixed = (CORPS_OVERRIDE[f] || []).map(c => ({ lead: c.lead, slots: { ...c.slots } })), used = new Set(fixed.flatMap(c => [c.lead, ...Object.values(c.slots)]));   // 명세 84: 지정 편성은 앞에 두고 남은 장수는 자동 군단으로
+  const n = Math.max(1, Math.round(list.length * CORPS_RATIO)) - fixed.length; if (n <= 0) return [f, fixed];
+  const free = list.filter(k => !used.has(k)), head = fixed.length ? [] : [free.shift()], rest = free.sort((a, b) => gradeMul(b) - gradeMul(a)), corps = [...head, ...rest.slice(0, n - head.length)].map(lead => ({ lead, slots: {} }));
+  rest.slice(n - head.length).forEach((key, i) => { const r = Math.floor(i / n), pos = i % n; corps[r % 2 ? n - 1 - pos : pos].slots[MEMBER_SLOTS[r]] = key; });   // snake: 1→N, N→1 순환
+  return [f, [...fixed, ...corps]];
 }));
 const FACTION_CORPS = Object.fromEntries(Object.entries(FACTION_MEMBERS).map(([f, c]) => [f, c.map(x => x.lead)]));
 const placeMembers = (faction, n, units) => { for (const [slot, key] of Object.entries(FACTION_MEMBERS[faction][n].slots)) units[slot] = key; };
@@ -98,7 +139,7 @@ const startCity = (f, n) => { const c = factionCities(f); return c[n % c.length]
 if (Object.entries(FACTION_HEROES).some(([f, h]) => { const all = FACTION_MEMBERS[f].flatMap(c => [c.lead, ...Object.values(c.slots)]); return all.length !== h.length || new Set(all).size !== h.length || FACTION_MEMBERS[f].some(c => Object.keys(c.slots).some(k => k >= Sim.ARMY_MAX)); })) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
 // 세력 선택 화면 표시용: 시작 도시 수·군단 수
 const START_FACTION_DESC = { '여포': '기병 돌파 · 공격형', '조조': '영토 운영 · 균형형', '유비': '소수 정예 · 결속형' };
-const START_NOTICE = { '여포': '하비에서 소패·북해를 잇고 장양과의 신뢰를 활용한다.', '조조': '허창에서 진류·여남을 지키고 동맹 유비와 협력한다.', '유비': '소패에서 동맹 조조와 협력하며 하비·복양을 노린다.', '장양': '진양에서 호관을 지키고 신뢰하는 여포와 협력한다.', '공손찬': '계에서 북평·남피의 원소군과 맞선다.', '공손도': '양평에서 북평을 거쳐 유주로 진출한다.' };   // 세력별 첫 안내(명세 71 §5, 도시 이름은 시험이 실제 도시와 대조)
+const START_NOTICE = { '여포': '하비에서 소패·북해를 잇고 장양과의 신뢰를 활용한다.', '조조': '허창에서 진류·낙양을 지키고 동맹 유비와 협력한다.', '유비': '소패에서 동맹 조조와 협력하며 하비를 노린다.', '장양': '진양에서 호관을 지키고 신뢰하는 여포와 협력한다.', '공손찬': '계에서 북평·남피의 원소군과 맞선다.', '공손도': '양평에서 북평을 거쳐 유주로 진출한다.' };   // 세력별 첫 안내(명세 71 §5, 도시 이름은 시험이 실제 도시와 대조)
 const startFactionInfo = f => ({ cities: INITIAL_FACTIONS.filter(x => x === f).length, corps: FACTION_CORPS[f].length });
 const playerFaction = () => campaign.playerFaction || '여포';
 const playerCapital = () => CAPITALS[playerFaction()] || START_STAGE;
@@ -147,8 +188,8 @@ const THEME_UNITS = { plains: ['ecav', 'esword', 'earcher'], mountain: ['esword'
 const ROUT_CHANCE = { 초급: 0.09, 중급: 0.075, 상급: 0.055, 최상: 0.035 };
 const CITY_SIZES = { small: { name: '소형', units: 12, level: 1 }, medium: { name: '중형', units: 24, level: 3 }, large: { name: '대형', units: 36, level: 5 } };   // units 는 v0.1.352 이전 저장 검증·변환용(수비 정원은 이제 도시 등급 GUARD_GRADE) — level 은 병사 레벨 기준 그대로
 const GUARD_GRADE = { 초급: { units: 12, pattern: 'low' }, 중급: { units: 24, pattern: 'mid' }, 상급: { units: 36, pattern: 'high' }, 최상: { units: 54, pattern: 'top' } };   // 명세 81 B: 도시 등급별 수비 정원(군단 수 ceil(/18) = 1·2·2·3)·병사 등급 패턴(설계값). 수도는 CAPITAL_*·cap 패턴이 우선
-const LARGE_CITIES = ['chenliu','ye','puyang','xiaopei','xiapi','xuchang','luoyang','jinyang','nanpi','ji','xiangping'];
-const MEDIUM_CITIES = ['guangling','huguan','pingyuan','beihai','beiping','runan','hulao'];
+const LARGE_CITIES = ['chenliu','ye','puyang','xiaopei','xiapi','xuchang','luoyang','jinyang','nanpi','ji','xiangping','linzi','changan','hanzhong','chengdu','wan','xiangyang','jiangling','jianye'];
+const MEDIUM_CITIES = ['guangling','huguan','pingyuan','beihai','beiping','runan','hulao','shangdang','zhongshan','handan','zhuo','yuyang','pinggu','jinan','changyi','dingtao','langya','donghai','hangu','hongnong','tongguan','tianshui','wuwei','yangpingguan','jiange','jiangzhou','shouchun'];
 const citySize = s => LARGE_CITIES.includes(s.id) ? 'large' : MEDIUM_CITIES.includes(s.id) ? 'medium' : 'small';
 // 도시 특성(명세 56): 크기·지형·수도와 독립인 가치 축. 데이터는 정적이라 저장하지 않는다. 지정은 기획 판단(사료 검증 안 함).
 const KINDS = {
@@ -160,9 +201,9 @@ const KINDS = {
 };
 const CITY_KIND = {};
 for (const [kind, ids] of Object.entries({
-  granary: 'xuchang ye nanpi guangling', barracks: 'puyang xiaopei beiping',
-  fort: 'xiapi jinyang huguan hulao xiangping', trade: 'chenliu luoyang ji',
-  county: 'pingyuan beihai runan',
+  granary: 'xuchang ye nanpi guangling changyi donghai hongnong changan chengdu jiangling changsha shouchun kuaiji', barracks: 'puyang xiaopei beiping zhongshan yuyang tianshui wuwei wan',
+  fort: 'xiapi jinyang huguan hulao xiangping shangdang langya hangu tongguan yangpingguan hanzhong jiange xiangyang', trade: 'chenliu luoyang ji handan pinggu linzi jinan dingtao jiangzhou jianye',
+  county: 'pingyuan beihai runan pingyang hejian zhuo qiao anding xinye chaisang',
 })) for (const id of ids.split(' ')) CITY_KIND[id] = kind;
 const cityKind = s => KINDS[CITY_KIND[s.id]] || KINDS.county;
 const kindLine = s => { const k = cityKind(s); return `${k.name} · 산출 +${Math.round(cityYield(s))} · 보충 +${k.corps}/턴 · 비용 ${s.owner === 'player' ? refillCost(k) : k.cost}${k.lv ? ' · 수비 Lv+' + k.lv : ''}`; };
@@ -308,7 +349,7 @@ const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
 const LEGACY_MAX_LEVEL = 99;   // 명세 82: 상한 30 이전 저장의 포로 Lv 검증 한계 (읽을 때 lvCap30 이 30 으로 내린다)
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 28, SAVE_SLOTS = 3;   // v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 29, SAVE_SLOTS = 3;   // v29: 거점 18→54·장수 126명(명세 84) — v28 이하 저장은 거부하고 새 게임 안내 / v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
 let stratPractice = null;   // 명세 76: 전략 화면 실습 상태 {step,flags,snap,stepT,advT,denyT} (저장하지 않는 모듈 변수). null 이 아니면 saveCampaign·startBattle 이 막힌다
 let tutorialBattle = null;   // 명세 70: 새 게임 연습 전투 상태(저장하지 않는 모듈 변수). null 이 아니면 saveCampaign 이 막힌다
 let mapFx = null;   // 군단 이동 안내 확대 연출 상태 (명세 81 C, 저장 안 함)
@@ -2239,7 +2280,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.378', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.380', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2301,17 +2342,15 @@ function drawRelationPanel() {
   });
 }
 // ---- 지도 카메라 (명세 43 1-4): 월드 1700×1200 중 왼쪽 1000×720 만 보인다. 빈 곳 드래그·방향키·휠·Home·미니맵으로 옮긴다 ----
-const MAP_VW = 1000, MAP_MINI = { x: 10, y: 10, w: 170, h: 120 };
+const MAP_VW = 1000, MAP_MINI = { x: 10, y: 10, w: 170, h: 124 };   // 월드 2600×1900 비율 유지
 // 원작 통로의 연결을 화면 좌표로 축약한다. 산길·황하 도하는 굽은 경유점으로 표시한다.
-const MAP_ROAD_BENDS = {
-  'jinyang|ji': [[500,280],[650,180],[800,160]],
-  'huguan|luoyang': [[600,650],[470,740]],
-  'ye|chenliu': [[720,570],[680,670],[700,770]],
-  'ye|ji': [[810,320],[870,250]],
-  'puyang|beihai': [[1000,730],[1150,730]],
-  'ji|nanpi': [[970,300]], 'nanpi|beiping': [[1110,370]],
-  'pingyuan|beihai': [[1120,650]], 'beihai|xiapi': [[1320,800]],
-  'xiapi|guangling': [[1330,1010]], 'puyang|xiaopei': [[960,760]],
+const MAP_ROAD_BENDS = {   // 명세84: 명세73 굽은 길 경유점은 (+800,+200) 이동, 새 도시를 가로지르던 직통 5개는 삭제
+  'jinyang|ji': [[1300,480],[1450,380],[1600,360]],
+  'huguan|luoyang': [[1400,850],[1270,940]],
+  'ye|chenliu': [[1520,770],[1480,870],[1500,970]],
+  'ji|nanpi': [[1770,500]], 'nanpi|beiping': [[1910,570]],
+  'pingyuan|beihai': [[1920,850]], 'beihai|xiapi': [[2120,1000]],
+  'xiapi|guangling': [[2130,1210]],
 };
 function mapRoadPoints(a, b) {
   const forward = MAP_ROAD_BENDS[a.id + '|' + b.id], reverse = MAP_ROAD_BENDS[b.id + '|' + a.id];
@@ -2358,15 +2397,20 @@ const mapFree = () => state === 'map' && !custodyOpen() && !(stratTutStep >= 0 |
 const inMapMini = p => p.x >= MAP_MINI.x && p.x < MAP_MINI.x + MAP_MINI.w && p.y >= MAP_MINI.y && p.y < MAP_MINI.y + MAP_MINI.h;
 function miniJump(p) { mcam.x = (p.x - MAP_MINI.x) * (WORLD_W / MAP_MINI.w) - MAP_VW / 2; mcam.y = (p.y - MAP_MINI.y) * (WORLD_H / MAP_MINI.h) - VH / 2; clampMcam(); }
 function drawMapSea(g = ctx) {
-  g.fillStyle = '#1f6677'; g.beginPath(); g.moveTo(WORLD_W, 0); g.lineTo(1665, 0);
-  g.bezierCurveTo(1655, 60, 1660, 110, 1620, 140);
-  g.bezierCurveTo(1500, 155, 1320, 140, 1250, 205);
-  g.bezierCurveTo(1190, 255, 1230, 320, 1360, 350);
-  g.bezierCurveTo(1450, 380, 1560, 350, 1635, 390);
-  g.bezierCurveTo(1640, 500, 1680, 1050, 1650, WORLD_H);
+  g.fillStyle = '#1f6677'; g.beginPath(); g.moveTo(WORLD_W, 0); g.lineTo(2465, 0); g.lineTo(2465, 200);   // 명세84: 명세73 해안선을 (+800,+200) 이동하고 동쪽 해안을 월드 아래까지 연장
+  g.bezierCurveTo(2455, 260, 2460, 310, 2420, 340);
+  g.bezierCurveTo(2300, 355, 2120, 340, 2050, 405);
+  g.bezierCurveTo(1990, 455, 2030, 520, 2160, 550);
+  g.bezierCurveTo(2250, 580, 2360, 550, 2435, 590);
+  g.bezierCurveTo(2440, 700, 2480, 1250, 2450, 1400);
+  g.bezierCurveTo(2440, 1600, 2480, 1750, 2440, WORLD_H);
   g.lineTo(WORLD_W, WORLD_H); g.closePath(); g.fill();
 }
-const MAP_PROVINCE_LABELS = [['병주',460,480],['기주',900,390],['유주',1120,150],['청주',1150,580],['서주',1430,880],['연주',770,730],['예주',750,1120],['사례',380,940]];
+const MAP_PROVINCE_LABELS = PROVINCES.map(p => {   // 소속 도시 평균에서 가장 가까운, 어떤 도시 아이콘과도 겹치지 않는 자리
+  const c = p.ids.map(stageById), cx = c.reduce((n, s) => n + s.x, 0) / c.length, cy = c.reduce((n, s) => n + s.y, 0) / c.length, free = (x, y) => STAGES.every(s => Math.abs(s.x - x) >= 72 || y <= s.y - 62 || y >= s.y + 57), spots = [];
+  for (let dx = -480; dx <= 480; dx += 24) for (let dy = -480; dy <= 480; dy += 24) spots.push([Math.round(cx + dx), Math.round(cy + dy)]);
+  const [x, y] = spots.filter(([x, y]) => x > 60 && x < WORLD_W - 60 && y > 40 && y < WORLD_H - 40 && free(x, y)).sort((u, v) => Math.hypot(u[0] - cx, u[1] - cy) - Math.hypot(v[0] - cx, v[1] - cy))[0]; return [p.name, x, y];
+});
 const provinceUnified = name => { const cities = STAGES.filter(s => provinceOf(s) === name); return cities.length > 0 && cities.every(s => stageFaction(s) === stageFaction(cities[0])); };
 function drawCityGate(s, style, on) {
   if (s.kind === 'gate') {
@@ -2399,7 +2443,7 @@ function drawStageMap() {
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, MAP_VW, VH); ctx.clip(); if (cam.k !== 1) ctx.scale(cam.k, cam.k); ctx.translate(-ox, -oy);
   ctx.fillStyle = '#182a25'; ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   drawMapSea();
-  if (vis(1460, 245)) label('발해', 1460, 245, 27, '#b6d5da', 'center');
+  if (vis(2260, 445)) label('발해', 2260, 445, 27, '#b6d5da', 'center');
   for (const m of MAP_MOUNTAINS) {
     for (let i = 0; i < m.n; i++) {
       const x = m.x + i * m.dx, y = m.y + i * m.dy, h = m.h + (i % 3) * 7;
@@ -2415,7 +2459,7 @@ function drawStageMap() {
   YELLOW_RIVER.forEach(([x, y], i) => { if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
   for (const [width, color] of [[29, '#626b45'], [23, '#397c91'], [12, '#6ea5ac'], [3, '#a6c7bb']]) { ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); }
   ctx.restore();
-  if (vis(1130, 640)) label('황하', 1130, 640, 23, '#bce6e8', 'center');
+  if (vis(1930, 840)) label('황하', 1930, 840, 23, '#bce6e8', 'center');
   for (const s of STAGES) for (const id of s.links) if(s.id<id) {
     mapRoadPath(s,stageById(id));ctx.strokeStyle='#111b18';ctx.lineWidth=9;ctx.stroke();ctx.strokeStyle='#bca873';ctx.lineWidth=3;ctx.stroke();
   }
