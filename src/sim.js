@@ -364,14 +364,29 @@ function astar(S, u, gtx, gty, dyn) {   // 타일 A* (8방향). dyn: 다른 유�
 
 // ---------- 전투 생성 ----------
 const AIDEF = { tactics: 1, retreat: 0.1 };   // 전투 AI 기본값 — tactics: 0 기본 / 1 카이팅·지원군 / 2 전부
+// 공격·방어별 군단 배치 (명세 85): 출진한 군단만 슬롯을 쓰고(지원군·예비 군단은 슬롯을 차지하지 않는다), 한 줄 안에서 가로로 고르게 퍼져 중앙부터 채운다. 공격군은 맵 끝에서 14칸 떨어진 선봉, 방어군은 5칸 안쪽(도시 안)에서 시작한다.
+function layoutArmies(defs, attackingTeam) {
+  let enemyField = 0, reserves = false; const field = { player: [], enemy: [] };
+  defs.forEach((d, i) => {
+    if (d.team === 'player') { if (!d.support) field.player.push(i); return; }
+    const n = Math.min(d.units.length, ARMY_MAX);
+    if (!d.reserve && !reserves && enemyField + n <= ENEMY_FIELD_MAX) { enemyField += n; field.enemy.push(i); } else if (!d.reserve) reserves = true;
+  });
+  const at = new Map();
+  for (const team of ['player', 'enemy']) {
+    const cap = team === 'player' ? 3 : 5, attack = team === attackingTeam, list = field[team];
+    for (let r = 0; r * cap < list.length; r++) {
+      const row = list.slice(r * cap, (r + 1) * cap), c = row.length, xs = row.map((_, k) => Math.round((k + 1) * MW / (c + 1) - 0.5)), mid = (MW - 1) / 2;
+      xs.sort((p, q) => Math.abs(p - mid) - Math.abs(q - mid) || p - q);   // 앞 군단(군단장·원군 순)이 중앙에 선다
+      row.forEach((i, k) => at.set(i, [xs[k], team === 'player' ? 63 - (attack ? 5 : 14) - r * 5 : (attack ? 5 : 14) + r * 5]));
+    }
+  }
+  return defs.map((d, i) => ({ ...d, at: at.get(i) || d.at, role: d.team === attackingTeam ? 'attack' : 'defense' }));
+}
 function createBattle(seed = 1, opts = {}) {
   let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const sourceDefs = opts.armies || ARMIES, teamOrder = { player: 0, enemy: 0 };
-  const armyDefs = opts.attackingTeam ? sourceDefs.map(d => {
-    const n = teamOrder[d.team]++, rank = Math.floor(n / (d.team === 'player' ? 3 : 6)), attack = d.team === opts.attackingTeam;
-    const ty = d.team === 'player' ? 63 - (attack ? 5 : 14) - rank * 5 : (attack ? 5 : 14) + rank * 5;
-    return { ...d, at: [d.team === 'player' ? 10 + (n % 3) * 10 : 4 + (n % 6) * 6, ty], role: attack ? 'attack' : 'defense' };
-  }) : sourceDefs;
+  const armyDefs = opts.attackingTeam ? layoutArmies(sourceDefs, opts.attackingTeam) : sourceDefs;
   const unique = new Set();
   for (const d of armyDefs) for (const key of d.units) {
     const u = U[key];
@@ -1208,9 +1223,10 @@ function armyOrder(S, A, type, directCtrl = A.ctrl) {   // 현재 직접 조작 
   for (const u of A.units) if (live(u) && (u !== directCtrl || type === 'retreat')) { u.order = { type }; u.path = null; u.autoCharge = false; }
 }
 function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric' && !retreating(u)) { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
+const RECALL_X = [20, 19, 21, 18, 22, 17, 23, 16, 24, 15, 25, 14, 26, 13, 27];
 function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 아직 참전하지 않은 지원군만 출진할 수 있다.
   if (!u.out || u.retreated || u.fled || u.dead || u.team !== 'player') return false;
-  for (const [txs, tys] of [[[17, 18, 19, 20, 21, 22], [58, 59, 60, 57]], [[16, 23, 15, 24, 14, 25, 26, 27], [58, 59, 60, 57]]]) for (const ty of tys) for (const tx of txs) {   // 출진 구역 중앙에서 줄 맞춰 채운다
+  for (const txs of [RECALL_X.slice(0, 6), RECALL_X.slice(6)]) for (const ty of [58, 59, 60, 57, 61, 56]) for (const tx of txs) {   // 출진 구역: 중앙에서 좌우로 퍼지며 줄 맞춰 채운다 (본대가 있으면 그 옆으로 비켜 선다)
     if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === directCtrl ? 'stop' : u.army.order }; u.path = null; if (u === (directCtrl || u.army.leader)) text(S, u.x, u.y - 40, u.army.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
   }
   return false;
