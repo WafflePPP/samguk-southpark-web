@@ -154,12 +154,13 @@ function drawHorse(g, x, y, r, f, coat, t, moving) {
 }
 
 const HERO_TRANSITIONS=new WeakMap();
-function connectHeroPose(u,pose,t) {
-  const key=pose.state+':'+battleDirection(u.face),sample={...pose},old=HERO_TRANSITIONS.get(u);
+function connectHeroPose(u,pose,t,smooth=false) {
+  const key=pose.state+':'+battleDirection(u.face),old=HERO_TRANSITIONS.get(u),reset=!old||t<old.t||t-old.t>.5,moveSince=smooth&&pose.state==='move'?(reset||old.state!=='move'?t:old.moveSince??t):null,sample={...pose};
+  if(moveSince!=null)sample.walkFrame=Math.floor(Math.max(0,t-moveSince)*8)%4;
   let layers;
-  if(!old||t<old.t||t-old.t>.5)layers=[{key,pose:sample,face:u.face,weight:1}];
+  if(reset)layers=[{key,pose:sample,face:u.face,weight:1}];
   else {
-    const mix=1-Math.exp(-Math.max(0,t-old.t)/.045);
+    const mix=1-Math.exp(-Math.max(0,t-old.t)/(smooth ? .09 : .045));
     layers=old.layers.map(l=>({...l,weight:l.weight*(1-mix)}));
     const same=layers.find(l=>l.key===key);
     if(same){same.pose=sample;same.face=u.face;same.weight+=mix;}
@@ -167,7 +168,7 @@ function connectHeroPose(u,pose,t) {
     layers=layers.filter(l=>l.weight>.001).sort((a,b)=>b.weight-a.weight).slice(0,4);
     const total=layers.reduce((n,l)=>n+l.weight,0);for(const l of layers)l.weight/=total;
   }
-  HERO_TRANSITIONS.set(u,{t,layers});pose.layers=layers;return pose;
+  HERO_TRANSITIONS.set(u,{t,layers,state:pose.state,moveSince});pose.layers=layers;return pose;
 }
 // 화면만 보간하며 공격·피격 판정과 타이머는 변경하지 않는다.
 function heroPose(u, s, t) {
@@ -194,7 +195,7 @@ function heroPose(u, s, t) {
   if (u.dashQ && u.dashQ.length) { pose.state = 'dash'; pose.angle = u.face; pose.reach = 10; pose.lean = 0.22 * Math.cos(u.face); pose.bob = Math.abs(Math.sin(t * 24)) * 3; }
   if (u.hitT > 0 || u.stun > 0 || u.knockQ && u.knockQ.length) { pose.state = u.hitState > 0 ? 'guard' : 'hurt'; pose.angle = u.face + (pose.state === 'guard' ? -0.5 : 1.5); pose.reach = -3; pose.glow = null; pose.lean = 0; }
   pose.breath=Math.sin(t*2.2+(u.id||0))*.007;
-  return connectHeroPose(u,pose,t);
+  pose.smooth=u.key==='lubu'&&s.lubuMotion;return connectHeroPose(u,pose,t,pose.smooth);
 }
 
 // 로비·전략·상세도 전투와 같은 캐릭터 이미지를 사용한다.
@@ -453,7 +454,7 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
     const walking=['move','dash'].includes(p.state),f=walking?p.walkFrame??Math.floor((o.t||0)*8)%4:p.trail>0?Math.min(3,Math.floor((p.progress||0)*4)):0;
     let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
     const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state,kind=model.attacks?.[action]?action:null;
-    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<.12||progress>.88;image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
+    if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<(p.smooth ? .2 : .12)||progress>(p.smooth ? .84 : .88);image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
     return {...l,m,image,height:height||battleFrameHeight(image)};
   });
   const motion={x:0,y:0,turn:0,stretch:0};for(const l of samples)for(const k of Object.keys(motion))motion[k]+=l.m[k]*l.weight;
