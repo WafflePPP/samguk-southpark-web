@@ -1,0 +1,9 @@
+[
+  {"key":"warrior","name":"무장 보병","actions":["thrust","slash"],"prompt":"여포 v381의 굵은 픽셀·큰 머리와 장화·단순 명암으로 만든 적흑 갑옷 보병 무장. 8x7 대기·보행·찌르기·베기."},
+  {"key":"archer","name":"궁장","actions":["shoot","slash"],"prompt":"여포 v381 화풍의 청동 투구·붉은 망토·백수염 궁장. 8x7 대기·보행·사격·회수."},
+  {"key":"cavalry","name":"기마 창장","actions":["thrust","slash"],"prompt":"여포 v381 화풍의 자색 망토 남성 기마 창장과 작은 갈색 말. 8x7 대기·보행·찌르기·베기."},
+  {"key":"strategist","name":"책사","actions":["cast","heal"],"prompt":"여포 v381 화풍의 흑색 관모·자색 관복·백우선 남성 책사. 8x7 대기·보행·시전·회복."},
+  {"key":"heavy","name":"중장 보병","actions":["thrust","slash"],"prompt":"여포 v381과 같은 얼굴 크기의 넓은 체격·흑적 중갑 보병. 8x7 대기·보행·찌르기·베기."},
+  {"key":"female_strategist","name":"여성 책사","actions":["cast","heal"],"prompt":"여포 v381 화풍의 긴 흑갈색 머리·분홍 장식·부채 여성 책사. 8x7 대기·보행·시전·회복."},
+  {"key":"female_cavalry","name":"여성 기마 창장","actions":["thrust","slash"],"prompt":"여포 v381 화풍의 긴 흑발·흑은 갑옷·자색 장식 여성 기마 창장과 작은 흑마. 8x7 대기·보행·찌르기·베기."}
+]

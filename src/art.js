@@ -245,6 +245,10 @@ const STRONG_GAO_KEYS=['gao'];
 const TROOP_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],f_bing:['f_bing','f_bing_enemy']};
 const LUBU_FACE_REWORK_KEYS=['f_bing'];
 const LUBU_COMMON_REWORK_BINDINGS={troop_sword:['lubu_sword'],troop_spear:['lubu_spear'],troop_archer:['lubu_archer'],troop_mage:['lubu_mage']};
+const LUBU_FACTION_HERO_BINDINGS={
+  warrior:['haomeng','weixu','houcheng','songxian','zhangchao','xuelan','lifeng_lu','lijue'],archer:['caoxing','zhangmiao'],
+  cavalry:['jang','chenglian'],strategist:['chengong','xusi','wangkai'],female_strategist:['diao'],heavy:['gao','dong','hua'],female_cavalry:['lulingqi']
+};
 const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 const FINAL_HERO_REWORK_KEYS=['wen','xiahouyuan','xuchu','guo','sima','kong','zhao','diao','huang','captain','jang','gong','machao','xuhuang','dong','xun','hua','zhangliao'];
 const FINAL_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],troop_archer:['ally_archer','archer'],troop_cav:['ally_cav','cav'],troop_mage:['mage','emage'],f_nu:['f_nu','f_nu_enemy'],f_ji:['f_ji','f_ji_enemy'],f_qing:['f_qing','f_qing_enemy'],f_hubao:['f_hubao','f_hubao_enemy'],f_bai:['f_bai','f_bai_enemy'],f_dan:['f_dan','f_dan_enemy']};
@@ -271,8 +275,8 @@ function loadBattleArt() {
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
-  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v381',381],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342]])parts.push(await manifest(folder,version));return parts;};
-  BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops])=>{
+  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v381',381],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387]])parts.push(await manifest(folder,version));return parts;};
+  BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
     if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
@@ -281,8 +285,8 @@ function loadBattleArt() {
     if(strongGao.length!==STRONG_GAO_KEYS.length||STRONG_GAO_KEYS.some(k=>!strongGao.some(h=>h.key===k)))throw new Error('여포 체격 고순 외형 누락');
     if(lulingqiStyle.length!==1||lulingqiStyle[0].key!=='lulingqi')throw new Error('여령기 수채화 외형 누락');
     if(lubuFaceTroops.length!==LUBU_FACE_REWORK_KEYS.length||LUBU_FACE_REWORK_KEYS.some(k=>!lubuFaceTroops.some(h=>h.key===k)))throw new Error('여포 얼굴 기준 병종 누락');
-    if(!complete(lubuCommonTroops,LUBU_COMMON_REWORK_BINDINGS)||!complete(finalHeroes,Object.fromEntries(FINAL_HERO_REWORK_KEYS.map(k=>[k,[k]])))||!complete(finalTroops,FINAL_REWORK_BINDINGS))throw new Error('전체 리워크 외형 누락');
-    for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat(),...Object.values(LUBU_COMMON_REWORK_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
+    if(!complete(lubuCommonTroops,LUBU_COMMON_REWORK_BINDINGS)||!complete(finalHeroes,Object.fromEntries(FINAL_HERO_REWORK_KEYS.map(k=>[k,[k]])))||!complete(finalTroops,FINAL_REWORK_BINDINGS)||!complete(lubuFactionHeroes,LUBU_FACTION_HERO_BINDINGS))throw new Error('전체 리워크 외형 누락');
+    for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat(),...Object.values(LUBU_COMMON_REWORK_BINDINGS).flat(),...Object.values(LUBU_FACTION_HERO_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
     // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
     BATTLE_ART.terrain=images[0];BATTLE_ART.reference=images[1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[0],b));
     await each(shuStyle,async h=>{
@@ -331,6 +335,11 @@ function loadBattleArt() {
       const enemy=keys.length===2?h.frames.map(b=>extractTroopSprite(image,b,true,scale)):frames;
       installAtlasRework(h,frames,enemy,keys);
     });
+    await each(lubuFactionHeroes,async h=>{
+      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 세력 장수 동작 누락: '+h.key);
+      const image=await load('src/assets/lubu-faction-v387/'+h.file,387),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
+    });
     for(const [key,model]of BATTLE_ART.models)if(model.idle?.length!==8||model.directions?.length!==8)throw new Error('캐릭터 리워크 연결 누락: '+key);
     BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
@@ -342,7 +351,7 @@ const BATTLE_UNIT_RADIUS=8.5;
 const FACE_SCALE={ally_sword:.8,ally_shield:.8,liubei:.67,guan:.8,zhao:.95,jang:.95,gong:.95,lulingqi:.95,xiahouyuan:.95,machao:.95,xuhuang:.95,yan:1,wen:.95,zhangliao:.95,diao:.95,dian:1,huang:.95,kong:.95,captain:.95,hua:.95,gao:1,cao:1,xia:1,zhangfei:.9,xun:.95,ally_archer:.8,ally_cav:.8,mage:.8,f_xian:.8,f_bing:.97,f_nu:.8,f_ji:.8,f_qing:.8,f_hubao:.8,f_bai:.8,f_dan:.8,yuan:1,sima:.95,xuchu:.95,dong:.95,guo:.95,soldier:.8,archer:.8,shield:.8,cav:.8,emage:.8,lubu_sword:.8,lubu_spear:.8,lubu_archer:.8,lubu_mage:.8};
 const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=1.03*1.3;
 // 얼굴 비율은 리소스 내부에서 맞추고, 표시는 기마4.8·보병3.6의 외형 크기 차이를 유지한다.
-const LUBU_FACE_SCALE={lubu:LUBU_SCALE,jang:.95,diao:LULINGQI_SCALE,gao:LULINGQI_SCALE,chengong:LULINGQI_SCALE,lulingqi:LULINGQI_SCALE,f_xian:.8,f_bing:.97};
+const LUBU_FACE_SCALE={lubu:LUBU_SCALE,f_xian:.8,f_bing:.97};
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
 function battleFrameHeight(image){return image.bodyHeight>0?image.bodyHeight/.8:image.height;}
 function animationFrameHeight(frames){const heights=frames.map(battleFrameHeight).sort((a,b)=>a-b);return heights[Math.floor(heights.length/2)];}

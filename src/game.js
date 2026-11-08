@@ -1700,14 +1700,14 @@ function button(id, x, y, w, h, text, on, size = 16, o) {   // o(명세 80, 전�
 }
 const trainLabel = () => (campaign.training || []).length ? `훈련 (예약 ${campaign.training.length}명)` : '훈련';   // 명세 83 R9
 const sprOff = id => !!(stratPractice && stratPractice.step >= 1 && stratPractice.step <= 6 && !practiceAllows(id));   // 명세 80 R3: 실습 중 허용 목록 밖 버튼은 흐리게(사유는 배너)
-const LUBU_ART_KEYS=new Set(['lubu','jang','diao','gao','chengong','lulingqi','f_xian','f_bing']);
+const LUBU_ART_KEYS=new Set([...FACTION_HEROES['여포'],'f_xian','f_bing']);
 const LUBU_COMMON_ART={sword:'lubu_sword',spear:'lubu_spear',archer:'lubu_archer',mage:'lubu_mage',healer:'lubu_mage'};
 const CAO_ART_KEYS=new Set([...FACTION_HEROES['조조'],'f_qing','f_hubao']);
 const LIU_ART_KEYS=new Set([...FACTION_HEROES['유비'],'f_bai','f_dan']);
 const factionUnit=(u,faction,keys)=>keys.has(u.key)||u.army?.name?.startsWith(faction+'군')||!Sim.GRADE[u.key]&&u.team==='player'&&playerFaction()===faction&&!u.army?.name?.includes('동맹군')||u.team==='enemy'&&enemyForces.some(f=>f.id===u.forceId&&forceFaction(f)===faction);
 const lubuFactionUnit=u=>factionUnit(u,'여포',LUBU_ART_KEYS),caoFactionUnit=u=>factionUnit(u,'조조',CAO_ART_KEYS),liuFactionUnit=u=>factionUnit(u,'유비',LIU_ART_KEYS);
 const WEAPON_OF = { sword: ['sword', 'twin'], spear: ['spear', 'lance', 'glaive', 'halberd'] };   // 검병·창병 장수의 무기는 병종에 맞는 것만 고정으로 인정한다 (서황의 도끼·대극사의 극 등 안 맞는 고정 무기는 병종 무기로 바꾼다)
-const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=liuFactionUnit(u),common=(lubu||cao||liu)&&LUBU_COMMON_ART[u.key];let style = STYLES[common||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,sizeScale:LUBU_FACE_SCALE[u.key]};if(cao)style={...style,sizeScale:(u.named||u.key==='f_hubao') ? .95 : .8,caoMotion:true};if(liu)style={...style,sizeScale:(u.named||u.category==='cavalry') ? .95 : .8,liuMotion:true};if(lubu)style={...style,lubuMotion:true};   // 세력별 실제 얼굴 기준, 장식·무기 제외
+const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=liuFactionUnit(u),common=(lubu||cao||liu)&&LUBU_COMMON_ART[u.key];let style = STYLES[common||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,battleStyle:u.key,sizeScale:LUBU_FACE_SCALE[u.key]??.95};if(cao)style={...style,sizeScale:(u.named||u.key==='f_hubao') ? .95 : .8,caoMotion:true};if(liu)style={...style,sizeScale:(u.named||u.category==='cavalry') ? .95 : .8,liuMotion:true};if(lubu)style={...style,lubuMotion:true};   // 여포군 장수는 세력 전용 도트, 병사는 병종 공통 도트를 사용
   return u.key !== 'guan' && !(style.fixedWeapon && WEAPON_OF[u.category]?.includes(style.weapon)) && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
 const stText = u => u.captured ? '포박' : u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
 const hpCol = (p, current = COLORS.ally) => p > 0.3 ? current : p > 0.1 ? '#999999' : COLORS.danger;
@@ -2281,7 +2281,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.386', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.387', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
