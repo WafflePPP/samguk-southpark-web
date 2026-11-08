@@ -249,6 +249,21 @@ const LUBU_FACTION_HERO_BINDINGS={
   warrior:['haomeng','weixu','houcheng','songxian','zhangchao','xuelan','lifeng_lu','lijue'],archer:['caoxing','zhangmiao'],
   cavalry:['jang','chenglian'],strategist:['chengong','xusi','wangkai'],female_strategist:['diao'],heavy:['gao','dong','hua'],female_cavalry:['lulingqi']
 };
+// A등급 이상 장수(여포 세력 제외): 여포 세력 v387 역할 시트의 강조색(빨강·보라)을 장수별 색으로 다시 칠해 개별 외형으로 쓴다. [시트, 색상°, 채도, 명도+, 명도×]
+const A_HERO_ART={yuan:['warrior',45,.8,0,1.1],yan:['cavalry',15,.85,0,1],wen:['cavalry',175,.6,0,1],tianfeng:['strategist',130,.45,0,1],
+  cao:['warrior',220,.65,0,1],xia:['warrior',235,.55,0,.85],xiahouyuan:['cavalry',200,.6,0,1],dian:['heavy',225,.25,0,.7],zhanghe:['warrior',190,.6,0,1],guo:['strategist',200,.5,.1,1],xun:['strategist',240,.45,0,1],sima:['strategist',0,0,0,.6],xuchu:['heavy',35,.55,0,1],caoren:['heavy',210,.6,0,1],xuhuang:['cavalry',215,.35,0,1],jiaxu:['strategist',165,.4,0,.8],
+  liubei:['warrior',95,.55,0,1],guan:['warrior',140,.65,0,1],zhangfei:['heavy',0,0,0,.55],zhao:['cavalry',210,.12,.35,.75],kong:['strategist',205,.08,.45,.6],pangtong:['strategist',40,.35,0,.9],fazheng:['strategist',155,.5,0,1],weiyan:['warrior',25,.75,0,1],huang:['archer',110,.55,0,1],machao:['cavalry',195,.3,.3,.8],
+  gong:['cavalry',48,.3,.35,.75]};
+function recolorHeroPixels(d,[,h,s,la,lm]){   // RGBA 배열을 제자리에서 바꾼다. 피부·갈색(색상 15~30°)·무채색은 그대로 둔다
+  for(let i=0;i<d.length;i+=4){
+    if(d[i+3]<8)continue;const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,dd=mx-mn;if(dd<.06)continue;
+    const sat=dd/(1-Math.abs(2*l-1)),hue=(mx===r?((g-b)/dd+6)%6:mx===g?(b-r)/dd+2:(r-g)/dd+4)*60;
+    if(!((hue>=340||hue<=12)&&sat>.4||hue>=235&&hue<=325&&sat>.05))continue;
+    const L=Math.min(1,la+lm*l),S=s*Math.min(1,sat/.6),q=L<.5?L*(1+S):L+S-L*S,p=2*L-q,f=t=>{t=(t+1)%1;return t<1/6?p+(q-p)*6*t:t<.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p;};
+    d[i]=f(h/360+1/3)*255;d[i+1]=f(h/360)*255;d[i+2]=f(h/360-1/3)*255;
+  }
+}
+function recolorHeroSheet(image,spec){const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(image,0,0);const px=g.getImageData(0,0,c.width,c.height);recolorHeroPixels(px.data,spec);g.putImageData(px,0,0);return c;}
 const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 const FINAL_HERO_REWORK_KEYS=['wen','xiahouyuan','xuchu','guo','sima','kong','zhao','diao','huang','captain','jang','gong','machao','xuhuang','dong','xun','hua','zhangliao'];
 const FINAL_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],troop_archer:['ally_archer','archer'],troop_cav:['ally_cav','cav'],troop_mage:['mage','emage'],f_nu:['f_nu','f_nu_enemy'],f_ji:['f_ji','f_ji_enemy'],f_qing:['f_qing','f_qing_enemy'],f_hubao:['f_hubao','f_hubao_enemy'],f_bai:['f_bai','f_bai_enemy'],f_dan:['f_dan','f_dan_enemy']};
@@ -338,6 +353,7 @@ function loadBattleArt() {
       if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 세력 장수 동작 누락: '+h.key);
       const image=await load('src/assets/lubu-faction-v387/'+h.file,387),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
+      for(const [key,spec]of Object.entries(A_HERO_ART))if(spec[0]===h.key){const sheet=recolorHeroSheet(image,spec),own=h.frames.map(b=>extractBattleSprite(sheet,b,false,200));installAtlasRework(h,own,own,['a_'+key]);}
     });
     for(const [key,model]of BATTLE_ART.models)if(model.idle?.length!==8||model.directions?.length!==8)throw new Error('캐릭터 리워크 연결 누락: '+key);
     BATTLE_ART.ready=true;
