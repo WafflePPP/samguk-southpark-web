@@ -122,12 +122,13 @@ const FACTION_HEROES = {   // 명세 71: 도시 수 × 2 (원소 10도시 : 20�
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
 // 군단 편성 (명세 55): 기동 군단 수 = 장수 수 × 30%(최소 1). 군주가 첫 군단장, 군단장은 나머지 중 등급 높은 순. 남는 장수는 등급순 snake 분배로 슬롯 6·12(7·13번째 칸)·1·2·3·4·5… 에 배치. 3번째마다 원정군.
-const CORPS_RATIO = 0.3, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
+const CORPS_RATIO = 0.3, CORPS_COUNT = { '원소': 8, '조조': 8 }, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
 const gradeMul = k => Sim.GRADE_MUL[Sim.GRADE[k]];
 const CORPS_OVERRIDE = { '유비': [{ lead: 'liubei', slots: { 6: 'guan', 12: 'zhangfei', 1: 'zhao' } }, { lead: 'mizhu', slots: { 6: 'jianyong', 12: 'sunqian' } }] };   // 사용자 지정 편성: 군주 군단(유비·관우·장비·조운) / 2군단(미축·간옹·손건)
 const FACTION_MEMBERS = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, list]) => {
   const fixed = (CORPS_OVERRIDE[f] || []).map(c => ({ lead: c.lead, slots: { ...c.slots } })), used = new Set(fixed.flatMap(c => [c.lead, ...Object.values(c.slots)]));   // 명세 84: 지정 편성은 앞에 두고 남은 장수는 자동 군단으로
-  const n = Math.max(1, Math.round(list.length * CORPS_RATIO)) - fixed.length; if (n <= 0) return [f, fixed];
+  const n = (CORPS_COUNT[f] || Math.max(1, Math.round(list.length * CORPS_RATIO))) - fixed.length;   // CORPS_COUNT: 군량 유지비 때문에 대국(원소·조조) 군단 수를 고정 (게임성 검증 2026-11-08)
+  if (n <= 0) return [f, fixed];
   const free = list.filter(k => !used.has(k)), head = fixed.length ? [] : [free.shift()], rest = free.sort((a, b) => gradeMul(b) - gradeMul(a)), corps = [...head, ...rest.slice(0, n - head.length)].map(lead => ({ lead, slots: {} }));
   rest.slice(n - head.length).forEach((key, i) => { const r = Math.floor(i / n), pos = i % n; corps[r % 2 ? n - 1 - pos : pos].slots[MEMBER_SLOTS[r]] = key; });   // snake: 1→N, N→1 순환
   return [f, [...fixed, ...corps]];
@@ -226,9 +227,9 @@ const allForces = () => enemyForces.concat(cityGuards);
 const forceById = id => enemyForces.find(f => f.id === id) || cityGuards.find(f => f.id === id);
 // 수도 수비병 (명세 62 B): 정원 54(3군단)·정예 B 90%·방패3 궁4 검2 창1 순환, 2턴마다 max(guard,4)+3 명 보충. 4개 수도 동일 규칙(세력 보정 CAPITAL_EXTRA 는 측정 후 필요하면).
 const CAPITAL_GUARD = 54, CAPITAL_REFILL = { every: 2, min: 4, plus: 3 }, CAPITAL_POOL = ['shield', 'archer', 'sword', 'archer', 'spear', 'shield', 'archer', 'sword', 'archer', 'shield'];
-const CAPITAL_EXTRA = { '여포': { guard: -36, refill: 0 }, '원소': { guard: -36, refill: 0 }, '조조': { guard: -36, refill: 0 }, '유비': { guard: -18, refill: 0 }, '장양': { guard: 0, refill: 0 }, '공손찬': { guard: 0, refill: 0 }, '공손도': { guard: 0, refill: 0 } };   // 세력별 수도 보정 노브(명세 62 B2): guard=정원 추가(18 의 배수 권장), refill=2턴 보충 추가. 소유 세력 기준이라 수도를 점령하면 점령자의 값을 따른다. 명세 67: 군단 수가 절반이라 여포·원소·조조 수도 정원을 54→18 로 낮췄다(54 에서는 외교 ON 승 1/12·수도가 너무 단단해 전 도시 점령 불가, 36 도 1/12, 18 에서 8/12 = 기준선 8/12). 유비는 54 (18 에서는 수도 분포 FAIL). v0.1.305: 관우 개편(유비 2군단) 뒤 수도 18 에서 noDiplo 60턴 생존이 유비 31%·공손찬 13%(세력별 ≥35% 미달)였다. 후보 비교(S0S=0,8 measure62 noDiplo 8, 유비/공손찬 수도 정원): 54/54 → 유비 75%·공손찬 50%·전체 턴10↓ 10%·턴20↓ 23%·생존 72% 이지만 turtle 전투 0회 44%·유비 첫 접촉 11/12 로 과함 / 36/36 → 38%·19%(공손찬 미달) / **36/54 채택** → 유비 38%·공손찬 50%·전체 턴10↓ 16%·턴20↓ 31%·생존 63%·turtle-net 순기여 +8%p. 근거: 1도시 시작 + 접경 원소(공손찬|원소 −80) 압박(명세 71 §4)이라 수도가 유일한 완충. 대형 일반 도시(36)보다 수도(18)가 작은 것은 의도된 설계값(측정 기반, 명세 67 후속 확정) — 표시는 자기 정원 기준이라 '수비 n/18' 로 어색하지 않다
+const CAPITAL_EXTRA = { '여포': { guard: -18, refill: 0 }, '원소': { guard: -18, refill: 0 }, '조조': { guard: -18, refill: 0 }, '유비': { guard: 0, refill: 0 }, '장양': { guard: 0, refill: 0 }, '공손찬': { guard: 0, refill: 0 }, '공손도': { guard: 0, refill: 0 } };   // 세력별 수도 보정 노브(명세 62 B2): guard=정원 추가(18 의 배수 권장), refill=2턴 보충 추가. 소유 세력 기준이라 수도를 점령하면 점령자의 값을 따른다. 명세 67: 군단 수가 절반이라 여포·원소·조조 수도 정원을 54→18 로 낮췄다(54 에서는 외교 ON 승 1/12·수도가 너무 단단해 전 도시 점령 불가, 36 도 1/12, 18 에서 8/12 = 기준선 8/12). 유비는 54 (18 에서는 수도 분포 FAIL). v0.1.305: 관우 개편(유비 2군단) 뒤 수도 18 에서 noDiplo 60턴 생존이 유비 31%·공손찬 13%(세력별 ≥35% 미달)였다. 후보 비교(S0S=0,8 measure62 noDiplo 8, 유비/공손찬 수도 정원): 54/54 → 유비 75%·공손찬 50%·전체 턴10↓ 10%·턴20↓ 23%·생존 72% 이지만 turtle 전투 0회 44%·유비 첫 접촉 11/12 로 과함 / 36/36 → 38%·19%(공손찬 미달) / **36/54 채택** → 유비 38%·공손찬 50%·전체 턴10↓ 16%·턴20↓ 31%·생존 63%·turtle-net 순기여 +8%p. 근거: 1도시 시작 + 접경 원소(공손찬|원소 −80) 압박(명세 71 §4)이라 수도가 유일한 완충. 대형 일반 도시(36)보다 수도(18)가 작은 것은 의도된 설계값(측정 기반, 명세 67 후속 확정) — 표시는 자기 정원 기준이라 '수비 n/18' 로 어색하지 않다
 const capExtra = s => CAPITAL_EXTRA[stageFaction(s)] || {};
-const capitalSizes = () => [...new Set([CAPITAL_GUARD, ...Object.values(CAPITAL_EXTRA).map(e => CAPITAL_GUARD + (e.guard || 0))])];   // 저장 검증용: 허용되는 수도 정원 전부
+const capitalSizes = () => [...new Set([CAPITAL_GUARD, 18, ...Object.values(CAPITAL_EXTRA).map(e => CAPITAL_GUARD + (e.guard || 0))])];   // 저장 검증용: 허용되는 수도 정원 전부
 const capitalRefill = s => Math.max(cityKind(s).guard, CAPITAL_REFILL.min) + CAPITAL_REFILL.plus + (capExtra(s).refill || 0);
 const guardCap = s => isDefenseCapital(s) ? CAPITAL_GUARD + (capExtra(s).guard || 0) : GUARD_GRADE[s.grade].units;
 const guardGradeAt = (s, idx) => Sim.GRADE_PATTERN[isDefenseCapital(s) ? 'cap' : GUARD_GRADE[s.grade].pattern][idx % 10];   // 수비 병사 등급: 수도 cap 패턴, 그 밖은 도시 등급 패턴 (idx = 수비군 안의 칸 번호)
@@ -2280,7 +2281,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.384', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.386', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
