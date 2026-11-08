@@ -1,0 +1,7 @@
+[
+  {
+    "key": "lubu",
+    "references": ["../lubu-faction-v387/warrior.png", "../lubu-v381/idle.png"],
+    "prompt": "Redraw Lu Bu as an 8-direction 8x7 pixel-art atlas. Match warrior.png exactly for chunky chibi body proportions, head-to-body ratio, boot size, silhouette width, occupied height, spacing and action timing. Preserve the clean-shaven youthful face, spiky orange-brown hair, red scarf, sleeveless dark gray top, blue waist sash, brown trousers, oversized tan boots and simple long spear from idle.png. Rows: idle, two walk rows, two thrust rows, two slash/recovery rows. Transparent background; one complete character per cell; no text, grid, glow, scenery, detached pixels or neighboring-cell overlap."
+  }
+]
