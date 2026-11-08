@@ -249,11 +249,9 @@ const LUBU_FACTION_HERO_BINDINGS={
   warrior:['haomeng','weixu','houcheng','songxian','zhangchao','xuelan','lifeng_lu','lijue'],archer:['caoxing','zhangmiao'],
   cavalry:['jang','chenglian'],strategist:['chengong','xusi','wangkai'],female_strategist:['diao'],heavy:['gao','dong','hua'],female_cavalry:['lulingqi']
 };
-// A등급 이상 장수(여포 세력 제외): 여포 세력 v387 역할 시트의 강조색(빨강·보라)을 장수별 색으로 다시 칠해 개별 외형으로 쓴다. [시트, 색상°, 채도, 명도+, 명도×]
-const A_HERO_ART={yuan:['warrior',45,.8,0,1.1],yan:['cavalry',15,.85,0,1],wen:['cavalry',175,.6,0,1],tianfeng:['strategist',130,.45,0,1],
-  cao:['warrior',220,.65,0,1],xia:['warrior',235,.55,0,.85],xiahouyuan:['cavalry',200,.6,0,1],dian:['heavy',225,.25,0,.7],zhanghe:['warrior',190,.6,0,1],guo:['strategist',200,.5,.1,1],xun:['strategist',240,.45,0,1],sima:['strategist',0,0,0,.6],xuchu:['heavy',35,.55,0,1],caoren:['heavy',210,.6,0,1],xuhuang:['cavalry',215,.35,0,1],jiaxu:['strategist',165,.4,0,.8],
-  liubei:['warrior',95,.55,0,1],guan:['warrior',140,.65,0,1],zhangfei:['heavy',0,0,0,.55],zhao:['cavalry',210,.12,.35,.75],kong:['strategist',205,.08,.45,.6],pangtong:['strategist',40,.35,0,.9],fazheng:['strategist',155,.5,0,1],weiyan:['warrior',25,.75,0,1],huang:['archer',110,.55,0,1],machao:['cavalry',195,.3,.3,.8],
-  gong:['cavalry',48,.3,.35,.75]};
+// 고유 이미지가 없던 A등급 이상 장수(전풍·장합·조인·가후·방통·법정·위연): 여포 세력 v387 역할 시트의 강조색(빨강·보라)을 장수별 색으로 다시 칠해 쓴다. [시트, 색상°, 채도, 명도+, 명도×]
+// 고유 이미지가 있는 A등급 이상 20명은 기존 고유 시트(heroes-v314·v335·v339)를 그대로 쓴다. 고유 도형을 새로 만들면 이 표에서 빼고 같은 'a_' 키에 연결한다
+const A_HERO_ART={tianfeng:['strategist',130,.45,0,1],zhanghe:['warrior',190,.6,0,1],caoren:['heavy',210,.6,0,1],jiaxu:['strategist',165,.4,0,.8],pangtong:['strategist',40,.35,0,.9],fazheng:['strategist',155,.5,0,1],weiyan:['warrior',25,.75,0,1]};
 function recolorHeroPixels(d,[,h,s,la,lm]){   // RGBA 배열을 제자리에서 바꾼다. 피부·갈색(색상 15~30°)·무채색은 그대로 둔다
   for(let i=0;i<d.length;i+=4){
     if(d[i+3]<8)continue;const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,dd=mx-mn;if(dd<.06)continue;
