@@ -1,0 +1,9 @@
+[
+  {"key":"liubei","name":"유비","references":["../heroes-v335/liubei.png","../lubu-v390/lubu.png"],"prompt":"기존 유비의 금장 관·검은 머리·주황금 갑옷·녹색 망토·직검을 유지한 여포 v390 화풍 8x7 시트."},
+  {"key":"guan","name":"관우","references":["../heroes-v335/guan.png","../lubu-v390/lubu.png"],"prompt":"기존 관우의 붉은 얼굴·긴 수염·녹색 두건과 갑옷·청룡언월도를 유지한 여포 v390 화풍 8x7 시트."},
+  {"key":"zhangfei","name":"장비","references":["../heroes-v335/zhangfei.png","../lubu-v390/lubu.png"],"prompt":"기존 장비의 굵은 수염·붉은 두건·흑갈색 중갑·장팔사모를 유지한 여포 v390 화풍 8x7 시트."},
+  {"key":"zhao","name":"조운","references":["../heroes-v339/zhao.png","../lubu-v390/lubu.png"],"prompt":"은색 투구·흰 깃털·청색 망토와 창·흰 말을 유지한 여포 v390 화풍 기마 8x7 시트."},
+  {"key":"kong","name":"제갈량","references":["../heroes-v339/kong.png","../lubu-v390/lubu.png"],"prompt":"제갈량의 높은 흑색 관·청백 도포·백우선을 유지한 여포 v390 화풍 시전/회복 8x7 시트."},
+  {"key":"huang","name":"황충","references":["../heroes-v339/huang.png","../lubu-v390/lubu.png"],"prompt":"황충의 흰 수염·붉은 깃 청동 투구·흑적 갑옷·활과 화살통을 유지한 여포 v390 화풍 8x7 시트."},
+  {"key":"machao","name":"마초","references":["../heroes-v339/machao.png","../lubu-v390/lubu.png"],"prompt":"마초의 금발 말총·은색 투구·흰 모피·청백 갑옷·금장 창·흰 말을 유지한 여포 v390 화풍 기마 8x7 시트."}
+]
