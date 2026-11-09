@@ -253,32 +253,33 @@ const LUBU_FACTION_HERO_BINDINGS={
 // 고유 이미지가 있는 A등급 이상 20명은 기존 고유 시트(heroes-v314·v335·v339)를 그대로 쓴다. 고유 도형을 새로 만들면 이 표에서 빼고 같은 'a_' 키에 연결한다
 const A_HERO_ART={tianfeng:['strategist',130,.45,0,1],zhanghe:['warrior',190,.6,0,1],caoren:['heavy',210,.6,0,1],jiaxu:['strategist',165,.4,0,.8],pangtong:['strategist',40,.35,0,.9],fazheng:['strategist',155,.5,0,1],weiyan:['warrior',25,.75,0,1]};
 const A_UNIQUE_HERO_KEYS=['yuan','yan','wen'];
+const A_HERO_MODEL_KEYS=new Set([...Object.keys(A_HERO_ART),...A_UNIQUE_HERO_KEYS]);   // 그림 키 'a_'+장수키 를 쓰는 A등급 장수 전체 (styleOf·시험은 이 집합만 본다)
 function recolorHeroPixels(d,[,h,s,la,lm]){   // RGBA 배열을 제자리에서 바꾼다. 피부·갈색(색상 15~30°)·무채색은 그대로 둔다
   for(let i=0;i<d.length;i+=4){
     if(d[i+3]<8)continue;const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,dd=mx-mn;if(dd<.06)continue;
     const sat=dd/(1-Math.abs(2*l-1)),hue=(mx===r?((g-b)/dd+6)%6:mx===g?(b-r)/dd+2:(r-g)/dd+4)*60;
-    if(!((hue>=340||hue<=12)&&sat>.4||hue>=235&&hue<=325&&sat>.05))continue;
+    if(l>=.8||!((hue>=340||hue<=12)&&sat>.4||hue>=235&&hue<=325&&sat>.05))continue;   // 보라 관복은 채도가 낮아 .05 까지 받는다. 흰 소매·깃털의 옅은 분홍·보라 그림자(밝기 .8 이상)는 제외
     const L=Math.min(1,la+lm*l),S=s*Math.min(1,sat/.6),q=L<.5?L*(1+S):L+S-L*S,p=2*L-q,f=t=>{t=(t+1)%1;return t<1/6?p+(q-p)*6*t:t<.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p;};
     d[i]=f(h/360+1/3)*255;d[i+1]=f(h/360)*255;d[i+2]=f(h/360-1/3)*255;
   }
 }
-function recolorHeroSheet(image,spec){const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(image,0,0);const px=g.getImageData(0,0,c.width,c.height);recolorHeroPixels(px.data,spec);g.putImageData(px,0,0);return c;}
 const REMAINING_REWORK_BINDINGS={"huang":["huang"],"captain":["captain"],"hua":["hua"],"jang":["jang"],"gong":["gong"],"lulingqi":["lulingqi"],"zhangfei":["zhangfei"],"machao":["machao"],"xuhuang":["xuhuang"],"dong":["dong"],"xun":["xun"],"troop_archer":["ally_archer","archer"],"troop_cav":["ally_cav","cav"],"troop_mage":["mage","emage"],"f_nu":["f_nu","f_nu_enemy"],"f_ji":["f_ji","f_ji_enemy"],"f_qing":["f_qing","f_qing_enemy"],"f_hubao":["f_hubao","f_hubao_enemy"],"f_bai":["f_bai","f_bai_enemy"],"f_dan":["f_dan","f_dan_enemy"]};
 const FINAL_HERO_REWORK_KEYS=['wen','xiahouyuan','xuchu','guo','sima','kong','zhao','diao','huang','captain','jang','gong','machao','xuhuang','dong','xun','hua','zhangliao'];
 const FINAL_REWORK_BINDINGS={troop_sword:['ally_sword','soldier'],troop_spear:['ally_spear','enemy_spear'],troop_sword_shield:['ally_shield','shield_sword'],troop_spear_shield:['ally_shield_spear','shield'],f_xian:['f_xian','f_xian_enemy'],troop_archer:['ally_archer','archer'],troop_cav:['ally_cav','cav'],troop_mage:['mage','emage'],f_nu:['f_nu','f_nu_enemy'],f_ji:['f_ji','f_ji_enemy'],f_qing:['f_qing','f_qing_enemy'],f_hubao:['f_hubao','f_hubao_enemy'],f_bai:['f_bai','f_bai_enemy'],f_dan:['f_dan','f_dan_enemy']};
-function extractBattleSprite(image,b,tint=false,cutoff=128) {
+function extractBattleSprite(image,b,tint=false,cutoff=128) {   // tint: true 면 적군 색, A_HERO_ART 항목이면 그 장수 색으로 다시 칠한다
   const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(image,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
   const pixels=g.getImageData(0,0,b.w,b.h),d=pixels.data,seen=new Uint8Array(b.w*b.h),queue=new Int32Array(b.w*b.h);let head=0,tail=1;const seed=(b.sy-b.y)*b.w+b.sx-b.x;queue[0]=seed;seen[seed]=1;
   if(seed<0||seed>=seen.length||d[seed*4+3]<cutoff)throw new Error('스프라이트 투명 경계 오류');
   // 같은 사각형에 걸친 이웃의 무기를 제거하고 이 스프라이트의 연결된 알파만 사용한다.
   while(head<tail){const i=queue[head++],x=i%b.w,y=Math.floor(i/b.w);for(const n of [x?i-1:-1,x+1<b.w?i+1:-1,y?i-b.w:-1,y+1<b.h?i+b.w:-1])if(n>=0&&!seen[n]&&d[n*4+3]>=cutoff){seen[n]=1;queue[tail++]=n;}}
   if(tail<500)throw new Error('빈 스프라이트 이미지');
-  for(let i=0;i<seen.length;i++){const j=i*4;if(!seen[i]){d[j+3]=0;continue;}d[j+3]=255;if(tint&&d[j+2]>d[j]*1.18&&d[j+2]>d[j+1]*1.05){const r=d[j],g=d[j+1],blue=d[j+2];d[j]=Math.min(255,blue*.9+25);d[j+1]=g*.7+8;d[j+2]=r*.8+8;}}
+  for(let i=0;i<seen.length;i++){const j=i*4;if(!seen[i]){d[j+3]=0;continue;}d[j+3]=255;if(tint===true&&d[j+2]>d[j]*1.18&&d[j+2]>d[j+1]*1.05){const r=d[j],g=d[j+1],blue=d[j+2];d[j]=Math.min(255,blue*.9+25);d[j+1]=g*.7+8;d[j+2]=r*.8+8;}}
   const rows=new Uint32Array(b.h);let widest=0;for(let y=0;y<b.h;y++){for(let x=0;x<b.w;x++)rows[y]+=seen[y*b.w+x];widest=Math.max(widest,rows[y]);}
   let footY=b.h-1;while(footY>0&&rows[footY]<widest*.18)footY--;
   const feet=new Uint32Array(b.w);let total=0;for(let y=Math.max(0,footY-Math.ceil(b.h*.08));y<=footY;y++)for(let x=0;x<b.w;x++)if(seen[y*b.w+x]){feet[x]++;total++;}
   let weight=0;c.footX=b.w/2;for(let x=0;x<b.w;x++){weight+=feet[x];if(weight>=total/2){c.footX=x;break;}}
   let mass=0,top=0;while(top<b.h&&mass<tail*.15){for(let x=0;x<b.w;x++)mass+=seen[top*b.w+x];top++;}c.footY=footY;c.bodyHeight=footY-top+1;
+  if(Array.isArray(tint))recolorHeroPixels(d,tint);
   g.putImageData(pixels,0,0);return c;
 }
 function loadBattleArt() {
@@ -353,7 +354,7 @@ function loadBattleArt() {
       if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 세력 장수 동작 누락: '+h.key);
       const image=await load('src/assets/lubu-faction-v387/'+h.file,387),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
-      for(const [key,spec]of Object.entries(A_HERO_ART))if(spec[0]===h.key){const sheet=recolorHeroSheet(image,spec),own=h.frames.map(b=>extractBattleSprite(sheet,b,false,200));installAtlasRework(h,own,own,['a_'+key]);}
+      for(const [key,spec]of Object.entries(A_HERO_ART))if(spec[0]===h.key){const own=h.frames.map(b=>extractBattleSprite(image,b,spec,200));installAtlasRework(h,own,own,['a_'+key]);}
     });
     await each(aUniqueHeroes,async h=>{
       if(h.frames.length!==56||h.actions?.join(',')!=='thrust,slash')throw new Error('A등급 고유 장수 동작 누락: '+h.key);
