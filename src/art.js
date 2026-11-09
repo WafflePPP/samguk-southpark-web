@@ -252,6 +252,7 @@ const LUBU_FACTION_HERO_BINDINGS={
 // 고유 이미지가 없던 A등급 이상 장수(전풍·장합·조인·가후·방통·법정·위연): 여포 세력 v387 역할 시트의 강조색(빨강·보라)을 장수별 색으로 다시 칠해 쓴다. [시트, 색상°, 채도, 명도+, 명도×]
 // 고유 이미지가 있는 A등급 이상 20명은 기존 고유 시트(heroes-v314·v335·v339)를 그대로 쓴다. 고유 도형을 새로 만들면 이 표에서 빼고 같은 'a_' 키에 연결한다
 const A_HERO_ART={tianfeng:['strategist',130,.45,0,1],zhanghe:['warrior',190,.6,0,1],caoren:['heavy',210,.6,0,1],jiaxu:['strategist',165,.4,0,.8],pangtong:['strategist',40,.35,0,.9],fazheng:['strategist',155,.5,0,1],weiyan:['warrior',25,.75,0,1]};
+const A_UNIQUE_HERO_KEYS=['yuan','yan','wen'];
 function recolorHeroPixels(d,[,h,s,la,lm]){   // RGBA 배열을 제자리에서 바꾼다. 피부·갈색(색상 15~30°)·무채색은 그대로 둔다
   for(let i=0;i<d.length;i+=4){
     if(d[i+3]<8)continue;const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,dd=mx-mn;if(dd<.06)continue;
@@ -288,8 +289,8 @@ function loadBattleArt() {
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
-  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v390',390],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387]])parts.push(await manifest(folder,version));return parts;};
-  BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes])=>{
+  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v390',390],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396]])parts.push(await manifest(folder,version));return parts;};
+  BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,aUniqueHeroes])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
     if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
@@ -298,6 +299,7 @@ function loadBattleArt() {
     if(strongGao.length!==STRONG_GAO_KEYS.length||STRONG_GAO_KEYS.some(k=>!strongGao.some(h=>h.key===k)))throw new Error('여포 체격 고순 외형 누락');
     if(lulingqiStyle.length!==1||lulingqiStyle[0].key!=='lulingqi')throw new Error('여령기 수채화 외형 누락');
     if(lubuFaceTroops.length!==LUBU_FACE_REWORK_KEYS.length||LUBU_FACE_REWORK_KEYS.some(k=>!lubuFaceTroops.some(h=>h.key===k)))throw new Error('여포 얼굴 기준 병종 누락');
+    if(aUniqueHeroes.length!==A_UNIQUE_HERO_KEYS.length||A_UNIQUE_HERO_KEYS.some(k=>!aUniqueHeroes.some(h=>h.key===k)))throw new Error('A등급 고유 장수 외형 누락');
     if(!complete(lubuCommonTroops,LUBU_COMMON_REWORK_BINDINGS)||!complete(finalHeroes,Object.fromEntries(FINAL_HERO_REWORK_KEYS.map(k=>[k,[k]])))||!complete(finalTroops,FINAL_REWORK_BINDINGS)||!complete(lubuFactionHeroes,LUBU_FACTION_HERO_BINDINGS))throw new Error('전체 리워크 외형 누락');
     for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat(),...Object.values(LUBU_COMMON_REWORK_BINDINGS).flat(),...Object.values(LUBU_FACTION_HERO_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
     // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
@@ -352,6 +354,11 @@ function loadBattleArt() {
       const image=await load('src/assets/lubu-faction-v387/'+h.file,387),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
       for(const [key,spec]of Object.entries(A_HERO_ART))if(spec[0]===h.key){const sheet=recolorHeroSheet(image,spec),own=h.frames.map(b=>extractBattleSprite(sheet,b,false,200));installAtlasRework(h,own,own,['a_'+key]);}
+    });
+    await each(aUniqueHeroes,async h=>{
+      if(h.frames.length!==56||h.actions?.join(',')!=='thrust,slash')throw new Error('A등급 고유 장수 동작 누락: '+h.key);
+      const image=await load('src/assets/a-heroes-v396/'+h.file,396),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      installAtlasRework(h,frames,frames,['a_'+h.key]);
     });
     for(const [key,model]of BATTLE_ART.models)if(model.idle?.length!==8||model.directions?.length!==8)throw new Error('캐릭터 리워크 연결 누락: '+key);
     BATTLE_ART.ready=true;
