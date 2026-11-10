@@ -290,7 +290,7 @@ function loadBattleArt() {
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
-  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v390',390],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v399',399]])parts.push(await manifest(folder,version));return parts;};
+  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v390',390],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]])parts.push(await manifest(folder,version));return parts;};
   BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
@@ -357,7 +357,7 @@ function loadBattleArt() {
       installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
       for(const [key,spec]of Object.entries(A_HERO_ART))if(spec[0]===h.key){const own=h.frames.map(b=>extractBattleSprite(image,b,spec,200));installAtlasRework(h,own,own,['a_'+key]);}
     });
-    for(const [folder,version,list]of [['a-heroes-v396',396,aUniqueHeroes],['a-heroes-v398',398,aCaoHeroes],['a-heroes-v399',399,aLiuHeroes]])await each(list,async h=>{
+    for(const [folder,version,list]of [['a-heroes-v396',396,aUniqueHeroes],['a-heroes-v398',398,aCaoHeroes],['a-heroes-v400',400,aLiuHeroes]])await each(list,async h=>{
       if(h.frames.length!==56||h.actions?.length!==2)throw new Error('A등급 고유 장수 동작 누락: '+h.key);
       const image=await load('src/assets/'+folder+'/'+h.file,version),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));installAtlasRework(h,frames,frames,['a_'+h.key]);
     });

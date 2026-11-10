@@ -1,0 +1,9 @@
+[
+  {"key":"liubei","name":"유비","identity":"금장 관·검은 머리·주황금 갑옷·녹색 망토·직검","style":"lubu-faction-v387/warrior.png"},
+  {"key":"guan","name":"관우","identity":"붉은 얼굴·긴 수염·녹색 두건과 갑옷·청룡언월도","style":"lubu-faction-v387/heavy.png"},
+  {"key":"zhangfei","name":"장비","identity":"굵은 수염·붉은 두건·흑갈색 중갑·장팔사모","style":"lubu-faction-v387/heavy.png"},
+  {"key":"zhao","name":"조운","identity":"은색 투구·흰 깃털·청색 망토·창·흰 말","style":"lubu-faction-v387/cavalry.png"},
+  {"key":"kong","name":"제갈량","identity":"높은 흑색 관·청백 도포·백우선","style":"lubu-faction-v387/strategist.png"},
+  {"key":"huang","name":"황충","identity":"흰 수염·붉은 깃 청동 투구·흑적 갑옷·활과 화살통","style":"lubu-faction-v387/archer.png"},
+  {"key":"machao","name":"마초","identity":"금발 말총·은색 투구·흰 모피·청백 갑옷·금장 창·흰 말","style":"lubu-faction-v387/cavalry.png"}
+]
