@@ -286,12 +286,22 @@ function loadBattleArt() {
   if(typeof Image==='undefined')return Promise.resolve();if(BATTLE_ART.loading)return BATTLE_ART.promise;
   BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();BATTLE_ART.titleWeapons=[];const attempt=++BATTLE_ART.attempt;
   const names=['terrain.png','approved-reference.png'];
-  const load=(path,version=277)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
+  const fetchImage=(path,version)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
+  // 미리 받기(v0.1.404): 처리 순서대로 앞의 AHEAD 장을 동시에 받아 둔다. 창을 두는 것은 해독된 시트(장당 약 6MB)가 한꺼번에 메모리에 쌓이지 않게 하려는 것.
+  const AHEAD=6,queue=[],slot=new Map(),pending=new Map();let started=0;
+  const pump=i=>{while(started<queue.length&&started<=i+AHEAD){const [p,v]=queue[started++],url=p+'?'+v;if(!pending.has(url)){const job=fetchImage(p,v);job.catch(()=>{});pending.set(url,job);}}};
+  const load=(path,version=277)=>{const url=path+'?'+version;if(slot.has(url))pump(slot.get(url));const job=pending.get(url)||fetchImage(path,version);pending.delete(url);return job;};   // 가져간 그림은 목록에서 지워 메모리를 놓아 준다
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
-  const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
-  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]])parts.push(await manifest(folder,version));return parts;};
-  BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
+  const base=Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274)));
+  const FOLDERS=[['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]];
+  const manifests=()=>Promise.all(FOLDERS.map(([folder,version])=>manifest(folder,version)));
+  const plan=parts=>{   // 아래 each 처리 순서와 같은 순서로 받을 그림 목록을 만든다 (순서가 어긋나도 결과는 같고 미리 받기만 덜 된다)
+    const [shu,lubu,strong,gao,lulingqi,face,common,heroes,troops,faction,...a]=parts,order=[[0,shu],[1,lubu.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key))],[2,strong],[3,gao],[5,face],[6,common],[4,lulingqi],[7,heroes],[8,troops],[9,faction],[10,a[0]],[11,a[1]],[12,a[2]]];
+    for(const [i,list]of order)for(const h of list){const [folder,version]=FOLDERS[i],p='src/assets/'+folder+'/'+h.file;slot.set(p+'?'+version,queue.length);queue.push([p,version]);}
+    pump(-1);return parts;
+  };
+  BATTLE_ART.promise=Promise.all([base,manifests().then(plan)]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
     if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
