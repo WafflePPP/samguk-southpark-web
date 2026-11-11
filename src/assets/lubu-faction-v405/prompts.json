@@ -1,0 +1,7 @@
+[
+  {"key":"chengong","name":"진궁","actions":["cast","heal"],"prompt":"여포 v401 화풍의 진궁 고유 책사. 검은 한대 관모·짙은 남보라 관복·붉은 끈·백우선·얇은 콧수염과 짧은 턱수염. 8x7 대기·보행·시전·회복."},
+  {"key":"warrior","name":"무장 보병","actions":["thrust","slash"],"prompt":"여포 v401 화풍의 흑적 갑옷 보병 무장. 붉은 깃·짧은 망토·창·다부진 얼굴. 8x7 대기·보행·찌르기·베기."},
+  {"key":"archer","name":"궁장","actions":["shoot","slash"],"prompt":"여포 v401 화풍의 흑동 갑옷·청동 투구·붉은 망토 남성 궁장. 활과 화살통. 8x7 대기·보행·사격·회수."},
+  {"key":"cavalry","name":"기마 창장","actions":["thrust","slash"],"prompt":"여포 v401 화풍의 흑동 갑옷·자색 망토 남성 기마 창장과 갈색 말. 8x7 대기·보행·찌르기·베기."},
+  {"key":"strategist","name":"책사","actions":["cast","heal"],"prompt":"여포 v401 화풍의 검은 관모·자색 관복·백우선 남성 책사. 진궁보다 단정하고 수수한 외형. 8x7 대기·보행·시전·회복."}
+]
