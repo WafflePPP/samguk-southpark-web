@@ -11,7 +11,7 @@ const COLORS = {
 // 영웅 6명(TKC HEROES.style 그대로) + 적 병종(TKC ENEMY 스타일) + 이 프로젝트용 병종
 const STYLES = {
   guan: { body: '#2f8f5b', trim: '#d4a73a', skin: '#c9553f', cape: '#1f6a42', beard: true, hat: true, weapon: 'glaive' },
-  lubu: { body: '#5c5962', trim: '#9f343b', skin: '#e0b08a', helm: false, feathers: false, pauldrons: false, weapon: 'spear', horse: false },
+  lubu: { body: '#5c5962', trim: '#9f343b', skin: '#e0b08a', helm: false, feathers: false, pauldrons: false, weapon: 'spear', horse: '#4a3029' },
   zhao: { body: '#2b6a6e', trim: '#c9cfd8', skin: '#e0b08a', cape: '#1f4a50', hair: true, band: true, pauldrons: true, weapon: 'lance', horse: '#f0ece0' },
   diao: { body: '#c86aa8', trim: '#ffd34d', skin: '#f4d9bd', sleeves: '#f7b3d3', hairCap: true, longHair: true, crown: true, flower: true, weapon: 'fan', weaponScale: 0.5 },
   dian: { body: '#8a3a22', trim: '#d4a73a', skin: '#c98a6a', beard: true, wrap: true, pauldrons: true, cape: '#5a2418', weapon: 'twin' },
@@ -369,8 +369,8 @@ function loadBattleArt() {
 const BATTLE_UNIT_RADIUS=8.5;
 // 원본마다 다른 머리/갑옷 비중을 공통 화면 크기에 맞춰 시각 보정한다.
 // 머리(투구·머리카락 포함) 가로폭 배율. 전투 정면 확대 비교에서 눈대중(±8%)으로 정함 — 새 외형을 추가하면 같은 방식으로 다시 맞춘다
-const FACE_SCALE={ally_sword:.8,ally_shield:.8,liubei:.67,guan:.8,zhao:.95,jang:.95,gong:.95,lulingqi:.95,xiahouyuan:.95,machao:.95,xuhuang:.95,yan:1,wen:.95,zhangliao:.95,diao:.95,dian:1,huang:.95,kong:.95,captain:.95,hua:.95,gao:1,cao:1,xia:1,zhangfei:.9,xun:.95,ally_archer:.8,ally_cav:.8,mage:.8,f_xian:.8,f_bing:.97,f_nu:.8,f_ji:.8,f_qing:.8,f_hubao:.8,f_bai:.8,f_dan:.8,yuan:1,sima:.95,xuchu:.95,dong:.95,guo:.95,soldier:.8,archer:.8,shield:.8,cav:.8,emage:.8,lubu_sword:.8,lubu_spear:.8,lubu_archer:.8,lubu_mage:.8};
-const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=.95;
+const FACE_SCALE={ally_sword:.8,ally_shield:.8,liubei:.67,guan:.8,lubu:.95,zhao:.95,jang:.95,gong:.95,lulingqi:.95,xiahouyuan:.95,machao:.95,xuhuang:.95,yan:1,wen:.95,zhangliao:.95,diao:.95,dian:1,huang:.95,kong:.95,captain:.95,hua:.95,gao:1,cao:1,xia:1,zhangfei:.9,xun:.95,ally_archer:.8,ally_cav:.8,mage:.8,f_xian:.8,f_bing:.97,f_nu:.8,f_ji:.8,f_qing:.8,f_hubao:.8,f_bai:.8,f_dan:.8,yuan:1,sima:.95,xuchu:.95,dong:.95,guo:.95,soldier:.8,archer:.8,shield:.8,cav:.8,emage:.8,lubu_sword:.8,lubu_spear:.8,lubu_archer:.8,lubu_mage:.8};
+const LULINGQI_SCALE=FACE_SCALE.lulingqi,LUBU_SCALE=FACE_SCALE.lubu;
 // 얼굴 비율은 리소스 내부에서 맞추고, 표시는 기마4.8·보병3.6의 외형 크기 차이를 유지한다.
 const LUBU_FACE_SCALE={lubu:LUBU_SCALE,f_xian:.8,f_bing:.97};
 function battleSpriteHeight(r,s){return r*1.2*(s.horse?4.8:3.6)*(s.sizeScale??FACE_SCALE[String(s.battleStyle).replace(/_enemy$/,"")]??1);}
