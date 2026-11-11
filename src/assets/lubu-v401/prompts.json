@@ -1,0 +1,8 @@
+[
+  {
+    "key": "lubu",
+    "identityReference": "../heroes-v321/lubu.png",
+    "styleReference": "../a-heroes-v400/machao.png",
+    "prompt": "Redraw mounted Lu Bu in the current v400 hard-edged pixel style. Preserve Red Hare, golden twin-feather crown, red headband and ribbons, dark red and black armor, and Fangtian halberd. Exact 8x7 transparent sheet: idle 8, walk 16, thrust 16, slash 16; consistent rider, horse and hoof baseline; no background, grid, text, glow or neighboring overlap."
+  }
+]

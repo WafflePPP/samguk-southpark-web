@@ -290,7 +290,7 @@ function loadBattleArt() {
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=load('src/assets/battle-v274/'+names[0],274).then(terrain=>load('src/assets/battle-v274/'+names[1],274).then(reference=>[terrain,reference]));
-  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v390',390],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]])parts.push(await manifest(folder,version));return parts;};
+  const manifests=async()=>{const parts=[];for(const [folder,version]of [['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]])parts.push(await manifest(folder,version));return parts;};
   BATTLE_ART.promise=base.then(images=>manifests().then(parts=>[images,...parts])).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
@@ -317,7 +317,7 @@ function loadBattleArt() {
       installAtlasRework(h,frames,frames,[h.key]);
     });
     await each(strongLubu,async h=>{
-      const image=await load('src/assets/lubu-v390/'+h.file,390),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
+      const image=await load('src/assets/lubu-v401/'+h.file,401),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
       installAtlasRework(h,frames,frames,['lubu']);
     });
     await each(strongGao,async h=>{
