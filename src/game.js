@@ -1694,6 +1694,7 @@ const lubuFactionUnit=u=>factionUnit(u,'여포',LUBU_ART_KEYS),caoFactionUnit=u=
 const WEAPON_OF = { sword: ['sword', 'twin'], spear: ['spear', 'lance', 'glaive', 'halberd'] };   // 검병·창병 장수의 무기는 병종에 맞는 것만 고정으로 인정한다 (서황의 도끼·대극사의 극 등 안 맞는 고정 무기는 병종 무기로 바꾼다)
 const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=liuFactionUnit(u),common=(lubu||cao||liu)&&LUBU_COMMON_ART[u.key];let style = STYLES[common||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,battleStyle:u.key,sizeScale:LUBU_FACE_SCALE[u.key]??.95};if(A_HERO_MODEL_KEYS.has(u.key))style={...style,battleStyle:'a_'+u.key,sizeScale:.95};if(cao)style={...style,sizeScale:(u.named||u.key==='f_hubao') ? .95 : .8,caoMotion:true};if(liu)style={...style,sizeScale:(u.named||u.category==='cavalry') ? .95 : .8,liuMotion:true};if(lubu)style={...style,lubuMotion:true};   // 여포군 장수는 세력 전용 도트, 병사는 병종 공통 도트를 사용
   return u.key !== 'guan' && !(style.fixedWeapon && WEAPON_OF[u.category]?.includes(style.weapon)) && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
+const battleArtOk = () => BATTLE_ART.ready || battleArtReady([...new Set(S.units.map(u => battleModelKey(styleOf(u), u.team)))]);   // v0.1.406: 이번 전투에 나오는 모델만 준비되면 전투를 연다 (나머지는 뒤에서 계속 받는다)
 const stText = u => u.captured ? '포박' : u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
 const hpCol = (p, current = COLORS.ally) => p > 0.3 ? current : p > 0.1 ? '#999999' : COLORS.danger;
 function actionInfo(u) {   // 현재 Space/행동 버튼이 쓰는 것: 선택한 스킬(마법·축복) > 특수기 > 화살
@@ -1725,7 +1726,7 @@ function drawUnit(u) {
   if ((u.named && !Sim.U[u.key].synthetic) || u.isLeader) { const current = u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0'; label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, hpCol(u.hp / u.maxHp, current), 'center'); }   // 이름도 HP 30%·10% 구간을 같이 표시
 }
 function drawWorld() {
-  if(terrain.battleAtlasReady===false&&BATTLE_ART.ready)terrain=buildTerrain(S.map,Sim.MW,Sim.MH,TILE);
+  if(terrain.battleAtlasReady===false&&BATTLE_ART.terrainObjects)terrain=buildTerrain(S.map,Sim.MW,Sim.MH,TILE);
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.beginPath(); ctx.rect(LEFT_W, TB_H, VPW, vh); ctx.clip();
   const z = Z(), vw = VPW / z, vhh = vh / z; wz = z; worldDraw = true;
   ctx.fillStyle = COLORS.ink; ctx.fillRect(LEFT_W, TB_H, VPW, vh); ctx.drawImage(terrain, cam.x, cam.y, vw, vhh, LEFT_W, TB_H, VPW, vh);
@@ -2266,7 +2267,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.405', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.406', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -3130,7 +3131,7 @@ function draw() {
   if (state === 'title') { drawTitle(); return; }
   if (state === 'map') { drawStageMap(); drawStratPractice(); return; }
   if (state === 'roster') { drawRoster(); drawStratPractice(); return; }
-  if(!BATTLE_ART.ready){ctx.fillStyle=COLORS.ink;ctx.fillRect(0,0,VW,VH);label(BATTLE_ART.error?'전투 이미지를 불러오지 못했습니다':'전투 이미지를 불러오는 중',VW/2,300,30,COLORS.gold,'center');label(BATTLE_ART.error?'연결을 확인한 뒤 화면을 누르거나 Enter로 다시 시도하세요.':'잠시만 기다려 주세요.',VW/2,360,22,COLORS.silver,'center');return;}
+  if(!battleArtOk()){ctx.fillStyle=COLORS.ink;ctx.fillRect(0,0,VW,VH);label(BATTLE_ART.error?'전투 이미지를 불러오지 못했습니다':'전투 이미지를 불러오는 중',VW/2,300,30,COLORS.gold,'center');label(BATTLE_ART.error?'연결을 확인한 뒤 화면을 누르거나 Enter로 다시 시도하세요.':'잠시만 기다려 주세요.',VW/2,360,22,COLORS.silver,'center');return;}
   layout(); clampCam(); const mobileSelect = mobile && selectMode && !menuOpen && !S.over;
   ctx.fillStyle = COLORS.ink; ctx.fillRect(0, 0, VW, VH);
   drawWorld();
@@ -3384,7 +3385,7 @@ cv.addEventListener('pointerdown', e => {
   if (state === 'map' && b && b.id.startsWith('campaign:')) { pressId = b.id; pressT = T; }   // 명세 80 R5: 눌림 0.12초 (PC·모바일)
   if (mapTap && mapTap.pid !== e.pointerId) mapTap = null;   // 다른 손가락이 닿으면 도시 터치 취소
   if (e.pointerType === 'touch' && !mobile) setMobile(true);   // 터치가 감지되면 모바일 화면으로 전환
-  if(state==='play'&&!BATTLE_ART.ready){if(BATTLE_ART.error)loadBattleArt();return;}
+  if(state==='play'&&!battleArtOk()){if(BATTLE_ART.error)loadBattleArt();return;}
   if ((state === 'title' || state === 'map' || state === 'roster') && custodyOpen()) { if (b && (b.id.startsWith('custody:') || isTurnOpt(b.id))) uiClick(b.id); return; }
   if (state === 'title') { if (mobile) goFullscreen(); if (startFactionSelect) { if (b && (b.id.startsWith('start-faction:'))) uiClick(b.id); } else if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); } else if (b && b.id === 'title:new') startNewFromTitle(); else if (b && b.id === 'title:load') saveSlotMode = 'load'; return; }
   if ((state === 'map' || state === 'roster') && custodyOpen()) { if (b && (b.id.startsWith('custody:') || isTurnOpt(b.id))) uiClick(b.id); return; }
@@ -3445,7 +3446,7 @@ const endPtr = (e, cancel) => {
 };
 addEventListener('pointerup', e => endPtr(e, false)); addEventListener('pointercancel', e => endPtr(e, true));
 addEventListener('keydown', e => {
-  if(state==='play'&&!BATTLE_ART.ready){if(BATTLE_ART.error&&e.key==='Enter')loadBattleArt();return;}
+  if(state==='play'&&!battleArtOk()){if(BATTLE_ART.error&&e.key==='Enter')loadBattleArt();return;}
   if (e.repeat) return;
   if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F10'].includes(e.key)) e.preventDefault();
   if ((state === 'title' || state === 'map' || state === 'roster') && custodyOpen()) return;
@@ -3493,7 +3494,7 @@ function frame(now) {
   if (state === 'map' && mapKeys.size && mapFree()) { const v = 650 * dt; if (mapKeys.has('ArrowLeft')) mcam.x -= v; if (mapKeys.has('ArrowRight')) mcam.x += v; if (mapKeys.has('ArrowUp')) mcam.y -= v; if (mapKeys.has('ArrowDown')) mcam.y += v; clampMcam(); }   // 방향키를 누르고 있는 동안 지도 이동
   if (state === 'play') {
     for (const m of marks) m.t -= dt; marks = marks.filter(m => m.t > 0);
-    if (BATTLE_ART.ready && !paused && !menuOpen && !supportOpen && tutorialStep < 0 && !S.over && !selectMode && !S.events.length) {
+    if (battleArtOk() && !paused && !menuOpen && !supportOpen && tutorialStep < 0 && !S.over && !selectMode && !S.events.length) {
       const d = padDir || (dirStack.length ? DIRS[dirStack[dirStack.length - 1]] : null), u = ctrlOf();
       let r = dt * BATTLE_SPEED * (keys.Shift ? 3 : SPEEDS[speedIdx])   // Shift 가속: Ctrl+W/Q 같은 브라우저 예약 단축키가 이동 키(WASD·QEZC)와 겹쳐 탭이 닫히던 문제로 Ctrl 에서 변경;
       let steps = 0;

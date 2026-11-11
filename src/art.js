@@ -203,7 +203,7 @@ function drawBody(g,x,y,r,face,s,o={}){drawBattleBody(g,x,y,r,face,s,o);}
 
 // UI에서도 병과별 몸체 높이를 유지하며, 무기·말 전체가 칸 안에 들어가게 한다.
 function drawBattlePortrait(g,x,y,w,h,s,o={}){
-  if(!BATTLE_ART.ready)return;
+  if(!BATTLE_ART.models.size)return;
   const model=BATTLE_ART.models.get(battleModelKey(s,o.team)),image=model?.idle?.[1]||model?.frames?.[0];if(!image)return;
   const ref=battleFrameHeight(image),foot=image.footX??image.width/2;
   const scale=Math.min(battleSpriteHeight(Math.min(w/6,h/5.4),s)/ref,Math.max(0,w/2-2)/Math.max(foot,image.width-foot),Math.max(0,h-4)/image.height);
@@ -235,7 +235,7 @@ STYLES.zhangliao={...STYLES.jang};
 STYLES.lubu_sword={...STYLES.ally_sword};STYLES.lubu_spear={...STYLES.ally_spear};STYLES.lubu_archer={...STYLES.ally_archer};STYLES.lubu_mage={...STYLES.mage};
 for(const [key,style] of Object.entries(STYLES)) style.battleStyle=key;
 const BATTLE_TERRAIN_OBJECTS=[{"x":12,"y":378,"w":338,"h":330,"sx":191,"sy":378},{"x":376,"y":379,"w":336,"h":326,"sx":529,"sy":379},{"x":757,"y":449,"w":303,"h":223,"sx":832,"sy":449},{"x":1127,"y":473,"w":288,"h":176,"sx":1208,"sy":473}];
-const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),terrain:null,reference:null,titleWeapons:[],attempt:0};
+const BATTLE_ART={ready:typeof Image==='undefined',loading:false,error:'',models:new Map(),installedBy:new Map(),job:null,want(){},terrain:null,reference:null,titleWeapons:[],attempt:0};
 const HERO_REWORK_KEYS=['gao','yuan','cao','xia','dian','yan','wen','xiahouyuan','xuchu','guo','sima','liubei','guan','kong','zhao','diao','huang','captain','jang','gong','zhangfei','machao','xuhuang','dong','xun','hua'];
 const SHU_STYLE_KEYS=['liubei','guan','zhangfei'];
 const LUBU_STYLE_KEYS=['gao','yuan','cao','xia','dian','yan'];
@@ -288,26 +288,24 @@ function extractBattleSprite(image,b,tint=false,cutoff=128) {   // tint: true �
 }
 function loadBattleArt() {
   if(typeof Image==='undefined')return Promise.resolve();if(BATTLE_ART.loading)return BATTLE_ART.promise;
-  BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();BATTLE_ART.titleWeapons=[];const attempt=++BATTLE_ART.attempt;
+  BATTLE_ART.ready=false;BATTLE_ART.loading=true;BATTLE_ART.error='';BATTLE_ART.models.clear();BATTLE_ART.installedBy.clear();BATTLE_ART.terrainObjects=null;BATTLE_ART.titleWeapons=[];const attempt=++BATTLE_ART.attempt;
   const names=['terrain.png','approved-reference.png'];
   const fetchImage=(path,version)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error(path));image.src=path+'?v='+version+'&try='+attempt;});
-  // 미리 받기(v0.1.404): 처리 순서대로 앞의 AHEAD 장을 동시에 받아 둔다. 창을 두는 것은 해독된 시트(장당 약 6MB)가 한꺼번에 메모리에 쌓이지 않게 하려는 것.
-  const AHEAD=6,queue=[],slot=new Map(),pending=new Map();let started=0;
-  const pump=i=>{while(started<queue.length&&started<=i+AHEAD){const [p,v]=queue[started++],url=p+'?'+v;if(!pending.has(url)){const job=fetchImage(p,v);job.catch(()=>{});pending.set(url,job);}}};
-  const load=(path,version=277)=>{const url=path+'?'+version;if(slot.has(url))pump(slot.get(url));const job=pending.get(url)||fetchImage(path,version);pending.delete(url);return job;};   // 가져간 그림은 목록에서 지워 메모리를 놓아 준다
+  // 작업 목록(v0.1.406): 시트 한 장 = 작업 하나. 이번 전투에 필요한 모델(BATTLE_ART.want)을 만드는 작업을 먼저, 나머지는 기본 순서로 처리한다.
+  // 미리 받기: 처리할 순서대로 앞의 AHEAD 장을 동시에 받아 둔다. 창을 두는 것은 해독된 시트(장당 약 6MB)가 한꺼번에 메모리에 쌓이지 않게 하려는 것.
+  const AHEAD=6,jobs=[],wanted=new Set();let wantSeq=0;
+  const queued=()=>[...jobs.filter(j=>j.want&&!j.done).sort((a,b)=>a.want-b.want),...jobs.filter(j=>!j.want&&!j.done)];
+  const fetchJob=j=>{if(!j.image){j.image=fetchImage(j.path,j.version);j.image.catch(()=>{});}return j.image;};
+  const mark=()=>{for(const key of wanted){let last=null;for(const j of jobs)if(j.keys.includes(key))last=j;if(last&&!last.done&&!last.want)last.want=++wantSeq;}for(const j of queued().slice(0,AHEAD+1))fetchJob(j);};   // 같은 모델을 여러 작업이 만들면 기본 순서상 마지막 작업이 최종 그림이다
+  BATTLE_ART.want=keys=>{let added=false;for(const k of keys)if(!wanted.has(k)){wanted.add(k);added=true;}if(added&&jobs.length)mark();};
+  const add=(folder,version,list,keysOf,run)=>{for(const h of list)jobs.push({name:h.key||h.file,path:'src/assets/'+folder+'/'+h.file,version,keys:keysOf(h),run:image=>run(h,image),index:jobs.length});};
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
-  Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>load('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
-  const base=Promise.all(names.map(name=>load('src/assets/battle-v274/'+name,274)));
+  Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>fetchImage('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
+  const base=Promise.all(names.map(name=>fetchImage('src/assets/battle-v274/'+name,274)));
   const FOLDERS=[['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['lubu-faction-v405',405],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]];
   const manifests=()=>Promise.all(FOLDERS.map(([folder,version])=>manifest(folder,version)));
-  const plan=parts=>{   // 아래 each 처리 순서와 같은 순서로 받을 그림 목록을 만든다 (순서가 어긋나도 결과는 같고 미리 받기만 덜 된다)
-    const [shu,lubu,strong,gao,lulingqi,face,common,heroes,troops,faction,polished,...a]=parts,order=[[0,shu],[1,lubu.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key))],[2,strong],[3,gao],[5,face],[6,common],[4,lulingqi],[7,heroes],[8,troops],[9,faction],[10,polished],[11,a[0]],[12,a[1]],[13,a[2]]];
-    for(const [i,list]of order)for(const h of list){const [folder,version]=FOLDERS[i],p='src/assets/'+folder+'/'+h.file;slot.set(p+'?'+version,queue.length);queue.push([p,version]);}
-    pump(-1);return parts;
-  };
-  BATTLE_ART.promise=Promise.all([base,manifests().then(plan)]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,lubuPolishedHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
+  BATTLE_ART.promise=Promise.all([base,manifests()]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,lubuPolishedHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
-    const each=async(list,fn)=>{for(const item of list)try{await fn(item);}catch(e){throw new Error((item.key||item.file)+': '+e.message);}};
     if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
     if(strongLubu.length!==1||strongLubu[0].key!=='lubu'||strongLubu[0].frames.length!==56)throw new Error('여포 대기·이동·공격 외형 누락');
@@ -320,66 +318,49 @@ function loadBattleArt() {
     for(const key of new Set([...Object.keys(STYLES),...Object.values(TROOP_REWORK_BINDINGS).flat(),...Object.values(REMAINING_REWORK_BINDINGS).flat(),...Object.values(LUBU_COMMON_REWORK_BINDINGS).flat(),...Object.values(LUBU_FACTION_HERO_BINDINGS).flat(),...Object.values(LUBU_POLISHED_HERO_BINDINGS).flat()]))BATTLE_ART.models.set(key,{frames:[],back:[]});
     // 모든 캐릭터가 교체되어 옛 앞뒤/방향 시트는 내려받거나 추출하지 않는다.
     BATTLE_ART.terrain=images[0];BATTLE_ART.reference=images[1];BATTLE_ART.terrainObjects=BATTLE_TERRAIN_OBJECTS.map(b=>extractBattleSprite(images[0],b));
-    await each(shuStyle,async h=>{
-      if(h.frames.length!==56||h.actions?.join(',')!=='thrust,slash')throw new Error('유비·관우·장비 동작 누락: '+h.key);
-      const image=await load('src/assets/heroes-v335/'+h.file,335),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,[h.key]);
+    const heroFrames=(h,image)=>h.frames.map(b=>extractBattleSprite(image,b,false,200)),need=(ok,msg)=>{if(!ok)throw new Error(msg);};
+    // 아래 add 순서가 기본 처리 순서다. 같은 모델을 여러 작업이 만들면 이 순서상 나중 작업의 그림이 남는다(installAtlasRework 의 installedBy 확인).
+    add('heroes-v335',335,shuStyle,h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.join(',')==='thrust,slash','유비·관우·장비 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
+    add('heroes-v314',314,lubuStyle.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)),h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.length===2,'여포 기준 장수 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
+    add('lubu-v401',401,strongLubu,()=>['lubu'],(h,image)=>{const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,['lubu']);});
+    add('heroes-v318',318,strongGao,h=>[h.key],(h,image)=>{need(h.frames.length===64&&h.actions?.join(',')==='thrust,slash','여포 체격 고순 동작 누락');const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
+    add('troops-v323',323,lubuFaceTroops,h=>TROOP_REWORK_BINDINGS[h.key],(h,image)=>{
+      need(h.frames.length===64&&h.actions?.join(',')==='thrust,slash','여포 얼굴 기준 병종 동작 누락: '+h.key);
+      const scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true,scale));installAtlasRework(h,frames,enemy,TROOP_REWORK_BINDINGS[h.key]);
     });
-    await each(lubuStyle.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)),async h=>{
-      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 기준 장수 동작 누락: '+h.key);
-      const image=await load('src/assets/heroes-v314/'+h.file,314),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,[h.key]);
+    add('troops-v325',325,lubuCommonTroops,h=>LUBU_COMMON_REWORK_BINDINGS[h.key],(h,image)=>{
+      need([56,64].includes(h.frames.length)&&h.actions?.length===2,'여포군 공통 병사 동작 누락: '+h.key);
+      const scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));installAtlasRework(h,frames,frames,LUBU_COMMON_REWORK_BINDINGS[h.key]);
     });
-    await each(strongLubu,async h=>{
-      const image=await load('src/assets/lubu-v401/'+h.file,401),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,['lubu']);
+    add('lulingqi-v362',362,lulingqiStyle,()=>['lulingqi'],(h,image)=>{
+      need(h.frames.length===64&&h.actions?.join(',')==='thrust,slash','여령기 동작 누락');
+      const scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));installAtlasRework(h,frames,frames,['lulingqi']);
     });
-    await each(strongGao,async h=>{
-      if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('여포 체격 고순 동작 누락');
-      const image=await load('src/assets/heroes-v318/'+h.file,318),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,[h.key]);
-    });
-    await each(lubuFaceTroops,async h=>{
-      if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('여포 얼굴 기준 병종 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v323/'+h.file,323),scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale)),enemy=h.frames.map(b=>extractTroopSprite(image,b,true,scale));
-      installAtlasRework(h,frames,enemy,TROOP_REWORK_BINDINGS[h.key]);
-    });
-    await each(lubuCommonTroops,async h=>{
-      if(![56,64].includes(h.frames.length)||h.actions?.length!==2)throw new Error('여포군 공통 병사 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v325/'+h.file,325),scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
-      installAtlasRework(h,frames,frames,LUBU_COMMON_REWORK_BINDINGS[h.key]);
-    });
-    await each(lulingqiStyle,async h=>{
-      if(h.frames.length!==64||h.actions?.join(',')!=='thrust,slash')throw new Error('여령기 동작 누락');
-      const image=await load('src/assets/lulingqi-v362/'+h.file,362),scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
-      installAtlasRework(h,frames,frames,['lulingqi']);
-    });
-    await each(finalHeroes,async h=>{
-      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('최종 장수 동작 누락: '+h.key);
-      const image=await load('src/assets/heroes-v339/'+h.file,342),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,[h.key]);
-    });
-    await each(finalTroops,async h=>{
-      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('최종 병사 동작 누락: '+h.key);
-      const image=await load('src/assets/troops-v339/'+h.file,342),keys=FINAL_REWORK_BINDINGS[h.key],scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
+    add('heroes-v339',342,finalHeroes,h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.length===2,'최종 장수 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
+    add('troops-v339',342,finalTroops,h=>FINAL_REWORK_BINDINGS[h.key],(h,image)=>{
+      need(h.frames.length===56&&h.actions?.length===2,'최종 병사 동작 누락: '+h.key);
+      const keys=FINAL_REWORK_BINDINGS[h.key],scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
       const enemy=keys.length===2?h.frames.map(b=>extractTroopSprite(image,b,true,scale)):frames;
       installAtlasRework(h,frames,enemy,keys);
     });
-    await each(lubuFactionHeroes,async h=>{
-      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 세력 장수 동작 누락: '+h.key);
-      const image=await load('src/assets/lubu-faction-v387/'+h.file,387),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
-      for(const [key,spec]of Object.entries(A_HERO_ART))if(spec[0]===h.key){const own=h.frames.map(b=>extractBattleSprite(image,b,spec,200));installAtlasRework(h,own,own,['a_'+key]);}
+    const recolored=h=>Object.entries(A_HERO_ART).filter(([,spec])=>spec[0]===h.key);
+    add('lubu-faction-v387',387,lubuFactionHeroes,h=>[...LUBU_FACTION_HERO_BINDINGS[h.key],...recolored(h).map(([key])=>'a_'+key)],(h,image)=>{
+      need(h.frames.length===56&&h.actions?.length===2,'여포 세력 장수 동작 누락: '+h.key);
+      const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,LUBU_FACTION_HERO_BINDINGS[h.key]);
+      for(const [key,spec]of recolored(h)){const own=h.frames.map(b=>extractBattleSprite(image,b,spec,200));installAtlasRework(h,own,own,['a_'+key]);}
     });
-    await each(lubuPolishedHeroes,async h=>{
-      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('여포 세력 폴리싱 장수 동작 누락: '+h.key);
-      const image=await load('src/assets/lubu-faction-v405/'+h.file,405),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));
-      installAtlasRework(h,frames,frames,LUBU_POLISHED_HERO_BINDINGS[h.key]);
+    add('lubu-faction-v405',405,lubuPolishedHeroes,h=>LUBU_POLISHED_HERO_BINDINGS[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.length===2,'여포 세력 폴리싱 장수 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,LUBU_POLISHED_HERO_BINDINGS[h.key]);});
+    for(const [folder,version,list]of [['a-heroes-v396',396,aUniqueHeroes],['a-heroes-v398',398,aCaoHeroes],['a-heroes-v400',400,aLiuHeroes]])add(folder,version,list,h=>['a_'+h.key],(h,image)=>{
+      need(h.frames.length===56&&h.actions?.length===2,'A등급 고유 장수 동작 누락: '+h.key);
+      const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,['a_'+h.key]);
     });
-    for(const [folder,version,list]of [['a-heroes-v396',396,aUniqueHeroes],['a-heroes-v398',398,aCaoHeroes],['a-heroes-v400',400,aLiuHeroes]])await each(list,async h=>{
-      if(h.frames.length!==56||h.actions?.length!==2)throw new Error('A등급 고유 장수 동작 누락: '+h.key);
-      const image=await load('src/assets/'+folder+'/'+h.file,version),frames=h.frames.map(b=>extractBattleSprite(image,b,false,200));installAtlasRework(h,frames,frames,['a_'+h.key]);
-    });
+    mark();
+    for(let j;(j=queued()[0]);){
+      for(const next of queued().slice(0,AHEAD+1))fetchJob(next);
+      const image=await fetchJob(j);if(attempt!==BATTLE_ART.attempt)return;
+      BATTLE_ART.job=j.index;try{j.run(image);}catch(e){throw new Error(j.name+': '+e.message);}finally{BATTLE_ART.job=null;}
+      j.done=true;j.image=null;   // 처리한 시트는 놓아 메모리를 돌려준다
+    }
     for(const [key,model]of BATTLE_ART.models)if(model.idle?.length!==8||model.directions?.length!==8)throw new Error('캐릭터 리워크 연결 누락: '+key);
     BATTLE_ART.ready=true;
   }).catch(e=>{BATTLE_ART.error=e.message;}).finally(()=>{BATTLE_ART.loading=false;});return BATTLE_ART.promise;
@@ -422,6 +403,7 @@ function extractTroopSprite(image,b,enemy,scale) {
 function installAtlasRework(spec,frames,enemyFrames,keys=TROOP_REWORK_BINDINGS[spec.key]) {
   if(!keys||![56,64,72].includes(frames.length)||enemyFrames.length!==frames.length)throw new Error('병사 방향/동작 누락: '+spec.key);
   keys.forEach((key,i)=>{
+    if(BATTLE_ART.job!=null){if(BATTLE_ART.installedBy.get(key)>BATTLE_ART.job)return;BATTLE_ART.installedBy.set(key,BATTLE_ART.job);}   // 우선 처리로 순서가 바뀌어도 기본 순서상 나중 작업의 그림을 덮어쓰지 않는다
     const all=i?enemyFrames:frames;BATTLE_ART.models.set(key,{frames:[],back:[]});
     const attackStart=all.length-32,walk=all.slice(8,attackStart);
     // 3자세 보행은 접지→통과→반대 접지→통과의 왕복 주기로 연결한다.
@@ -474,6 +456,11 @@ function drawBattleMeleeTrail(g,x,y,r,face,pose,horse=false) {
   }
   g.restore();
 }
+function battleArtReady(keys){   // 전부 받았거나, 지형과 keys 모델이 준비되면 true. 아직이면 keys 를 먼저 받도록 올린다
+  if(BATTLE_ART.ready)return true;if(!BATTLE_ART.terrainObjects)return false;
+  BATTLE_ART.want(keys);return keys.every(k=>BATTLE_ART.models.get(k)?.idle);
+}
+const BATTLE_FALLBACK_KEYS={player:'ally_sword',enemy:'soldier'};
 function battleModelKey(s,team){
   let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
   if(key==='ally_shield'&&s.weapon==='spear')key='ally_shield_spear';if(key==='shield'&&s.weapon==='sword')key='shield_sword';
@@ -483,9 +470,10 @@ function battleModelKey(s,team){
   return key;
 }
 function drawBattleBody(g,x,y,r,face,s,o={}) {
-  if(!BATTLE_ART.ready||!BATTLE_ART.models.size)return;
+  if(!BATTLE_ART.models.size)return;
   const key=battleModelKey(s,o.team),enemy=o.team==='enemy'||s.teamBase&&s.body===STYLES[ENEMY_BASE_STYLE[s.teamBase]].body;
-  const model=BATTLE_ART.models.get(key);if(!model)throw new Error('전투 이미지 누락: '+key);
+  let model=BATTLE_ART.models.get(key);if(!model)throw new Error('전투 이미지 누락: '+key);
+  if(!BATTLE_ART.ready&&!model.idle){BATTLE_ART.want([key]);model=BATTLE_ART.models.get(BATTLE_FALLBACK_KEYS[enemy?'enemy':'player']);if(!model?.idle)return;}   // 아직 못 받은 모델(투항으로 편이 바뀐 장수 등)은 같은 편 일반 병사로 잠깐 대신 그린다
   if(model.directions&&model.idle){drawConnectedHero(g,x,y,r,face,s,o,model);return;}
   const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,face,r):null,view=motion?motion.face:face,back=Math.sin(view)<-.25;
   const directional=!!model.directions,frame=directional?(pose&&['move','dash'].includes(pose.state)||!pose&&o.moving?pose?.walkFrame??Math.floor((o.t||0)*8)%4:phase>0?Math.min(3,Math.floor((pose.progress||0)*4)):0):motion?motion.frame:o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0;
@@ -554,8 +542,8 @@ function drawBattleRing(g,x,y,rx,ry,col,dashed=false) {
 
 // map: 0 풀 1 숲 2 바위 3 강 4 여울. 판정 격자는 유지하고 2px 도트로만 그린다.
 function buildTerrain(map,MW,MH,TILE) {
-  const c=document.createElement('canvas');c.width=MW*TILE;c.height=MH*TILE;c.battleAtlasReady=!!BATTLE_ART.terrain;
-  if(!BATTLE_ART.ready||!BATTLE_ART.terrain)return c;
+  const c=document.createElement('canvas');c.width=MW*TILE;c.height=MH*TILE;c.battleAtlasReady=!!BATTLE_ART.terrainObjects;
+  if(!BATTLE_ART.terrainObjects)return c;
   const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   // 승인 원본의 빈 잔디 구역을 그대로 반복해 바탕 색·픽셀 밀도를 유지한다.
   const grass=document.createElement('canvas');grass.width=grass.height=128;const gg=grass.getContext('2d');gg.imageSmoothingEnabled=false;gg.drawImage(BATTLE_ART.reference,490,25,256,256,0,0,128,128);g.fillStyle=g.createPattern(grass,'repeat');g.fillRect(0,0,c.width,c.height);
