@@ -2266,7 +2266,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.401', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.402', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2497,7 +2497,7 @@ function drawStageMap() {
   if (mobile) drawMapPanelMobile(sel, stationedAt); else {
   panel(1005, 20, 250, 696, COLORS.gold, 3, 'rgba(8,20,25,.88)');
   label('전략', 1130, 46, 27, COLORS.gold, 'center');
-  label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1025, 78, 15, COLORS.silver);
+  label(`${campaign.turn}턴`, 1025, 78, 15, COLORS.silver);   // 점령 수는 아래 목표 줄에만 (중복 제거)
   { const mode = moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역 선택' : mapTool === 'scout' ? '지도에서 정찰할 적 도시 선택' : mapTool === 'diplomacy' ? '지도에서 외교할 수도 선택' : '';   // 명세 80 R3: 모드 안내를 한 줄로 (세 모드 공통)
     label(mode || `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 100, 14, mode ? COLORS.gold : COLORS.silver2, 'center'); }
   label(`목표: 모든 거점 점령 ${STAGES.length - unclaimedCities().length}/${STAGES.length}`, 1025, 120, 13, COLORS.gold);
@@ -2645,10 +2645,10 @@ function drawMoveSelect() {
 }
 const econNow = f => { const income = Math.round(factionIncome(f).total), upkeep = Math.round(factionUnits(f) * ECON.unit), decay = Math.floor(grainOf(f) * ECON.decay); return { income, upkeep, decay, net: income - upkeep - decay }; };   // net 은 예상 창고 손실 포함
 function drawGrainChip(x, y, w, h) {   // 군량 칩: 순수입 음수면 주황, 기근이면 적색. 누르면 상세 창
-  const f = playerFaction(), e = econNow(f), famine = campaign.famine[f] || 0, col = famine ? COLORS.danger : e.net < 0 ? '#ffb06a' : COLORS.gold;
+  const f = playerFaction(), e = econNow(f), bal = e.income - e.upkeep, famine = campaign.famine[f] || 0, col = famine ? COLORS.danger : bal < 0 ? '#ffb06a' : COLORS.gold;   // 수지(수입−유지비)와 창고 손실을 나눠 보인다 — 손실은 보유량 비례라 군량을 0으로 만들지 못한다
   const hover = !mobile && hoverId === 'campaign:econ', press = pressId === 'campaign:econ' && T - pressT < 0.12, off = sprOff('campaign:econ');   // 명세 80: 호버·눌림·실습 비활성 (켜짐 상태는 없다)
   panel(x, y, w, h, col, 2, 'rgba(8,20,25,.6)'); if (press || hover) { ctx.fillStyle = press ? 'rgba(255,211,77,.28)' : 'rgba(255,255,255,.10)'; ctx.fillRect(x + 1, y + 1, w - 2, h - 2); }
-  label(`군량 ${grainOf(f)} (${e.net >= 0 ? '+' : '−'}${Math.abs(e.net)}/턴)${famine ? ' 기근' : ''}`, x + w / 2, y + h / 2, mobile ? 18 : 15, col, 'center', w - 12); if (off) dimOver({ x, y, w, h }); btns.push({ id: 'campaign:econ', x, y, w, h, on: false, primary: false, off, hover, press });
+  label(`군량 ${grainOf(f)} (${bal >= 0 ? '+' : '−'}${Math.abs(bal)}/턴${e.decay ? ` · 창고 −${e.decay}` : ''})${famine ? ' 기근' : ''}`, x + w / 2, y + h / 2, mobile ? 18 : 15, col, 'center', w - 12); if (off) dimOver({ x, y, w, h }); btns.push({ id: 'campaign:econ', x, y, w, h, on: false, primary: false, off, hover, press });
 }
 const TRAIN_PER = 10;
 const trainShort = why => /최대 레벨/.test(why) ? '최대 레벨' : /기근/.test(why) ? '기근 중' : /최대 \d+명/.test(why) ? `인원 한도 ${TRAIN.max}명` : /군량 부족/.test(why) ? '군량 부족' : why;
@@ -2730,7 +2730,7 @@ function drawEconView() {
     `수입 +${e.income} — 도시 ${inc.n}개${inc.over ? ` (${ECON.limit}개 초과 ${inc.over}개는 ×${ECON.over})` : ''}${rest ? ` · 혼란 ${rest}개는 산출 0` : ''} · 기본 보급 +${ECON.base}`,
     `유지비 −${e.upkeep} — 기동 군단 병력 ${factionUnits(f)}명 × ${ECON.unit}${l.upkeep > e.upkeep ? ` · 지난 턴 이동 +${l.upkeep - e.upkeep}` : ''}`,
     `창고 손실 −${e.decay} — 보유 군량의 ${Math.round(ECON.decay * 100)}% (많이 쌓을수록 늘어남)`,
-    `순수입 ${e.net >= 0 ? '+' : '−'}${Math.abs(e.net)}/턴${l.spent ? ` · 지난 턴 보충 −${l.spent}(병사 ${l.refill || 0}명)` : ''}`,
+    `순수입 ${e.net >= 0 ? '+' : '−'}${Math.abs(e.net)}/턴 (창고 손실 포함)${l.spent ? ` · 지난 턴 보충 −${l.spent}(병사 ${l.refill || 0}명)` : ''}`,
     famine ? `기근 ${famine}턴째 — 보충 중단${famine >= ECON.desertFrom ? ', 매 턴 군단마다 병사 1명 탈영' : ''}` : `기근 없음 — 정지한 군단은 아군 도시에서 병사를 채웁니다`,
   ];
   const L = rows.map(t => (mobile ? wrapPx(t, w - 80, MIN_FONT) : wrapText(t, 46)).slice(0, 2)), lh = mobile ? 30 : 15, rowY = i => mobile ? 86 + L.slice(0, i).reduce((n, q) => n + q.length * lh + 8, 0) : 86 + i * 34;   // 모바일: 22px 글자는 폭 기준으로 줄바꿈하고 줄 간격 30 (명세 78 — 두 줄이 겹치고 오른쪽으로 넘치던 것)
@@ -2762,8 +2762,8 @@ function drawScoutView() {
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
   label(`${stage.name} 정찰 보고 · 기동 ${forces.length}군단 ⚔${enemyPowerAt(stage)}`, x + w / 2, y + mb(40, 32), 24, COLORS.gold, 'center', w - 40);
   label(`내 군단 ⚔${corpsNear(stage).reduce((n, { c }) => n + corpsPow(c), 0)} (지역·연결 지역)`, x + w / 2, y + mb(72, 66), 16, COLORS.silver, 'center', w - 40);
-  if (!mobile) label(enemyRolesAt(stage), x + w / 2, y + 77, 17, COLORS.silver);
-  forces.slice(0, mb(12, 12)).forEach((f, i) => label(`${f.army.name} [${f.role === 'garrison' ? '도시수비' : '기동'}] Lv${f.level} · ${f.army.units.length}명 · ⚔${forcePow(f)} · ${Sim.U[f.army.leader].name}`, x + 30, y + mb(112, 100) + i * mb(36, 40), 17, i === 0 ? COLORS.goldSel : COLORS.silver, 'left', w - 60));
+  if (!mobile) label(enemyRolesAt(stage), x + w / 2, y + 98, 15, COLORS.silver, 'center', w - 40);   // 위 줄(y+72)과 겹치지 않게
+  forces.slice(0, mb(12, 12)).forEach((f, i) => label(`${f.army.name} [${f.role === 'garrison' ? '도시수비' : '기동'}] Lv${f.level} · ${f.army.units.length}명 · ⚔${forcePow(f)} · ${Sim.U[f.army.leader].name}`, x + 30, y + mb(124, 100) + i * mb(36, 40), 17, i === 0 ? COLORS.goldSel : COLORS.silver, 'left', w - 60));
   if (!forces.length) label('주둔한 적이 없습니다.', x + w / 2, y + 300, 20, COLORS.dim, 'center');
   button('campaign:relations', x + 30, y + h - mb(50, TOUCH + 10), mb(220, 320), tb(36), '다른 세력 관계', false, 16);
   button('campaign:scout:close', x + w - 170, y + h - mb(50, TOUCH + 10), 140, tb(36), '닫기', true, 16);
