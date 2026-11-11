@@ -1278,24 +1278,23 @@ function aiHeroFates(b) {
   cases.forEach(recordHeroFate);
 }
 function drawCustody() {
-  ctx.fillStyle = '#082027'; ctx.fillRect(0, 0, VW, VH); panel(20, 20, 1240, 680, COLORS.gold, 3);
-  const pending = pendingPrisoners(), manage = custodyView || pending.length, fy = mb(626, 608), CN = mb(5, 4), rp = mb(92, 104);
+  const pending = pendingPrisoners(), manage = custodyView || pending.length, CN = mb(5, 4), rp = mb(92, 104), list = manage ? (pending.length ? pending : campaign.prisoners.filter(p => p.owner === playerFaction())) : [], lines = manage ? [] : turnSummary ? turnSummary.lines : campaign.custodyNews, shown = manage ? Math.min(CN, list.length) : Math.min(9, lines.length), ph = Math.min(680, Math.max(300, (manage ? 210 : 180) + shown * (manage ? rp : 48))), fy = 20 + ph - mb(74, 92);
+  ctx.fillStyle = '#082027'; ctx.fillRect(0, 0, VW, VH); panel(20, 20, 1240, ph, COLORS.gold, 3);
   label(turnSummary && !manage ? `${turnSummary.turn}턴 요약` : manage ? (pending.length ? '전투 후 포로 처우 결정' : '군단 편성 · 포로 관리') : '장수 전사·포로 일괄 보고', 50, 58, 27, COLORS.gold);
+  drawUnitIcon(manage && list[0] ? list[0].key : rulerKey(playerFaction()), 1100, 36, 92, 96);
   if (!manage) {
-    const lines = turnSummary && !manage ? turnSummary.lines : campaign.custodyNews; custodyPage = Math.max(0, Math.min(custodyPage, Math.ceil(lines.length / 9) - 1));
+    const pages = Math.max(1, Math.ceil(lines.length / 9)); custodyPage = Math.max(0, Math.min(custodyPage, pages - 1));
     lines.slice(custodyPage * 9, custodyPage * 9 + 9).forEach((line, i) => label(line, 52, 132 + i * 48, line.startsWith('■') ? 22 : 19, line.startsWith('■') ? COLORS.gold : COLORS.silver));
-    button('custody:prev', 52, fy, 150, tb(46), '◀ 이전', false); button('custody:next', 220, fy, 150, tb(46), '다음 ▶', false);
-    label((custodyPage + 1) + '/' + Math.max(1, Math.ceil(lines.length / 9)), 420, fy + mb(24, 43), 18, COLORS.silver);
+    if (pages > 1) { button('custody:prev', 52, fy, 150, tb(46), '◀ 이전', false); button('custody:next', 220, fy, 150, tb(46), '다음 ▶', false); label((custodyPage + 1) + '/' + pages, 420, fy + mb(24, 43), 18, COLORS.silver); }
     button('custody:report-close', 1030, fy, 190, tb(46), '확인', true, 20); return;
   }
-  const list = pending.length ? pending : campaign.prisoners.filter(p => p.owner === playerFaction());
-  custodyPage = Math.max(0, Math.min(custodyPage, Math.ceil(list.length / CN) - 1));
+  const pages = Math.max(1, Math.ceil(list.length / CN)); custodyPage = Math.max(0, Math.min(custodyPage, pages - 1));
   label('투항 확률은 억류 기간에 따라 상승 · 실패한 턴에는 처형·포로만 선택 가능', 50, 98, 18, COLORS.silver2);
   list.slice(custodyPage * CN, custodyPage * CN + CN).forEach((p, i) => {
     const y = 130 + i * rp, holder = custodyCorps(p.heldBy), holderName = holder ? (holder.army ? holder.army.name : corpsName(holder)) : p.owner + '군 수용소';
-    panel(40, y, 1200, mb(82, 96), COLORS.silver2, 1);
-    label(Sim.U[p.key].name + ' · ' + p.origin + '군 · 억류 ' + (campaign.turn - p.turn) + '턴', 58, y + mb(24, 28), 21, COLORS.gold, 'left', 590);
-    label(holderName + ' 포로 · Lv' + p.growth.lv, 58, y + mb(56, 68), 16, COLORS.silver, 'left', 590);
+    panel(40, y, 1200, mb(82, 96), COLORS.silver2, 1); drawUnitIcon(p.key, 56, y + 6, 64, mb(70, 84));
+    label(Sim.U[p.key].name + ' · ' + p.origin + '군 · 억류 ' + (campaign.turn - p.turn) + '턴', 132, y + mb(24, 28), 21, COLORS.gold, 'left', 516);
+    label(holderName + ' 포로 · Lv' + p.growth.lv, 132, y + mb(56, 68), 16, COLORS.silver, 'left', 516);
     const by = y + mb(17, 5), bh = tb(48);
     button('custody:execute:' + p.key, 656, by, 170, bh, '처형', false, 20);
     button('custody:hold:' + p.key, 846, by, 170, bh, p.status === 'pending' ? '포로' : '포로 유지', false, 20);
@@ -1303,8 +1302,7 @@ function drawCustody() {
     else button('custody:recruit:' + p.key, 1036, by, 170, bh, '투항 ' + Math.round(recruitmentChance(p) * 100) + '%', true, 20);
   });
   if (!list.length) label('보유한 포로가 없습니다.', 80, 180, 23, COLORS.silver);
-  button('custody:prev', 52, fy, 150, tb(46), '◀ 이전', false); button('custody:next', 220, fy, 150, tb(46), '다음 ▶', false);
-  label((custodyPage + 1) + '/' + Math.max(1, Math.ceil(list.length / CN)), 420, fy + mb(24, 43), 18, COLORS.silver);
+  if (pages > 1) { button('custody:prev', 52, fy, 150, tb(46), '◀ 이전', false); button('custody:next', 220, fy, 150, tb(46), '다음 ▶', false); label((custodyPage + 1) + '/' + pages, 420, fy + mb(24, 43), 18, COLORS.silver); }
   if (!pending.length) button('custody:close', 1030, fy, 190, tb(46), '관리 종료', true, 20);
   else label('남은 처우 ' + pending.length + '명', 1080, fy + mb(24, 43), 20, COLORS.gold);
 }
@@ -1723,7 +1721,7 @@ function drawUnit(u) {
   const top = y - battleSpriteHeight(BATTLE_UNIT_RADIUS,style) - 6, w = u.r * 2.4;
   if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, hpCol(u.hp / u.maxHp, ally ? COLORS.ally : COLORS.danger)); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); const sk = u.special && Sim.SPECIAL[u.special]; if (sk) { const ready = u.spT <= 0, cy = top + (u.maxMp && ally ? 8 : 5); bar(x - w / 2, cy, w, 2.5, ready ? 1 : 1 - Math.max(0, u.spT) / sk.cd, ready ? COLORS.gold : '#c7822f'); } }   // 특수기(스킬) 쿨타임 바: 차오르는 중 주황, 준비되면 금색 가득
   if (mine || other) { ctx.fillStyle = mine ? COLORS.gold : COLORS.ally; ctx.beginPath(); ctx.moveTo(x - 7, top - 14); ctx.lineTo(x + 7, top - 14); ctx.lineTo(x, top - 4); ctx.closePath(); ctx.fill(); }
-  if ((u.named && !Sim.U[u.key].synthetic) || u.isLeader) { const current = u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0'; label(u.name, x, top - (mine ? 26 : 12), u.named ? 17 : 16, hpCol(u.hp / u.maxHp, current), 'center'); }   // 이름도 HP 30%·10% 구간을 같이 표시
+  if ((u.named && !Sim.U[u.key].synthetic) || u.isLeader) { const current = u.named ? (ally ? COLORS.goldSel : '#ff9a8a') : ally ? COLORS.silver : '#ffb0a0', lane = mine ? 30 : 12 + (S.units.indexOf(u) % 2) * 18; label(u.name, x, top - lane, u.named ? 17 : 16, hpCol(u.hp / u.maxHp, current), 'center'); }   // 밀집 대형에서도 이름이 한 줄로 붙지 않게 두 높이로 엇갈린다
 }
 function drawWorld() {
   if(terrain.battleAtlasReady===false&&BATTLE_ART.terrainObjects)terrain=buildTerrain(S.map,Sim.MW,Sim.MH,TILE);
@@ -2215,13 +2213,14 @@ function drawBattleReport(y0) {
   const yt = y0 + rh * (Math.min(per, rows.length - repPage * per) + 1);   // 마지막 쪽은 행이 적으면 합계를 끌어올린다
   label('합계', X.name, yt, fs, COLORS.gold); label(n(sum.d), X.d, yt, fs, COLORS.gold, 'right'); label(n(sum.t), X.t, yt, fs, COLORS.gold, 'right'); label(n(sum.h), X.h, yt, fs, COLORS.gold, 'right'); if (X.s) label(n(sum.s), X.s, yt, fs, COLORS.gold, 'right');
   const by = VH - tb(50) - 8, bw = 220, bx = VW / 2 - 460;
-  button('rep:prev', bx, by, bw, tb(50), '이전 쪽', false, 20); button('rep:side', bx + 240, by, bw, tb(50), repSide === 'player' ? '적군 보기' : '아군 보기', false, 20); button('rep:next', bx + 480, by, bw, tb(50), '다음 쪽', false, 20); button('rep:done', bx + 720, by, bw, tb(50), tutorialBattle && S.over === 'lose' ? '다시 도전' : '전략 화면으로', true, 20);   // 끝내기는 명시 버튼 (빈 곳을 눌러도 끝나지 않는다 — QA v0.1.272 중요 3)
+  if (pages > 1) { button('rep:prev', bx, by, bw, tb(50), '이전 쪽', false, 20); button('rep:next', bx + 480, by, bw, tb(50), '다음 쪽', false, 20); } button('rep:side', bx + 240, by, bw, tb(50), repSide === 'player' ? '적군 보기' : '아군 보기', false, 20); button('rep:done', bx + 720, by, bw, tb(50), tutorialBattle && S.over === 'lose' ? '다시 도전' : '전략 화면으로', true, 20);   // 1쪽이면 무의미한 이전·다음은 숨긴다
 }
 function drawOverlay(title, lines, col) {
   const result = !!(S && S.over);   // 승패 화면은 제목 문자열이 아니라 S.over 로 판정 (연습 전투는 '훈 련 완 료')
   if (result) lines = [...lines, soldierTallyLine(), ...heroFateLines()].filter(Boolean);
   ctx.fillStyle = result ? 'rgba(10,12,20,.99)' : 'rgba(10,12,20,.8)'; ctx.fillRect(0, 0, VW, VH);
   if (!result) { label(title, VW / 2, 230, 96, col, 'center'); lines.forEach((s, i) => label(s, VW / 2, 330 + i * 38, 22, COLORS.silver, 'center')); return; }
+  { const leaders = ['player', 'enemy'].map(team => S.units.find(u => u.team === team && u.isLeader && Sim.U[u.key])?.key); if (leaders[0]) drawUnitIcon(leaders[0], 40, 14, 88, 104, 'player'); if (leaders[1]) drawUnitIcon(leaders[1], VW - 128, 14, 88, 104, 'enemy'); }
   label(title, VW / 2, 44, 60, col, 'center'); const ly = mb(28, 30);
   lines.forEach((s, i) => label(s, VW / 2, 96 + i * ly, mb(18, 20), COLORS.silver, 'center', VW - 40));
   drawBattleReport(Math.max(96 + lines.length * ly + 22, 200));
@@ -2267,7 +2266,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.406', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.407', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2276,15 +2275,15 @@ function drawTitle() {
   if (titleNotice) label(titleNotice, VW / 2, py+ph+28, 18, COLORS.danger, 'center', 1100);
   if (saveSlotMode) drawSaveSlots();
   if (startFactionSelect) {
-    const cw = 300, ch = tb(190), py = mb(72, 36), ph = mb(520, 540), by = py + 90;
-    panel(140, py, 1000, ph, COLORS.gold, 3, 'rgba(8,20,25,.98)'); label('시작 세력 선택', 640, py + mb(45, 42), 30, COLORS.gold, 'center');
-    label('군주와 세력 성향을 확인하고 원정을 시작하세요.', 640, py + mb(82, 78), 17, COLORS.silver2, 'center', 960);
+    const cw = 300, ch = tb(210), py = mb(80, 24), ph = 430, by = py + mb(112, 104);
+    panel(140, py, 1000, ph, COLORS.gold, 3, '#071017'); label('시작 세력 선택', 640, py + mb(42, 38), 30, COLORS.gold, 'center');
+    label('군주와 세력 성향을 확인하고 원정을 시작하세요.', 640, py + mb(78, 76), 17, COLORS.silver2, 'center', 960);
     PLAYABLE_FACTIONS.forEach((faction, i) => {
       const x = 170 + i * (cw + 20), y = by, capital = stageById(CAPITALS[faction]), info = startFactionInfo(faction), ruler = INITIAL_RULERS[faction];
-      button(`start-faction:${faction}`, x, y, cw, ch, '', false, 1); drawUnitIcon(ruler, x + 14, y + 12, 92, ch - 24);
-      label(faction, x + 124, y + 34, 27, FACTION_STYLE[faction].light); label(Sim.U[ruler].name, x + 124, y + 70, 18, COLORS.gold);
-      label(START_FACTION_DESC[faction], x + 124, y + 108, 15, COLORS.silver, 'left', 165);
-      label(`${capital.name} · 거점 ${info.cities} · 군단 ${info.corps}`, x + 124, y + 145, 14, COLORS.silver2, 'left', 165);
+      button(`start-faction:${faction}`, x, y, cw, ch, '', false, 1); drawUnitIcon(ruler, x + 12, y + 14, 108, ch - 28);
+      label(faction + ' 세력', x + 136, y + 36, 25, FACTION_STYLE[faction].light); label('군주 ' + Sim.U[ruler].name, x + 136, y + 72, 17, COLORS.gold);
+      label(START_FACTION_DESC[faction], x + 136, y + 112, 15, COLORS.silver, 'left', 150);
+      label(`${capital.name} · 거점 ${info.cities} · 군단 ${info.corps}`, x + 136, y + 158, 14, COLORS.silver2, 'left', 150);
     });
     const ky = by + ch + 32;
     label(mobile ? '세력을 터치하세요' : PLAYABLE_FACTIONS.map((f, i) => (i + 1) + ' ' + f).join(' · ') + ' · Esc 취소', 640, ky, 16, COLORS.silver, 'center', 960);
@@ -2318,14 +2317,14 @@ const REL_COL = { war: '#ff7d6a', truce: '#79bfff', neutral: '#d0d0d0', ally: '#
 const relationPairs = () => FACTIONS.filter(f => f !== playerFaction()).map(f => [playerFaction(), f]);   // 관계 표: 나 대 나머지 6세력 6쌍
 const aiRelationPairs = () => { const ai = FACTIONS.filter(f => f !== playerFaction()), out = []; for (let i = 0; i < ai.length; i++) for (let j = i + 1; j < ai.length; j++) out.push([ai[i], ai[j]]); return out; };   // AI 끼리 15쌍 (외교·정찰 창에서 보여 줄 데이터, 표시는 3단계)
 function drawRelationPanel() {
-  const pairs = relationPairs(), x = 470, y = mobile ? 614 : 636, w = mobile ? 528 : 520, h = mobile ? 100 : 70, colW = mobile ? 258 : 168, rowH = mobile ? 28 : 26, perRow = mobile ? 2 : 3;   // 모바일: 2열 3행 (글자가 커서)
+  const pairs = relationPairs(), x = 470, y = mobile ? 614 : 630, w = mobile ? 528 : 520, h = mobile ? 100 : 76, colW = mobile ? 258 : 168, rowH = 28, perRow = mobile ? 2 : 3;   // 모바일: 2열 3행 (글자가 커서)
   ctx.save(); ctx.fillStyle = 'rgba(8,20,25,.78)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h); ctx.restore();
-  if (!mobile) label('세력 관계', x + 10, y + 14, 12, COLORS.gold);
+  if (!mobile) label('세력 관계', x + 10, y + 14, 13, COLORS.gold);
     pairs.forEach(([a, b], i) => {
     const player = a === playerFaction() ? b : b === playerFaction() ? a : null, st = player ? relationOf(player) : FACTION_ALLIES[a] === b ? { status: 'ally' } : aiRel(a, b), col = REL_COL[st.status] || '#fff', cx = x + 10 + (i % perRow) * colW, cy = (mobile ? y + 18 : y + 30) + Math.floor(i / perRow) * rowH;
     swatch(a, cx, cy - 8, 8); swatch(b, cx + 9, cy - 8, 8);
-    const nameW = mobile ? 66 : 70; label(mobile ? b : '나↔' + b, cx + 20, cy, 12, COLORS.silver, 'left', nameW); if (factionDead(a) || factionDead(b)) { label('멸망', cx + colW - 8, cy, 12, '#8a8a8a', 'right'); return; }   // 모바일은 글자가 커서 첫 글자만(여↔조) — 상태 글자와 겹치지 않게 양쪽 폭을 정한다
-    label((player ? relationText(player) : st.status === 'truce' ? '휴전 ' + Math.max(0, st.truceUntil - campaign.turn) + '턴' : RELATION_NAME[st.status]) + '·' + affinityStage(affinityOf(a, b)).name, cx + colW - 8, cy, 12, col, 'right', colW - 20 - nameW - 12);
+    const nameW = mobile ? 66 : 72; label(mobile ? b : '나↔' + b, cx + 20, cy, 13, COLORS.silver, 'left', nameW); if (factionDead(a) || factionDead(b)) { label('멸망', cx + colW - 8, cy, 13, '#8a8a8a', 'right'); return; }   // 모바일은 글자가 커서 첫 글자만(여↔조) — 상태 글자와 겹치지 않게 양쪽 폭을 정한다
+    label((player ? relationText(player) : st.status === 'truce' ? '휴전 ' + Math.max(0, st.truceUntil - campaign.turn) + '턴' : RELATION_NAME[st.status]) + '·' + affinityStage(affinityOf(a, b)).name, cx + colW - 8, cy, 13, col, 'right', colW - 20 - nameW - 8);
   });
 }
 // ---- 지도 카메라 (명세 43 1-4): 월드 1700×1200 중 왼쪽 1000×720 만 보인다. 빈 곳 드래그·방향키·휠·Home·미니맵으로 옮긴다 ----
@@ -2478,6 +2477,7 @@ function drawStageMap() {
     if (!vis(s.x, s.y)) continue;   // 화면 밖 도시는 그리지 않는다
     const on = s === here, faction = stageFaction(s), style = FACTION_STYLE[faction], targeted = s.id === (campaign.destination || corps.target), stationed = stationedAt(s);
     drawCityGate(s, style, on);
+    if (faction === playerFaction()) { ctx.save(); ctx.strokeStyle = on ? COLORS.goldSel : '#7debd1'; ctx.lineWidth = 2.5; ctx.strokeRect(s.x - 22, s.y - 25, 44, 48); ctx.restore(); }
     if (s === sel && !on) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y, 19, 0, TAU); ctx.stroke(); }
     label(`${isCapital(s) ? '★ ' : ''}${s.name}`, s.x, s.y + (on ? 32 : 26), 15, on ? COLORS.goldSel : '#f3eed8', 'center');
     { const kd = cityKind(s); if ((s.kind === 'gate' || kd.letter) && (!mobile || s === sel)) label(s.kind === 'gate' ? '관' : kd.letter, s.x - 24, s.y - 16, 13, COLORS.goldSel, 'center'); }   // 도시 유형 글자 (모바일은 선택한 도시만)
@@ -2493,7 +2493,7 @@ function drawStageMap() {
   btns.push(...cityBtns);
   drawMapMini();
   if (mobile) button('campaign:factions', 104, 630, 160, TOUCH, '세력 현황', false, 17, { off: sprOff('campaign:factions') });   // 명세 78 M1: 모바일은 세력 요약·관계 박스 대신 팝업 (지도 하단을 덮지 않는다)
-  button('campaign:help', mobile ? 10 : 1180, mobile ? 630 : 26, mobile ? TOUCH : 66, mobile ? TOUCH : 30, '도움말', false, mobile ? 17 : 14, { off: sprOff('campaign:help') });   // 지도 위가 아닌 곳(PC 패널 제목줄·모바일 하단 왼쪽)에 둬 도시 판정과 겹치지 않는다 (QA v0.1.272 경미 3: 여포 시작 화면의 여남 도시 판정과 겹치지 않도록 도움말을 맨 왼쪽에 둔다)
+  button('campaign:help', mobile ? 10 : 1180, mobile ? 630 : 26, mobile ? TOUCH : 66, mobile ? TOUCH : 30, '도움말', false, mobile ? 17 : 14, { primary: true, off: sprOff('campaign:help') });   // 평상시에는 밝은 주 버튼, 단계 실습 중에는 입력 잠금 상태를 그대로 표시한다
   if (!mobile) { drawRelationPanel(); button('campaign:heroes', 870, 604, 120, 32, '세력 장수', false, 15, { key: 7, off: sprOff('campaign:heroes') }); }   // 명세 80 R1: 세력 관계 상자 윗변에 붙인 탭(도시 판정보다 나중에 push 되어 클릭을 이긴다)
   if (mobile) drawMapPanelMobile(sel, stationedAt); else {
   panel(1005, 20, 250, 696, COLORS.gold, 3, 'rgba(8,20,25,.88)');
@@ -2627,22 +2627,20 @@ function drawResponseSelect() {
   if (info.allies.length) { label('※ 대응 군단을 고르면 동맹군과 함께 싸울지 선택합니다.', x + 40, cy + 8, 14, COLORS.goldSel, 'left', mw); cy += mb(26, 30); }
   shown.forEach((index, row) => { const corps = roster[index]; button('campaign:response:' + index, x + 40, cy + row * mb(42, 90), w - 80, tb(36), corpsName(corps) + ' · ' + stageById(corps.at).name + ' · ' + corps.units.filter(Boolean).length + '/18명 · ⚔' + corpsPow(corps), false, 16); });
   const fy = y + h - mb(50, TOUCH + 8), bw = mb(90, 150);
-  button('campaign:response:prev', x + 40, fy, bw, tb(36), '◀', false, 18);
+  if (pages > 1) button('campaign:response:prev', x + 40, fy, bw, tb(36), '◀', false, 18);
   button('campaign:response:abandon', x + w / 2 - mb(90, 130), fy, mb(180, 260), tb(36), encounter.invasion ? '기동군 철수' : '공격 포기', false, 16);
-  button('campaign:response:next', x + w - 40 - bw, fy, bw, tb(36), '▶', false, 18);
-  label((campaign.responsePage + 1) + '/' + pages, x + w - 40, y + mb(38, 32), 15, COLORS.silver, 'right');
+  if (pages > 1) { button('campaign:response:next', x + w - 40 - bw, fy, bw, tb(36), '▶', false, 18); label((campaign.responsePage + 1) + '/' + pages, x + w - 40, y + mb(38, 32), 15, COLORS.silver, 'right'); }
 }
 function drawMoveSelect() {
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH);
-  const N = listN(), x = mb(300, 100), y = mb(70, 6), w = mb(680, 1080), h = mb(580, 708), pitch = mb(46, 90), foot = mb(50, TOUCH + 10), bw = mb(100, 170);
+  const N = listN(), x = mb(300, 100), w = mb(680, 1080), pitch = mb(46, 90), foot = mb(50, TOUCH + 10), bw = mb(100, 170), pages = Math.max(1, Math.ceil(roster.length / N)), rows = Math.min(N, roster.length), h = mobile ? 708 : Math.min(580, 174 + rows * pitch), y = mobile ? 6 : (VH - h) / 2;
   panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
-  movePage = Math.max(0, Math.min(movePage, Math.ceil(roster.length / N) - 1));
+  movePage = Math.max(0, Math.min(movePage, pages - 1));
   const page = roster.slice(movePage * N, movePage * N + N);
   label('1. 이동할 군단 선택', x + w / 2, y + mb(40, 34), 25, COLORS.gold, 'center');
   label('군단을 선택한 뒤 전략 지도에서 목적지를 선택합니다.', x + w / 2, y + mb(75, 70), 16, COLORS.silver, 'center', w - 40);
   page.forEach((corps, row) => { const target = corps.target ? `${stageById(corps.target).name}(${moveTurns(corps)}턴)` : '대기'; button(`campaign:move:${movePage * N + row}`, x + 40, y + mb(105, 100) + row * pitch, w - 80, tb(38), `${corpsName(corps)}  ${stageById(corps.at).name} → ${target}  · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, campaign.corps === movePage * N + row, 16); });
-  button('campaign:move:prev', x + 40, y + h - foot, bw, tb(36), '◀', false, 18); button('campaign:move:close', x + w - 40 - bw, y + h - foot, bw, tb(36), '닫기', false, 16); button('campaign:move:next', x + w - 50 - bw * 2, y + h - foot, bw, tb(36), '▶', false, 18);
-  if (mobile) label(`${movePage + 1}/${Math.max(1, Math.ceil(roster.length / N))}`, x + w / 2 - 40, y + h - foot + TOUCH / 2, 14, COLORS.silver2, 'center');
+  button('campaign:move:close', x + w - 40 - bw, y + h - foot, bw, tb(36), '닫기', false, 16); if (pages > 1) { button('campaign:move:prev', x + 40, y + h - foot, bw, tb(36), '◀', false, 18); button('campaign:move:next', x + w - 50 - bw * 2, y + h - foot, bw, tb(36), '▶', false, 18); label(`${movePage + 1}/${pages}`, x + w / 2 - 40, y + h - foot + mb(18, TOUCH / 2), 14, COLORS.silver2, 'center'); }
 }
 const econNow = f => { const income = Math.round(factionIncome(f).total), upkeep = Math.round(factionUnits(f) * ECON.unit), decay = Math.floor(grainOf(f) * ECON.decay); return { income, upkeep, decay, net: income - upkeep - decay }; };   // net 은 예상 창고 손실 포함
 function drawGrainChip(x, y, w, h) {   // 군량 칩: 순수입 음수면 주황, 기근이면 적색. 누르면 상세 창
@@ -2759,13 +2757,13 @@ function drawAiRelations() {
 }
 function drawScoutView() {
   if (aiRelationsOpen) { drawAiRelations(); return; }
-  const stage = stageById(scoutView), forces = enemyForces.filter(f => f.active && f.at === stage.id).sort((a, b) => forcePow(b) - forcePow(a)), x = mb(260, 100), y = mb(60, 6), w = mb(760, 1080), h = mb(600, 708);
+  const stage = stageById(scoutView), forces = enemyForces.filter(f => f.active && f.at === stage.id).sort((a, b) => forcePow(b) - forcePow(a)), x = mb(260, 100), w = mb(760, 1080), h = mobile ? Math.min(708, Math.max(390, 210 + forces.length * 40)) : Math.min(600, Math.max(300, 190 + forces.length * 36)), y = (VH - h) / 2;
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
   label(`${stage.name} 정찰 보고 · 기동 ${forces.length}군단 ⚔${enemyPowerAt(stage)}`, x + w / 2, y + mb(40, 32), 24, COLORS.gold, 'center', w - 40);
   label(`내 군단 ⚔${corpsNear(stage).reduce((n, { c }) => n + corpsPow(c), 0)} (지역·연결 지역)`, x + w / 2, y + mb(72, 66), 16, COLORS.silver, 'center', w - 40);
   if (!mobile) label(enemyRolesAt(stage), x + w / 2, y + 98, 15, COLORS.silver, 'center', w - 40);   // 위 줄(y+72)과 겹치지 않게
   forces.slice(0, mb(12, 12)).forEach((f, i) => label(`${f.army.name} [${f.role === 'garrison' ? '도시수비' : '기동'}] Lv${f.level} · ${f.army.units.length}명 · ⚔${forcePow(f)} · ${Sim.U[f.army.leader].name}`, x + 30, y + mb(124, 100) + i * mb(36, 40), 17, i === 0 ? COLORS.goldSel : COLORS.silver, 'left', w - 60));
-  if (!forces.length) label('주둔한 적이 없습니다.', x + w / 2, y + 300, 20, COLORS.dim, 'center');
+  if (!forces.length) label('주둔한 적이 없습니다.', x + w / 2, y + 155, 20, COLORS.dim, 'center');
   button('campaign:relations', x + 30, y + h - mb(50, TOUCH + 10), mb(220, 320), tb(36), '다른 세력 관계', false, 16);
   button('campaign:scout:close', x + w - 170, y + h - mb(50, TOUCH + 10), 140, tb(36), '닫기', true, 16);
 }
@@ -2797,8 +2795,7 @@ function drawFactionHeroes() {
     label(info.status, x + cx[3], ry, 13, /전사/.test(info.status) ? COLORS.danger : COLORS.silver, 'left', w - cx[3] - 24);
   });
   const fy = y + h - mb(55, TOUCH + 10);
-  label(`${page + 1}/${pages}`, x + w / 2, mobile ? fy - 16 : y + h - 34, 15, COLORS.silver2, 'center');
-  button('campaign:heroes:prev', x + 30, fy, mb(100, 190), tb(36), '◀', false, 18); button('campaign:heroes:close', x + w / 2 - mb(70, 100), fy, mb(140, 200), tb(36), '닫기', true, 16); button('campaign:heroes:next', x + w - mb(130, 220), fy, mb(100, 190), tb(36), '▶', false, 18);
+  if (pages > 1) { label(`${page + 1}/${pages}`, x + w / 2, mobile ? fy - 16 : y + h - 34, 15, COLORS.silver2, 'center'); button('campaign:heroes:prev', x + 30, fy, mb(100, 190), tb(36), '◀', false, 18); } button('campaign:heroes:close', x + w / 2 - mb(70, 100), fy, mb(140, 200), tb(36), '닫기', true, 16); if (pages > 1) button('campaign:heroes:next', x + w - mb(130, 220), fy, mb(100, 190), tb(36), '▶', false, 18);
 }
 function drawAllyChoice() {
   const c = allyChoice, fs2 = enemyForces.filter(f => c.ids.includes(f.id)), pow = fs2.reduce((n, f) => n + forcePow(f), 0), fac = [...new Set(fs2.map(forceFaction))].join('·'), corps = roster[campaign.corps], back = alliedBack(corps, c.stage);
