@@ -819,13 +819,34 @@ function aiSiege(decisions) {
   for (const { force, d } of decisions) if (force.active && force.role !== 'garrison' && d.act === 'hold' && d.mode === '집결' && d.to && d.to !== force.at && (force.wait || 0) >= AI_SIEGE.from) { const arr = (by[d.to] ||= []); if (!arr.includes(force)) arr.push(force); }   // 같은 군단은 한 도시를 한 번만 깎는다
   for (const [id, fs] of Object.entries(by)) {
     const s = stageById(id); if (!s || (s.owner === 'player' && !AI_SIEGE.player) || (isDefenseCapital(s) && !AI_SIEGE.capital)) continue;
-    const guards = cityGuards.filter(g => g.home === s.id && g.active && g.army.units.length), floorN = Math.floor(guardCap(s) * AI_SIEGE.floor); let total = guards.reduce((n, g) => n + g.army.units.length, 0), cut = 0;
-    for (let k = 0; k < Math.min(fs.length, AI_SIEGE.maxCorps); k++) for (let r = 0; r < AI_SIEGE.rate && total > floorN; r++) {
-      const g = guards.filter(x => x.army.units.length).pop(); if (!g) break;
-      g.army.units.pop(); g.army.growth.pop(); total--; cut++;
-    }
+    const cut = siegeCut(s, Math.min(fs.length, AI_SIEGE.maxCorps) * AI_SIEGE.rate, AI_SIEGE.floor);
     if (cut && s.owner === 'player') { (campaign.siegeNote ||= []).push(`${s.name} 수비군 −${cut}명(${fs[0].fac || forceFaction(fs[0])}군 ${Math.min(fs.length, AI_SIEGE.maxCorps)}개 군단 포위)`); campaign.intel.push({ text: `${s.name} 포위 소모 −${cut}명`, mode: '포위', force: fs[0].army.name, power: 0, from: fs[0].at, to: s.id }); }
   }
+}
+function siegeCut(s, n, floor) {   // 도시 s 의 수비군 병사를 n 명까지 줄인다(정원×floor 아래로는 안 내림). 줄인 수를 돌려준다
+  const guards = cityGuards.filter(g => g.home === s.id && g.active && g.army.units.length), floorN = Math.floor(guardCap(s) * floor); let total = guards.reduce((k, g) => k + g.army.units.length, 0), cut = 0;
+  while (cut < n && total > floorN) { const g = guards.filter(x => x.army.units.length).pop(); if (!g) break; g.army.units.pop(); g.army.growth.pop(); total--; cut++; }
+  return cut;
+}
+// 전략 개선 1(v0.1.407) 플레이어 포위: AI_SIEGE 와 같은 규칙을 플레이어에게도. 전쟁 중인 적 도시와 맞닿은 곳에서 from 턴 이상 움직이지 않은 아군 군단이
+// 맞닿은 적 도시 가운데 수비군이 가장 적은 곳을 턴마다 군단당 rate 명 줄인다(도시당 maxCorps 군단까지, 정원×floor 까지, 수도 면제). 군단당 군량 cost, 모자라면 그 군단은 쉰다. 끄는 값 on:false
+const PLAYER_SIEGE = { on: true, from: 3, rate: 2, maxCorps: 3, floor: 0.4, capital: false, cost: 2 };
+const guardCount = s => cityGuards.filter(g => g.home === s.id && g.active).reduce((n, g) => n + g.army.units.length, 0);
+const siegeTarget = corps => stageById(corps.at).links.map(stageById).filter(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'war' && (PLAYER_SIEGE.capital || !isDefenseCapital(s)) && guardCount(s) > Math.floor(guardCap(s) * PLAYER_SIEGE.floor)).sort((a, b) => guardCount(a) - guardCount(b) || a.id.localeCompare(b.id))[0];   // 맞닿은 적 도시 중 수비군이 가장 적은 곳
+function playerSiege() {
+  campaign.playerSiegeNote = []; if (!PLAYER_SIEGE.on) return;
+  const P = playerFaction(), by = {}, wait = [];
+  for (const c of roster) {
+    if (!c.units.some(Boolean)) continue; const t = siegeTarget(c); if (!t) continue;
+    if ((c.hold || 0) < PLAYER_SIEGE.from) { if (c.hold) wait.push(`${corpsName(c)} 준비 ${c.hold || 0}/${PLAYER_SIEGE.from}턴`); continue; }
+    (by[t.id] ||= []).push(c);
+  }
+  for (const [id, cs] of Object.entries(by)) {
+    const s = stageById(id), n = Math.min(cs.length, PLAYER_SIEGE.maxCorps, Math.floor(grainOf(P) / PLAYER_SIEGE.cost)); if (!n) { campaign.playerSiegeNote.push(`${s.name} 군량 부족으로 포위 쉼`); continue; }
+    const cut = siegeCut(s, n * PLAYER_SIEGE.rate, PLAYER_SIEGE.floor); if (!cut) continue;
+    spendGrain(P, n * PLAYER_SIEGE.cost); campaign.playerSiegeNote.push(`${s.name} 수비군 −${cut}명(${guardCount(s)}명 남음 · 군단 ${n} · 군량 −${n * PLAYER_SIEGE.cost})`);
+  }
+  if (wait.length) campaign.playerSiegeNote.push(...wait);
 }
 const isFrontForce = force => force.role !== 'garrison' && relationOf(forceFaction(force)).status === 'war' && stageById(force.at).links.some(id => stageById(id).owner === 'player');
 const reinforceEvery = force => { const ex = AI_RULE.expedition; return isFrontForce(force) ? Math.max(2, Math.round((ex - AI_FRONT.cut - (campaign.turn >= AI_FRONT.lateFrom ? AI_FRONT.lateDrop : 0)) * aiStyle(forceFaction(force)).reinforce)) : ex; };
@@ -894,6 +915,7 @@ function buildTurnSummary(turn, moves) {   // 새 턴 시작 요약: 모든 세�
   { const l = campaign.econLog[playerFaction()]; if (l && l.n) lines.push(`■ 군량 ${grainOf(playerFaction())} — 수입 +${l.income}${l.lump ? ' 점령 +' + l.lump : ''} 유지 −${l.upkeep} 손실 −${l.decay || 0}${l.capture ? ' 점령 −' + l.capture : ''} 보충 −${l.spent}(${l.refill}명) 탈영 ${l.desert}`); }
   if ((campaign.trainNews || []).length) { lines.push(...campaign.trainNews); campaign.trainNews = []; }   // 명세 83 R4: 군량 줄 바로 아래
   if ((campaign.siegeNote || []).length) lines.push(`■ 포위 소모 — ${campaign.siegeNote.join(' · ')}`);
+  if ((campaign.playerSiegeNote || []).length) lines.push(`■ 아군 포위 — ${campaign.playerSiegeNote.join(' · ')}`);
   { const ci = capitalInfo(stageById(playerCapital())); if (ci && ci.low) lines.push(`■ 수도 수비 부족 (${ci.n}/${ci.cap}) — 보충은 ${CAPITAL_REFILL.every}턴마다 군량을 씁니다`); }
   { const d = (campaign.hostLog || []).concat(campaign.dipLog || [], FACTIONS.filter(f => f !== playerFaction() && relationOf(f).status === 'truce' && relationOf(f).truceUntil - campaign.turn <= 3 && relationOf(f).truceUntil > campaign.turn).map(f => `${f}군 휴전 ${relationOf(f).truceUntil - campaign.turn}턴 남음 — 갱신은 수도 외교에서`)).slice(0, 3); campaign.dipLog = []; campaign.hostLog = []; if (d.length) { lines.push('■ 외교'); d.forEach(t => lines.push('  ' + t)); } }
   lines.push(`■ 사망 장수 — ${dead.length}명`);
@@ -1163,9 +1185,11 @@ function endCampaignTurn() {
   roster.forEach((corps, index) => attachPopups(() => {
     const from = corps.at;
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.prevAt = from; corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
+    corps.hold = from === corps.at ? (corps.hold || 0) + 1 : 0;   // 플레이어 포위: 움직이지 않은 턴 수
     if (from !== corps.at) enterNeutralCity(corps, stageById(corps.at));
     if (from !== corps.at) campaign.movement.push({ text: `${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name} · 1턴 이동`, name: corpsName(corps), commander: corps.units[0] && Sim.U[corps.units[0]] ? Sim.U[corps.units[0]].name : corpsName(corps), from, to: corps.at, team: 'player', corpsIndex: index });
   }));
+  playerSiege();
   flushMovePopups();   // 아군 군단의 이동 때문에 생긴 팝업(첫 이동)은 AI 쪽 사건보다 먼저 띄운다
   for (const f of enemyForces) if (f.rest > 0) f.rest--;
   relocateCapitals(); aiDiplomacyStep(); aiBattleStep(); advanceEnemyForces(); economyStep(); replenishPlayer(); reinforceEnemies(); reinforceCityGuards(); econWarning(); relocateCapitals(); flushDigest(); pendingSummary = { turn: campaign.turn - 1, moves: campaign.movement.map(m => ({ name: m.name, team: m.team, faction: m.faction, from: m.from, to: m.to })) }; skipEnemyMoves(); saveCampaign();
