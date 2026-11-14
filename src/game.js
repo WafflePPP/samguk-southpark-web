@@ -593,6 +593,7 @@ function startBattle(stage) {
   for (const n of aiGuest.notes) S.events.push({ type: 'notice', team: 'enemy', text: n });
   if (helpIds.length) S.events.push({ type: 'notice', team: 'player', text: `동맹군 ${helpIds.length}군단이 함께 싸웁니다.` });
   if (campaign.battle) S.events.push({ type: 'notice', team: 'enemy', text: campaign.invasion ? `적 군단이 ${campaign.battle.name}을 침공했습니다!` : `${campaign.battle.stage}지역 ${campaign.battle.name} · ${campaign.battle.grade} · ${campaign.battle.note}` + ` · 전투력 아군 ⚔${S.armies.filter(A => A.team === "player" && !A.support).reduce((n, A) => n + Sim.battlePower(A), 0)} / 적 ⚔${S.armies.filter(A => A.team === "enemy").reduce((n, A) => n + Sim.battlePower(A), 0)}` });
+  { const start = S.events.filter(e => e.type === 'notice'); if (start.length > 1) S.events = [{ type: 'notice', team: start.some(e => e.team === 'enemy') ? 'enemy' : 'player', title: '전투 시작', lines: [start[start.length - 1], ...start.slice(0, -1)].map(e => e.text) }, ...S.events.filter(e => e.type !== 'notice')]; }   // 시작 알림(전장 정보·수비군·동맹 참전)을 한 장으로 묶어 여러 번 누르지 않게 한다 — 전장 정보를 맨 위에
   mapFx = null; state = 'play'; overAt = 0; paused = false; menuOpen = false; supportOpen = false; unitListOpen = false; selectMode = false; selTarget = null; tutorialStep = tutorialSeen ? -1 : 0; armyIdx = 0; marks = []; speedIdx = 0; dirStack = []; padPtrs.clear(); stick = null; padDir = null;
   layout(); snapCam(); saveCampaign();
   return true;
@@ -833,6 +834,7 @@ function siegeCut(s, n, floor) {   // 도시 s 의 수비군 병사를 n 명까�
 const PLAYER_SIEGE = { on: true, from: 3, rate: 2, maxCorps: 3, floor: 0.4, capital: false, cost: 2 };
 const guardCount = s => cityGuards.filter(g => g.home === s.id && g.active).reduce((n, g) => n + g.army.units.length, 0);
 const siegeTarget = corps => stageById(corps.at).links.map(stageById).filter(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'war' && (PLAYER_SIEGE.capital || !isDefenseCapital(s)) && guardCount(s) > Math.floor(guardCap(s) * PLAYER_SIEGE.floor)).sort((a, b) => guardCount(a) - guardCount(b) || a.id.localeCompare(b.id))[0];   // 맞닿은 적 도시 중 수비군이 가장 적은 곳
+const siegeInfo = c => { const t = c.units.some(Boolean) && PLAYER_SIEGE.on && siegeTarget(c); return !t ? '' : (c.hold || 0) >= PLAYER_SIEGE.from ? ` · ${t.name} 포위 중` : ` · ${t.name} 포위 준비 ${c.hold || 0}/${PLAYER_SIEGE.from}`; };   // 이동 창·오른쪽 패널에 포위 상태 표시
 function playerSiege() {
   campaign.playerSiegeNote = []; if (!PLAYER_SIEGE.on) return;
   const P = playerFaction(), by = {}, wait = [];
@@ -1718,6 +1720,7 @@ const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=l
   return u.key !== 'guan' && !(style.fixedWeapon && WEAPON_OF[u.category]?.includes(style.weapon)) && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
 const battleArtOk = () => BATTLE_ART.ready || battleArtReady([...new Set(S.units.map(u => battleModelKey(styleOf(u), u.team)))]);   // v0.1.406: 이번 전투에 나오는 모델만 준비되면 전투를 연다 (나머지는 뒤에서 계속 받는다)
 const stText = u => u.captured ? '포박' : u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
+const mpText = (u, full) => !u.maxMp ? '—' : u.maxMp >= 999 ? '무한' : full ? `${Math.floor(u.mp)}/${u.maxMp}` : Math.floor(u.mp);   // 법사·책사 장수의 기력 999 는 사실상 무한이라 숫자 대신 '무한'
 const hpCol = (p, current = COLORS.ally) => p > 0.3 ? current : p > 0.1 ? '#999999' : COLORS.danger;
 function actionInfo(u) {   // 현재 Space/행동 버튼이 쓰는 것: 선택한 스킬(마법·축복) > 특수기 > 화살
   const k = Sim.skills(u)[u.spellSel], spell = k && k !== 'bless' ? SPELL[k] : null;
@@ -1797,7 +1800,7 @@ const combatStat = (u, key) => Sim.combatStat(S, u, key);
 function drawLeftPanel() {
   panel(0, TB_H, LEFT_W, vh, 'rgba(255,255,255,.2)', 1);
   const u = ctrlOf(); if (!u) return;
-  const rows = [['체력', `${Math.ceil(u.hp)}/${u.maxHp}`], ['기력', u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—'], ['피로', Math.round(Sim.effectiveFt(u))], ...(u.generic ? [] : [['경험', u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`]]), ['공격', statShow(u, 'atk')], ['방어', statShow(u, 'df')], ['공효', statShow(u, 'ar')], ['방효', statShow(u, 'dr')], ['궁방', statShow(u, 'ad')], ['술방', statShow(u, 'md')], ['회피', statShow(u, 'aa')], ['회복', statShow(u, 'hr')], ['기동', statShow(u, 'sp')], ['상성', u.category ? matchupShort(u.category) : '—'], ['상태', stText(u)]];
+  const rows = [['체력', `${Math.ceil(u.hp)}/${u.maxHp}`], ['기력', mpText(u, true)], ['피로', Math.round(Sim.effectiveFt(u))], ...(u.generic ? [] : [['경험', u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`]]), ['공격', statShow(u, 'atk')], ['방어', statShow(u, 'df')], ['공효', statShow(u, 'ar')], ['방효', statShow(u, 'dr')], ['궁방', statShow(u, 'ad')], ['술방', statShow(u, 'md')], ['회피', statShow(u, 'aa')], ['회복', statShow(u, 'hr')], ['기동', statShow(u, 'sp')], ['상성', u.category ? matchupShort(u.category) : '—'], ['상태', stText(u)]];
   label(u.name, 10, TB_H + 18, 20, hpCol(u.hp / u.maxHp, COLORS.gold)); if (u.sg) label(gradeTag(u.sg), LEFT_W - 6, TB_H + 18, 13, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right'); label(`${CATEGORY_NAME[u.category]}·${u.subclass}${u.generic ? '' : ' Lv' + u.lv}`, 10, TB_H + 42, 16, COLORS.silver);
   bar(8, TB_H + 58, LEFT_W - 16, 5, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
   rows.forEach((r, i) => { const y = TB_H + 76 + i * 21.5; label(r[0], 10, y, 16, COLORS.silver2); label(String(r[1]), LEFT_W - 8, y, 16, r[1] && r[1].col ? r[1].col : r[0] === '체력' ? hpCol(u.hp / u.maxHp, COLORS.silver) : r[0] === '피로' && r[1] > 50 ? '#ffb04d' : COLORS.silver, 'right'); });
@@ -1853,7 +1856,7 @@ function drawTable() {
     if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
     if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), u.maxMp ? Math.floor(u.mp) : '—', u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? '최고' : u.xp, stText(u)];
+    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), mpText(u), u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? '최고' : u.xp, stText(u)];
     cells.forEach((v, i) => {
       const [txt, size] = fitText(v, 13, cw - 4);
       label(txt, x + cw / 2, dataY + 12 + i * rh, size, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center');
@@ -1919,7 +1922,7 @@ function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 
   let yy = y + 18; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold), 'left', 150); if (!u.generic) label('레벨 ' + u.lv, x + w - 10, yy, 17, orange, 'right'); else if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 14, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
   yy += rp; label(catTitle(u.key), x + 10, yy, 15, COLORS.silver, 'left', 190); if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 15, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
   yy += 22; bar(x + 10, yy - 5, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 17; label('체력', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
-  yy += rp; if (u.maxMp) bar(x + 10, yy - 14, w - 20, 6, u.mp / u.maxMp, '#8a6aff'); label('기력', x + 10, yy, fs, orange); label(u.maxMp ? `${Math.floor(u.mp)}/${u.maxMp}` : '—', x + w - 10, yy, fs, COLORS.silver, 'right');
+  yy += rp; if (u.maxMp) bar(x + 10, yy - 14, w - 20, 6, u.mp / u.maxMp, '#8a6aff'); label('기력', x + 10, yy, fs, orange); label(mpText(u, true), x + w - 10, yy, fs, COLORS.silver, 'right');
   yy += rp; label('피로', x + 10, yy, fs, orange); label(String(Math.round(Sim.effectiveFt(u))), x + 52, yy, fs, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver); if (!u.generic) { label('경험', x + 110, yy, fs, orange); label(u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 152, yy, fs, COLORS.silver, 'left', 134); }
   const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rp, fs, orange); label(String(v), x + 10 + i * c + 42, yy + r * rp, fs, v && v.col ? v.col : COLORS.silver, 'left', c - 44); };
   yy += rp; cell('공격', statShow(u, 'atk'), 0, 0); cell('방어', statShow(u, 'df'), 1, 0); cell('회피', statShow(u, 'aa'), 2, 0);
@@ -2261,7 +2264,7 @@ function drawEvent(e) {
     e = { type: 'dialogue', team: u ? u.team : e.team, key: u && u.style, speaker: u ? u.name : '전투 소식', text };
   }
   ctx.fillStyle = 'rgba(10,12,20,.55)'; ctx.fillRect(0, 0, VW, VH);
-  const col = e.team === 'enemy' ? '#ff8a32' : COLORS.gold, w = e.type === 'dialogue' ? 760 : 700, h = e.type === 'dialogue' ? 150 : 104, x = (VW - w) / 2, y = (VH - h) / 2;
+  const col = e.team === 'enemy' ? '#ff8a32' : COLORS.gold, w = e.type === 'dialogue' ? 760 : e.lines ? 820 : 700, h = e.type === 'dialogue' ? 150 : e.lines ? 92 + e.lines.length * 34 : 104, x = (VW - w) / 2, y = (VH - h) / 2;
   panel(x, y, w, h, col, 4, '#e7e1cf');
   if (e.type === 'dialogue') {
     panel(x + 14, y + 14, 112, h - 28, COLORS.ink, 2, '#b9c5c7');
@@ -2269,7 +2272,8 @@ function drawEvent(e) {
     ctx.save(); ctx.beginPath(); ctx.rect(x + 15, y + 15, 110, h - 30); ctx.clip();
     drawBattlePortrait(ctx, x+18, y+18, 104, h-36, portrait, { t: T, team:e.team }); ctx.restore();
     label(e.speaker, x + 148, y + 42, 21, e.team === 'enemy' ? '#c55a2d' : '#315a86'); label(e.text, x + 148, y + 84, 22, '#292520', 'left', w - 164);
-  } else label(e.text, VW / 2, y + 50, 24, col, 'center');
+  } else if (e.lines) { label(e.title, VW / 2, y + 40, 26, col, 'center'); e.lines.forEach((t, i) => label(t, VW / 2, y + 80 + i * 34, 19, '#292520', 'center', w - 40)); }
+  else label(e.text, VW / 2, y + 50, 24, col, 'center');
   label(mobile ? '화면을 탭하여 계속' : '클릭 / Enter', x + w - 16, y + h - 14, 14, '#68645d', 'right');
 }
 function drawArtBackdrop(){
@@ -2290,7 +2294,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.408', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.409', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2534,7 +2538,7 @@ function drawStageMap() {
   }
   drawGrainChip(1025, 220, 210, mobile ? 88 : 44);
   { const top = mobile ? 318 : 272, rows = mobile ? 0 : 2; label('내 군단', 1025, top, 11, COLORS.gold);
-    roster.slice(0, rows).forEach((c, i) => label(`${i + 1}. ${c.units[0] ? Sim.U[c.units[0]].name : '—'} · ${stageById(c.at).name}${c.target ? ' → ' + stageById(c.target).name : ''}`, 1025, top + 14 + i * 13, 10, i === campaign.corps ? COLORS.goldSel : COLORS.silver));
+    roster.slice(0, rows).forEach((c, i) => label(`${i + 1}. ${c.units[0] ? Sim.U[c.units[0]].name : '—'} · ${stageById(c.at).name}${c.target ? ' → ' + stageById(c.target).name : siegeInfo(c)}`, 1025, top + 14 + i * 13, 10, i === campaign.corps ? COLORS.goldSel : COLORS.silver, 'left', 210));
     if (roster.length > rows) label(mobile ? `${roster.length}개 군단 (군단 편성)` : `외 ${roster.length - rows}개 군단`, 1025, top + 14 + rows * 13, 10, COLORS.silver2); }
   { const hd = (t, y) => { label(t, 1025, y, 11, COLORS.dim); const x0 = 1025 + Math.ceil(textPx(t, 11)) + 8; ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(x0, y, 1235 - x0, 1); }; hd('조사', 328); hd('행동', 390); hd('시스템', 494); }   // 명세 80 R2: 그룹 머리글 (그리기만)
   button('campaign:scout', 1025, 338, 100, 36, '정찰', mapTool === 'scout', 16, { key: 1, off: sprOff('campaign:scout') }); button('campaign:diplomacy', 1135, 338, 100, 36, '외교', mapTool === 'diplomacy', 16, { key: 2, off: sprOff('campaign:diplomacy') });
@@ -2663,7 +2667,7 @@ function drawMoveSelect() {
   const page = roster.slice(movePage * N, movePage * N + N);
   label('1. 이동할 군단 선택', x + w / 2, y + mb(40, 34), 25, COLORS.gold, 'center');
   label('군단을 선택한 뒤 전략 지도에서 목적지를 선택합니다.', x + w / 2, y + mb(75, 70), 16, COLORS.silver, 'center', w - 40);
-  page.forEach((corps, row) => { const target = corps.target ? `${stageById(corps.target).name}(${moveTurns(corps)}턴)` : '대기'; button(`campaign:move:${movePage * N + row}`, x + 40, y + mb(105, 100) + row * pitch, w - 80, tb(38), `${corpsName(corps)}  ${stageById(corps.at).name} → ${target}  · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, campaign.corps === movePage * N + row, 16); });
+  page.forEach((corps, row) => { const target = corps.target ? ` → ${stageById(corps.target).name}(${moveTurns(corps)}턴)` : ` · 대기${siegeInfo(corps)}`; button(`campaign:move:${movePage * N + row}`, x + 40, y + mb(105, 100) + row * pitch, w - 80, tb(38), `${corpsName(corps)}  ${stageById(corps.at).name}${target}  · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, campaign.corps === movePage * N + row, 16); });
   button('campaign:move:close', x + w - 40 - bw, y + h - foot, bw, tb(36), '닫기', false, 16); if (pages > 1) { button('campaign:move:prev', x + 40, y + h - foot, bw, tb(36), '◀', false, 18); button('campaign:move:next', x + w - 50 - bw * 2, y + h - foot, bw, tb(36), '▶', false, 18); label(`${movePage + 1}/${pages}`, x + w / 2 - 40, y + h - foot + mb(18, TOUCH / 2), 14, COLORS.silver2, 'center'); }
 }
 const econNow = f => { const income = Math.round(factionIncome(f).total), upkeep = Math.round(factionUnits(f) * ECON.unit), decay = Math.floor(grainOf(f) * ECON.decay); return { income, upkeep, decay, net: income - upkeep - decay }; };   // net 은 예상 창고 손실 포함
@@ -3091,7 +3095,7 @@ function drawRoster() {
     page.forEach(({ c, index }, row) => button(`roster:target:${index}`, 646, 154 + row * 40, 582, 34, `${index + 1}군단  ${corpsName(c)}  ${c.units.filter(Boolean).length}/18 · ⚔${corpsPow(c)}`, false, 15));
     page.forEach(({c},row)=>drawUnitIcon(c.units[0],1186,157+row*40,34,28));
     button('roster:new', 646, 564, 280, 42, roster.length < ROSTER_MAX ? '새 군단 생성' : '군단 보유 한도 100', false, 16);
-    button('roster:page:prev', 944, 564, 132, 42, '◀', false, 18); button('roster:page:next', 1096, 564, 132, 42, '▶', false, 18);
+    if (targets.length > rosterTargetN()) { button('roster:page:prev', 944, 564, 132, 42, '◀', false, 18); button('roster:page:next', 1096, 564, 132, 42, '▶', false, 18); }   // 한 쪽뿐이면 쪽 넘김 숨김
   } else if (rosterMode === 'detail') {
     const all = rosterHeroes(), per = rosterDetailN(), pages = Math.max(1, Math.ceil(all.length / per));
     if (!all.some(x => x.ci === rosterDetailCorps && x.slot === rosterDetailSlot)) { rosterDetailCorps = all[0]?.ci ?? 0; rosterDetailSlot = all[0]?.slot ?? 0; }

@@ -1128,7 +1128,8 @@ function enemyAI(S) {
     let go = S.t >= tr.t || (tr.after != null && S.armies[tr.after].routed) || A.units.some(u => live(u) && u.hp < u.maxHp);
     if (!go && ref) for (const e of S.units) if (live(e) && e.team === 'player' && dist(ref, e) < tr.near * TILE) { go = true; break; }
     if (!go && ref && S.tactics >= 2) for (const B of S.armies) if (B.team === 'enemy' && B.state === 'advance' && B.leader && live(B.leader) && S.units.some(p => p.team === 'player' && live(p) && dist(B.leader, p) <= 8 * TILE && dist(ref, p) <= 12 * TILE)) { go = true; break; }   // 협공: 다른 군단이 교전 중이고 그 지점이 12칸 안이면 시간표보다 먼저 합류 (AI-B-07)
-    if (go) { A.state = 'advance'; notice(S, 'enemy', '적 ' + A.name + '가 참전했습니다.'); if (ref) text(S, ref.x, ref.y - 70, A.name + ' 진격!', '#ff5a4a'); }
+    // 시작 직후(1초 안) 참전은 멈춤 알림 없이 '진격!' 글자만 — 전투 시작 카드 뒤에 바로 또 누르지 않게
+    if (go) { A.state = 'advance'; if (S.t >= 1) notice(S, 'enemy', '적 ' + A.name + '가 참전했습니다.'); if (ref) text(S, ref.x, ref.y - 70, A.name + ' 진격!', '#ff5a4a'); }
   }
 }
 function commanderDialogue(S) {
