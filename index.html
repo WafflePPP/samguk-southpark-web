@@ -12,6 +12,8 @@
   body { display: flex; align-items: center; justify-content: center; }
   canvas { width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; display: block; touch-action: none; }
   @supports (height: 100dvh) { canvas { max-height: 100dvh; max-width: 177.78dvh; } }
+  @media (orientation: landscape) and (pointer: coarse) and (min-aspect-ratio: 19/10) { canvas { height: 52.083vw; max-width: 192vh; } }
+  @supports (height: 100dvh) { @media (orientation: landscape) and (pointer: coarse) and (min-aspect-ratio: 19/10) { canvas { max-height: 100dvh; max-width: 192dvh; } } }
   #rot { display: none; position: fixed; inset: 0; z-index: 9; background: #0a0c14; color: #ffd34d; font: 700 6vw/1.5 sans-serif; text-align: center; align-items: center; justify-content: center; padding: 0 8vw; }
   @media (orientation: portrait) and (pointer: coarse) { #rot { display: flex; } }
 </style>
@@ -19,9 +21,9 @@
 <body>
 <canvas id="c" width="1280" height="720"></canvas>
 <div id="rot">📱 화면을 가로로 돌려 주세요<br>(삼국은 가로 화면용입니다)</div>
-  <script src="src/art.js?v=0.1.409"></script>
-  <script src="src/sim.js?v=0.1.409"></script>
-  <script src="src/game.js?v=0.1.409"></script>
+  <script src="src/art.js?v=0.1.410"></script>
+  <script src="src/sim.js?v=0.1.410"></script>
+  <script src="src/game.js?v=0.1.410"></script>
 </body>
 </html>
 

@@ -191,7 +191,7 @@ for (const [kind, ids] of Object.entries({
   county: 'pingyuan beihai runan pingyang hejian zhuo qiao',
 })) for (const id of ids.split(' ')) CITY_KIND[id] = kind;
 const cityKind = s => KINDS[CITY_KIND[s.id]] || KINDS.county;
-const kindLine = s => { const k = cityKind(s); return `${k.name} · 산출 +${Math.round(cityYield(s))} · 보충 +${k.corps}/턴 · 비용 ${s.owner === 'player' ? refillCost(k) : k.cost}${k.lv ? ' · 수비 Lv+' + k.lv : ''}`; };
+const kindLine = s => { const k = cityKind(s); return `${k.name} · 산출 +${Math.round(cityYield(s))} · 병력 +${k.corps}/턴 · 비용 ${s.owner === 'player' ? refillCost(k) : k.cost}${k.lv ? ' · 수비 Lv+' + k.lv : ''}`; };
 // 군량(명세 56·61): 세력 단위 1종. 수치는 설계값 — tools/econ61.js·econ61-play.js·campaign-sim.js 로 측정해 조정한다. 명세 61: 상한 300→200·기본 보급 12→16·유지비 0.5→0.55·도시 산출 ×0.8·플레이어 보충 비용 ×1.5(올림).
 const ECON = { start: 100, cap: 200, base: 16, limit: 6, over: 0.5, capitalMul: 1.2, unit: 0.55, refill: 1.5, move: 2, unrest: 3, warn: 20, hungry: 40, desertFrom: 2, decay: 0.25, capture: { small: 0, medium: 0, large: 0 } };   // decay: 창고 손실 — 턴 시작 보유량의 비율(내림), 명세 65. capture: 점령 군량 비용(2단계) — 설계값 10/20/35 는 AI(원소) 기근 판을 15→73% 로 악화시켜 끔(0)
 const TRAIN = { max: 8, maxLv: 30, gainBase: 50, gain: lv => TRAIN.gainBase - Math.floor(lv / 2), cost: lv => 6 + Math.floor(lv / 3) };   // 훈련(명세 83): 한 턴 최대 인원·훈련 가능 최대 레벨·1회 획득 XP(레벨이 높을수록 감소)·1회 군량(레벨이 높을수록 증가). 설계값 — 원작 근거 없음
@@ -573,7 +573,7 @@ loadZoom(false);
 let worldDraw = false, wz = 1;   // 월드를 그리는 동안의 줌 — 글자 크기를 화면 기준으로 유지하려고 label 이 나눈다
 let vh = 0, tblH = 0;   // 레이아웃: 맵 높이 / 하단 표 높이
 
-function layout() { tblH = mobile ? 0 : tblCompact ? 54 : 236; vh = VH - TB_H - tblH; }
+function layout() { tblH = mobile ? 0 : tblCompact ? 54 : tblAbility ? 236 : 172; vh = VH - TB_H - tblH; }
 function setMobile(on) {   // 모바일: 상단 큰 버튼 줄, 좌측 상세 상태창, 글자 확대
   mobile = on; loadZoom(on); TB_H = on ? 0 : 58; LEFT_W = on ? 0 : 150; VPW = VW - LEFT_W; FS = on ? 1.3 : 1; padPtrs.clear(); stick = null; padDir = null; layout(); if (S) snapCam();
 }
@@ -835,6 +835,7 @@ const PLAYER_SIEGE = { on: true, from: 3, rate: 2, maxCorps: 3, floor: 0.4, capi
 const guardCount = s => cityGuards.filter(g => g.home === s.id && g.active).reduce((n, g) => n + g.army.units.length, 0);
 const siegeTarget = corps => stageById(corps.at).links.map(stageById).filter(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'war' && (PLAYER_SIEGE.capital || !isDefenseCapital(s)) && guardCount(s) > Math.floor(guardCap(s) * PLAYER_SIEGE.floor)).sort((a, b) => guardCount(a) - guardCount(b) || a.id.localeCompare(b.id))[0];   // 맞닿은 적 도시 중 수비군이 가장 적은 곳
 const siegeInfo = c => { const t = c.units.some(Boolean) && PLAYER_SIEGE.on && siegeTarget(c); return !t ? '' : (c.hold || 0) >= PLAYER_SIEGE.from ? ` · ${t.name} 포위 중` : ` · ${t.name} 포위 준비 ${c.hold || 0}/${PLAYER_SIEGE.from}`; };   // 이동 창·오른쪽 패널에 포위 상태 표시
+const siegeMapInfo = s => { const cs = roster.filter(c => c.units.some(Boolean) && siegeTarget(c) === s); if (!cs.length) return ''; const active = cs.filter(c => (c.hold || 0) >= PLAYER_SIEGE.from); return active.length ? `포위 중 · 수비 ${guardCount(s)}` : `포위 준비 ${Math.max(...cs.map(c => c.hold || 0))}/${PLAYER_SIEGE.from}`; };
 function playerSiege() {
   campaign.playerSiegeNote = []; if (!PLAYER_SIEGE.on) return;
   const P = playerFaction(), by = {}, wait = [];
@@ -1814,7 +1815,7 @@ function drawSpellPanel() {
 }
 function drawStick() {   // 맹장전 조이스틱: 누른 자리에 반투명 링, 노브가 손가락을 따라간다 (방향이 잡히면 금색)
   if (!stick) {   // 손가락이 없을 때는 어디를 눌러 끌면 되는지 희미하게 안내
-    if (!selectMode && !menuOpen && !S.over) { ctx.save(); ctx.globalAlpha = 0.16; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(190, TB_H + vh - 120, STICK_R, 0, TAU); ctx.stroke(); ctx.globalAlpha = 0.3; label('누른 채 끌기', 190, TB_H + vh - 120, 16, '#fff', 'center'); ctx.restore(); }
+    if (!selectMode && !menuOpen && !S.over) { const x = 160, y = VH - TOUCH - 128; ctx.save(); ctx.globalAlpha = 0.16; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, STICK_R, 0, TAU); ctx.stroke(); ctx.globalAlpha = 0.3; label('누른 채 끌기', x, y, 16, '#fff', 'center'); ctx.restore(); }
     return;
   }
   ctx.save(); ctx.globalAlpha = 0.55; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(stick.ox, stick.oy, STICK_R, 0, TAU); ctx.stroke();
@@ -1841,7 +1842,7 @@ function fitText(s, size, maxW, minSize = 10) {   // 열 폭에 맞춰 글자를
 function dimOver(b) { ctx.fillStyle = 'rgba(8,10,18,.55)'; ctx.fillRect(b.x, b.y, b.w, b.h); }   // 눌러도 아무 일 없는 버튼을 흐리게
 function drawTable() {
   const y0 = TB_H + vh; ctx.fillStyle = COLORS.ink; ctx.fillRect(0, y0, VW, tblH); ctx.fillStyle = 'rgba(255,211,77,.35)'; ctx.fillRect(0, y0, VW, 2);
-  const A = army(), compact = tblCompact, names = tblAbility ? ['이름', '공격', '방어', '궁방', '술방', '회피', '회복', '상태'] : ['이름', '병종', '체력', '기력', '레벨', '피로', '경험', '상태'], rh = 22, headH = 54, cw = VPW / 18, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2, hy = y0 + 6;
+  const A = army(), compact = tblCompact, names = tblAbility ? ['이름', '공격', '방어', '궁방', '술방', '회피', '회복', '상태'] : ['이름', '병종', '체력', '기력·피로', '상태'], rh = 22, headH = 54, cw = VPW / 18, dataY = y0 + headH, hpRow = tblAbility ? -1 : 2, hy = y0 + 6;
   if (!compact) names.forEach((r, i) => label(r, 10, dataY + 12 + i * rh, 15, COLORS.silver2));
   panel(LEFT_W + 1, y0 + 2, VPW - 2, tblH - 4, 'rgba(255,255,255,.35)', 2, 'rgba(10,12,20,.7)');
   // 머리줄: 진형 · 행동지침 · 군단 전환 · 지원 · 전투력 (명세 75)
@@ -1856,10 +1857,10 @@ function drawTable() {
     if (isSel) { ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.fillRect(x, dataY, cw, tblH - headH); ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 1, dataY + 1, cw - 2, tblH - headH - 3); }
     if (!gone && hpRow >= 0) { ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = hpCol(u.hp / u.maxHp); ctx.fillRect(x + 3, dataY + 2 + hpRow * rh, (cw - 6) * u.hp / u.maxHp, rh - 4); ctx.restore(); }
     const col = u.dead ? COLORS.danger : u.out ? COLORS.dim : isSel ? COLORS.goldSel : COLORS.silver;
-    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [u.name, CATEGORY_NAME[u.category], Math.ceil(u.hp), mpText(u), u.generic ? '—' : u.lv, Math.round(Sim.effectiveFt(u)), u.generic ? '—' : u.lv >= Sim.MAX_LEVEL ? '최고' : u.xp, stText(u)];
+    const cells = tblAbility ? [u.name, statShow(u, 'atk'), statShow(u, 'df'), statShow(u, 'ad'), statShow(u, 'md'), statShow(u, 'aa'), statShow(u, 'hr'), stText(u)] : [`${u.name}${u.generic ? '' : ' Lv' + u.lv}`, CATEGORY_NAME[u.category], `${Math.ceil(u.hp)}/${u.maxHp}`, `${mpText(u)} · ${Math.round(Sim.effectiveFt(u))}`, stText(u)];
     cells.forEach((v, i) => {
       const [txt, size] = fitText(v, 13, cw - 4);
-      label(txt, x + cw / 2, dataY + 12 + i * rh, size, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 5 && u.ft > 50 ? '#ffb04d' : col, 'center');
+      label(txt, x + cw / 2, dataY + 12 + i * rh, size, v && v.col ? v.col : !tblAbility && i === 2 ? hpCol(u.hp / u.maxHp, col) : !tblAbility && i === 3 && u.ft > 50 ? '#ffb04d' : col, 'center');
     });
     btns.push({ id: 'col' + u.id, x, y: dataY, w: cw, h: tblH - headH });
   });
@@ -1902,37 +1903,33 @@ function roundBtn(id, cx, cy, r, title, sub, col, on) {
   btns.push({ id, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, cx, cy, r });
 }
 const skillInfo = (u, k) => k === 'bless' ? { name: SPECIAL.bless.name, short: SPECIAL.bless.name, mp: 0, cd: Math.max(0, u.spT), locked: false, ok: u.spT <= 0 } : { name: SPELL[k].name, short: SPELL[k].short || SPELL[k].name, mp: SPELL[k].mp, cd: Math.max(0, u.cdT), locked: S.lock.player > 0, ok: u.mp >= SPELL[k].mp && u.cdT <= 0 && !(S.lock.player > 0) };   // 마법·축복 한 줄 요약(PC 패널·모바일 스킬 버튼 공용)
-const SKILL_X = (n, i) => 1080 - 96 * (n - 1 - i);   // 모바일 스킬 버튼 중심 x: 오른쪽 끝(1080)이 행동 버튼 바로 왼쪽, 왼쪽으로 간격 96 (명세 79 §3.2)
+const skillPos = i => [960 + i % 2 * 100, 318 + Math.floor(i / 2) * 96];
 function drawActionsMobile() {   // 오른쪽 행동 영역: 행동 버튼 + (마법·축복 2개 이상이면) 스킬 버튼 줄
   const u = ctrlOf(); if (!u) return;
   const primary = actionInfo(u), sk = Sim.skills(u);
-  roundBtn('m:act', 1196, 526, 68, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
+  roundBtn('m:act', 1196, 500, 68, primary.name, cooldownText(primary), primary.ready ? COLORS.gold : COLORS.silver2, primary.ready);
   if (sk.length > 1) sk.forEach((k, i) => {
     const q = skillInfo(u, k), sel = u.spellSel === i, bless = k === 'bless', short = u.mp < q.mp;
     const sub = q.locked ? '잠금' : q.cd > 0 ? q.cd.toFixed(1) : bless ? '준비' : short ? '부족' : '기력 ' + q.mp;
-    roundBtn('m:skill:' + i, SKILL_X(sk.length, i), 550, 44, q.short, sub, sel ? COLORS.gold : q.locked ? COLORS.danger : q.ok ? COLORS.silver : COLORS.silver2, sel);
+    const [x, y] = skillPos(i); roundBtn('m:skill:' + i, x, y, 44, q.short, sub, sel ? COLORS.gold : q.locked ? COLORS.danger : q.ok ? COLORS.silver : COLORS.silver2, sel);
   });
 }
-function drawMobileStatus() {   // 왼쪽 상단 전투 설정 아래에 조작 중인 장수 정보를 표시한다 (글자 22px 이상이라 줄 간격 27)
+function drawMobileStatus() {   // 전장을 가리지 않도록 조작에 필요한 핵심 수치만 고정 카드로 표시한다
   if (!SHOW.status) return;
   const u = ctrlOf(); if (!u) return;
-  const w = 290, x = 6, y = 96, rp = 27, fs = 16, orange = '#ff9a3c', pr = actionInfo(u), sp = Sim.skills(u);
-  const h = rp * (6 + 3 + 3 + 2) + 22 + (sp.length ? rp * (1 + sp.length) : 0) + 12;
-  panel(x, y, w, h, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.62)');
-  let yy = y + 18; label(u.name, x + 10, yy, 20, hpCol(u.hp / u.maxHp, COLORS.gold), 'left', 150); if (!u.generic) label('레벨 ' + u.lv, x + w - 10, yy, 17, orange, 'right'); else if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 14, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
-  yy += rp; label(catTitle(u.key), x + 10, yy, 15, COLORS.silver, 'left', 190); if (u.sg) label(gradeTag(u.sg), x + w - 10, yy, 15, Sim.SOLDIER_GRADE_COLOR[u.sg], 'right');
-  yy += 22; bar(x + 10, yy - 5, w - 20, 9, u.hp / u.maxHp, hpCol(u.hp / u.maxHp)); yy += 17; label('체력', x + 10, yy, fs, orange); label(`${Math.ceil(u.hp)}/${u.maxHp}`, x + w - 10, yy, fs, hpCol(u.hp / u.maxHp, COLORS.silver), 'right');
-  yy += rp; if (u.maxMp) bar(x + 10, yy - 14, w - 20, 6, u.mp / u.maxMp, '#8a6aff'); label('기력', x + 10, yy, fs, orange); label(mpText(u, true), x + w - 10, yy, fs, COLORS.silver, 'right');
-  yy += rp; label('피로', x + 10, yy, fs, orange); label(String(Math.round(Sim.effectiveFt(u))), x + 52, yy, fs, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver); if (!u.generic) { label('경험', x + 110, yy, fs, orange); label(u.lv >= Sim.MAX_LEVEL ? '최고' : `${u.xp}/${Sim.XP_NEED(u.lv)}`, x + 152, yy, fs, COLORS.silver, 'left', 134); }
-  const c = (w - 20) / 3, cell = (k, v, i, r) => { label(k, x + 10 + i * c, yy + r * rp, fs, orange); label(String(v), x + 10 + i * c + 42, yy + r * rp, fs, v && v.col ? v.col : COLORS.silver, 'left', c - 44); };
-  yy += rp; cell('공격', statShow(u, 'atk'), 0, 0); cell('방어', statShow(u, 'df'), 1, 0); cell('회피', statShow(u, 'aa'), 2, 0);
-  cell('공효', statShow(u, 'ar'), 0, 1); cell('방효', statShow(u, 'dr'), 1, 1); cell('궁방', statShow(u, 'ad'), 2, 1);
-  cell('술방', statShow(u, 'md'), 0, 2); cell('회복', statShow(u, 'hr'), 1, 2); cell('기동', statShow(u, 'sp'), 2, 2);
-  yy += 3 * rp; label('상태', x + 10, yy, fs, orange); label(stText(u), x + 46, yy, fs, COLORS.silver); label('지형', x + 140, yy, fs, orange); label(TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—', x + 190, yy, fs, COLORS.silver);
-  yy += rp; label('장비', x + 10, yy, fs, orange); label(itemName(u), x + 70, yy, fs, COLORS.silver, 'left', w - 80);
-  yy += rp; label('상성', x + 10, yy, fs, orange); label(matchupShort(u.category), x + 70, yy, fs, COLORS.silver, 'left', w - 80);
-  if (sp.length) { yy += rp; label('술법 (아래 스킬 버튼)', x + 10, yy, fs, orange, 'left', w - 20); sp.forEach((k, i) => { yy += rp; label(`${u.spellSel === i ? '▶' : ' '} ${i + 1} ${skillInfo(u, k).name}  ${k === 'bless' ? '—' : '기력 ' + SPELL[k].mp}`, x + 10, yy, 14, u.spellSel === i ? COLORS.gold : COLORS.silver, 'left', w - 20); }); }
-  yy += rp - 2; label('행동 ' + pr.name, x + 10, yy, 15, COLORS.silver2, 'left', 170); label(pr.cd > 0 ? cooldownText(pr) : '가능', x + w - 10, yy, 15, pr.ready ? COLORS.gold : COLORS.silver2, 'right');
+  const x = 6, y = 96, w = 250, orange = '#ff9a3c';
+  panel(x, y, w, 170, 'rgba(255,255,255,.25)', 1, 'rgba(10,12,20,.72)');
+  label(u.name, x + 10, y + 20, 20, hpCol(u.hp / u.maxHp, COLORS.gold), 'left', 130);
+  label(u.generic ? (u.sg ? gradeTag(u.sg) : '') : 'Lv' + u.lv, x + w - 10, y + 20, 15, orange, 'right');
+  label(`${catTitle(u.key)} · ${itemName(u)}`, x + 10, y + 43, 14, COLORS.silver, 'left', w - 20);
+  bar(x + 10, y + 54, w - 20, 8, u.hp / u.maxHp, hpCol(u.hp / u.maxHp));
+  label(`체력 ${Math.ceil(u.hp)}/${u.maxHp}`, x + 10, y + 79, 15, COLORS.silver);
+  label(`기력 ${mpText(u, true)}`, x + w - 10, y + 79, 15, COLORS.silver, 'right');
+  label(`피로 ${Math.round(Sim.effectiveFt(u))}`, x + 10, y + 103, 15, Sim.effectiveFt(u) > 50 ? '#ffb04d' : COLORS.silver);
+  label(`공격 ${statShow(u, 'atk')} · 방어 ${statShow(u, 'df')}`, x + w - 10, y + 103, 15, COLORS.silver, 'right');
+  label(`상태 ${stText(u)}`, x + 10, y + 127, 15, COLORS.silver, 'left', w - 20);
+  label(`상성 ${matchupShort(u.category)}`, x + 10, y + 151, 14, COLORS.silver2, 'left', w - 20);
+  label(`지형 ${TERRAIN_NAME[S.map[Sim.ti(u.tx, u.ty)]] || '—'}`, x + w - 10, y + 151, 14, COLORS.silver2, 'right');
 }
 
 const itemName = u => u.item ? `${Sim.ITEMS[u.item].unique ? '★ ' : ''}${Sim.ITEMS[u.item].name}` : WEAPON_NAME[(styleOf(u) || {}).weapon] || '—';
@@ -2294,7 +2291,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.409', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.410', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2338,7 +2335,7 @@ function drawMapFlag(x, y, faction, mark, highlight = false) {
 function capitalInfo(s) {   // 수도 수비 현황 (명세 62 B4): 정원·정예 비율·보충량, 70% 미만이면 경고 (적이 인접하면 주황)
   if (!isDefenseCapital(s)) return null;
   const n = guardsAt(s).reduce((x, g) => x + g.army.units.length, 0), cap = guardCap(s), low = n < cap * 0.7, k = cityKind(s), near = enemyForces.some(f => f.active && relationOf(forceFaction(f)).status === 'war' && (f.at === s.id || s.links.includes(f.at)));
-  return { n, cap, low, line1: low ? `★ 수도 수비 부족 (${n}/${cap})` : `★ 수도 · 수비 ${n}/${cap}명 · 정예 B 9할`, line2: `보충 +${capitalRefill(s)}명/${CAPITAL_REFILL.every}턴(군량 소모)`, col: low ? (near ? '#ffb06a' : COLORS.goldSel) : COLORS.silver2 };
+  return { n, cap, low, line1: low ? `★ 수도 수비 부족 (${n}/${cap})` : `★ 수도 · 수비 ${n}/${cap}명 · 정예 B 9할`, line2: `수도 증원 +${capitalRefill(s)}명/${CAPITAL_REFILL.every}턴(군량 소모)`, col: low ? (near ? '#ffb06a' : COLORS.goldSel) : COLORS.silver2 };
 }
 const diplomable = s => s.owner !== 'player' && isCapital(s) && !factionDead(s.faction);   // 외교 도구로 고를 수 있는 곳: 다른 세력의 수도
 const REL_COL = { war: '#ff7d6a', truce: '#79bfff', neutral: '#d0d0d0', ally: '#7dff9a' };
@@ -2507,6 +2504,7 @@ function drawStageMap() {
     drawCityGate(s, style, on);
     if (faction === playerFaction()) { ctx.save(); ctx.strokeStyle = on ? COLORS.goldSel : '#7debd1'; ctx.lineWidth = 2.5; ctx.strokeRect(s.x - 22, s.y - 25, 44, 48); ctx.restore(); }
     if (s === sel && !on) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y, 19, 0, TAU); ctx.stroke(); }
+    { const siege = siegeMapInfo(s); if (siege) { ctx.save(); ctx.fillStyle = 'rgba(52,8,8,.84)'; ctx.fillRect(s.x - 52, s.y - 62, 104, 20); ctx.strokeStyle = '#ff8a70'; ctx.strokeRect(s.x - 52, s.y - 62, 104, 20); ctx.restore(); label(siege, s.x, s.y - 52, 11, '#ffd5ca', 'center', 100); } }
     label(`${isCapital(s) ? '★ ' : ''}${s.name}`, s.x, s.y + (on ? 32 : 26), 15, on ? COLORS.goldSel : '#f3eed8', 'center');
     { const kd = cityKind(s); if ((s.kind === 'gate' || kd.letter) && (!mobile || s === sel)) label(s.kind === 'gate' ? '관' : kd.letter, s.x - 24, s.y - 16, 13, COLORS.goldSel, 'center'); }   // 도시 유형 글자 (모바일은 선택한 도시만)
     if (stationed.length) drawMapFlag(s.x + 12, s.y - 6, playerFaction(), String(stationed.length), stationed.some(({ i }) => i === campaign.corps));   // 주둔 아군: 깃발 + 군단 수
@@ -2532,9 +2530,9 @@ function drawStageMap() {
   label(`목표: 모든 거점 점령 ${STAGES.length - unclaimedCities().length}/${STAGES.length}`, 1025, 120, 13, COLORS.gold);
   { const f = stageFaction(sel), st = stationedAt(sel), foes = enemyForces.filter(x => x.active && x.at === sel.id), lead = c => c.units[0] ? Sim.U[c.units[0]].name : corpsName(c);   // 선택한 도시 정보
     label(`${isCapital(sel) ? '★' : ''}${sel.name} · ${f} · ${sel.kind === "gate" ? "관문" : CITY_SIZES[citySize(sel)].name} · ${sel.grade}`, 1025, 146, 13, COLORS.goldSel);
-    { const ci = capitalInfo(sel); if (ci) label(ci.line1, 1025, 162, 11, ci.col); else label(`도시수비 ${guardsAt(sel).reduce((n, g) => n + g.army.units.length, 0)}/${guardCap(sel)}명 · Lv${CITY_SIZES[citySize(sel)].level + cityKind(sel).lv}`, 1025, 162, 11, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2); }
-    { const ci = capitalInfo(sel); wrapText(kindLine(sel), 22).slice(0, ci ? 1 : 2).forEach((t, i) => label(t, 1025, 192 + i * 13, 10, COLORS.silver2)); if (ci) label(ci.line2, 1025, 205, 10, COLORS.silver2); }
-    label(st.length ? (st.length === 1 ? `${lead(st[0].c)} 군단` : `${lead(st[0].c)} 군단 외 ${st.length - 1}`) : foes.length ? `${Sim.U[foes[0].army.leader]?.name || foes[0].army.name} 부대${foes.length > 1 ? ' 외 ' + (foes.length - 1) : ''}` : '기동 군단 없음', 1025, 177, 11, COLORS.silver);
+    { const ci = capitalInfo(sel); if (ci) label(ci.line1, 1025, 163, 12, ci.col); else label(`도시수비 ${guardsAt(sel).reduce((n, g) => n + g.army.units.length, 0)}/${guardCap(sel)}명 · Lv${CITY_SIZES[citySize(sel)].level + cityKind(sel).lv}`, 1025, 163, 12, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2); }
+    { const ci = capitalInfo(sel); wrapText(kindLine(sel), 19).slice(0, ci ? 1 : 2).forEach((t, i) => label(t, 1025, 194 + i * 15, 12, COLORS.silver2)); if (ci) label(ci.line2, 1025, 209, 12, COLORS.silver2); }
+    label(st.length ? (st.length === 1 ? `${lead(st[0].c)} 군단` : `${lead(st[0].c)} 군단 외 ${st.length - 1}`) : foes.length ? `${Sim.U[foes[0].army.leader]?.name || foes[0].army.name} 부대${foes.length > 1 ? ' 외 ' + (foes.length - 1) : ''}` : '기동 군단 없음', 1025, 179, 12, COLORS.silver);
   }
   drawGrainChip(1025, 220, 210, mobile ? 88 : 44);
   { const top = mobile ? 318 : 272, rows = mobile ? 0 : 2; label('내 군단', 1025, top, 11, COLORS.gold);
@@ -3372,7 +3370,7 @@ function uiClickCore(id) {
   else if (id === 'm:mode') setMobile(!mobile);
   else if (id === 'm:status') { SHOW.status = !SHOW.status; saveShow(); }
   else if (id === 'm:compact') { tblCompact = !tblCompact; layout(); snapCam(); }
-  else if (id === 'm:abil') tblAbility = !tblAbility;
+  else if (id === 'm:abil') { tblAbility = !tblAbility; layout(); snapCam(); }
   else if (id === 'm:auto') { if (!tutorialBattle) Sim.setAuto(S, !S.auto); } else if (id === 'm:restart') { if (tutorialBattle) { startTutorialBattle(true); return; } allyHelpIds = lastHelpIds.length ? lastHelpIds : null; startBattle(campaign.battle); } else if (id === 'm:close') menuOpen = false;
 }
 function mapClick(sx, sy, right) {   // 적을 클릭 = 군단이 그 적을 집중 공격, 아군을 클릭 = 그 캐릭터를 조작, 우클릭 = 집중 공격 해제
