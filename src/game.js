@@ -116,6 +116,15 @@ const HERO_191 = {
 const SCENARIO = { year: 191, month: 10 }, TURNS_PER_MONTH = 3;   // 1턴 = 10일 (상·중·하순), 36턴 = 1년 (사용자 결정 2026-11-15)
 const campaignDate = turn => { const m = SCENARIO.month - 1 + Math.floor((turn - 1) / TURNS_PER_MONTH); return `${SCENARIO.year + Math.floor(m / 12)}년 ${m % 12 + 1}월 ${['상', '중', '하'][(turn - 1) % TURNS_PER_MONTH]}순`; };
 const debutTurn = key => { const d = HERO_191[key]; if (!d) return 1; if (d === 'x') return Infinity; const [y, mo] = d.split('-').map(Number); return (y - SCENARIO.year) * 12 * TURNS_PER_MONTH + (mo - SCENARIO.month) * TURNS_PER_MONTH + 1; };
+// 인재 등용(명세 86): 191년 10월의 재야(在野) 장수와 머무는 도시. 그 도시를 가진 세력만 등용할 수 있다. 아무도 등용하지 않으면 HERO_191 시기에 원래 세력으로 간다.
+// 확인: 곽가·허저 허창, 정욱 재야(삼국지14 PK 위키). 나머지 도시는 출신지·191년 활동지 기준 추정(명세 86 표).
+const RONIN_191 = {
+  guo: 'xuchang', xuchu: 'xuchang', xunyou: 'xuchang', chengyu: 'puyang', chengong: 'puyang', dian: 'chenliu', manchong: 'changyi', lvqian: 'changyi', yujin: 'jinan',
+  mizhu: 'donghai', mifang: 'donghai', lady_mi: 'donghai', sunqian: 'beihai', zangba: 'langya', yinli: 'langya', zhangchao: 'guangling',
+  jiaxu: 'changan', xuhuang: 'hongnong', yangfeng: 'hongnong', simalang: 'luoyang',
+};
+const RECRUIT = { cost: 15, base: 0.4, kin: 0.3, max: 0.9, cool: 3, ai: 0.1, aiKin: 0.15 };   // 설계값: 시도당 군량 15, 성공 40%(+30% 역사상 그 세력 인물, 최대 90%), 실패 3턴 대기, AI 는 턴마다 10%(+15%)
+const roninInit = () => Object.fromEntries(Object.entries(RONIN_191).map(([k, at]) => [k, { at, cool: 0 }]));
 const START_HEROES = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, l]) => [f, l.filter(k => debutTurn(k) <= 1)]));
 { const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key]) || Object.keys(HERO_191).some(k => !assigned.includes(k))) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
@@ -379,7 +388,7 @@ function distributePlayerInfantry() {
 }
 function resetCampaignData(faction = '여포') {
   STAGES.forEach((s, i) => { s.faction = INITIAL_FACTIONS[i]; s.owner = s.faction === faction ? 'player' : 'enemy'; }); enemyForces.length = 0;
-  campaign.prisoners = []; campaign.fallen = []; campaign.custodyNews = []; campaign.debuted = []; campaign.training = []; campaign.trainNews = [];
+  campaign.prisoners = []; campaign.fallen = []; campaign.custodyNews = []; campaign.debuted = []; campaign.ronin = roninInit(); campaign.training = []; campaign.trainNews = [];
   const at = CAPITALS[faction];
   Object.assign(campaign, { playerFaction: faction, at, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: initialPlayerRelations(faction), aiRelations: initialAiRelations(faction), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, lvCap30: true, milestoneV1: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: `${faction}군의 수도 ${stageById(at).name}에서 원정을 시작한다.` });
   buildPlayerRoster(faction); for (const f of FACTIONS) if (f !== faction) addEnemyFaction(f);
@@ -445,7 +454,7 @@ function restoreCampaign(data) {
   cityGuards.splice(0, cityGuards.length, ...data.cityGuards); for (const f of cityGuards) { f.fac = stageFaction(stageById(f.home)); f.active = f.army.units.length > 0; f.army.commander = true; f.army.leader = null; }
   migrateGuardSizes();   // 옛 저장의 도시 크기 정원 수비군을 등급 정원으로 (명세 81 B)
   ensureCapitalGuards();   // 수도 슬롯이 모자라면(구 저장·천도) 빈 슬롯을 만든다
-  campaign.rulers ||= { ...INITIAL_RULERS };
+  campaign.rulers ||= { ...INITIAL_RULERS }; campaign.ronin = data.campaign.ronin || roninInit();   // 명세 86 이전 v31 저장: 재야 목록을 새로 만든다(이미 배치된 장수는 roninList 가 거른다)
   if (!data.campaign.affV389 && campaign.affinity?.['원소|장양'] === -35) campaign.affinity['원소|장양'] = AFFINITY_INIT['원소|장양'];   // v0.1.389 이전 저장: 옛 시작값(−35)이면 새 시작값으로 (플레이로 바뀐 값은 둔다)
   for (const [k, v] of Object.entries(dipInit())) campaign[k] ||= v; campaign.hostages = campaign.hostages.filter(h => h && Sim.U[h.key] && Number.isFinite(h.until) && FACTIONS.includes(h.to) && h.growth); for (const h of campaign.hostages) detachHero(h.key); for (const [k, v] of Object.entries(AFFINITY_INIT)) if (!Number.isFinite(campaign.affinity[k])) campaign.affinity[k] = v;
   campaign.relations ||= JSON.parse(JSON.stringify(DEFAULT_RELATIONS)); campaign.aiRelations ||= initialAiRelations(campaign.playerFaction); campaign.aiBattles ||= []; campaign.capitals ||= { ...CAPITALS }; campaign.dead ||= {}; campaign.digest ||= []; campaign.newsLog ||= []; campaign.newsMode ||= 'important'; campaign.aiLast ||= {};
@@ -460,6 +469,7 @@ function completeCampaignIfWon() {
 let lastHelpIds = [];   // 이번 전투에 데려온 동맹 군단 id — 전투 다시 시작 때 같은 선택을 다시 쓴다 (전투 중에는 선택 팝업이 보이지 않음)
 let allyChoice = null, allyHelpIds = null;   // 동맹군과 같은 도시에서 전투 직전의 선택 {stage, ids} / 도우기로 정한 동맹 군단 id
 let warnMove = null, diplomacyQueue = [];   // warnMove: 중립 도시 진입 경고 팝업 {id, stage} / diplomacyQueue: 한 번에 여러 외교 결과가 생길 때 순서대로 보여 줄 팝업
+let recruitView = null;   // 인재 등용 팝업(명세 86) { page, msg } — 저장하지 않는다
 let trainView = null;   // 훈련 팝업(명세 83) { page, sel: Set<장수 키>, msg } — 저장하지 않는다
 let econView = false, mapTool = null, scoutView = null, heroView = null, diplomacyView = null, diplomacyResult = null;   // heroView: 전략 화면 세력별 전체 장수 정보
 let heroGrowthView = false;   // 장수 상세: false 기본 정보(칭호·특수기·주문) / true 성장 정보(마일스톤·등급·칭호 티어·Lv1 대비)
@@ -622,7 +632,7 @@ function startCampaign() {
 function resetTransientUi() {
   mapFx = null;
   stratTutStep = -1; stratPractice = null; custodyView = false; custodyPage = 0; turnSummary = null; pendingSummary = null; inTurnFlow = false;   // 남아 있던 팝업·선택 상태가 새 게임·불러오기 뒤 입력을 막지 않게 한다
-  allyChoice = null; allyHelpIds = null; lastHelpIds = []; warnMove = null; diplomacyResult = null; diplomacyQueue = []; diplomacyView = null; scoutView = null; econView = false; heroView = null; trainView = null; aiRelationsOpen = false; factionStatusOpen = false; mapTap = null; noticeSeen = ''; hoverId = ''; pressId = ''; chipNotice = null; mapTool = null; moveSelectOpen = false; moveMode = 'corps'; saveSlotMode = null; startFactionSelect = false; popupSink = null; aiEntries = null; rosterPick = null; selectMode = false; selTarget = null; menuOpen = false;
+  allyChoice = null; allyHelpIds = null; lastHelpIds = []; warnMove = null; diplomacyResult = null; diplomacyQueue = []; diplomacyView = null; scoutView = null; econView = false; heroView = null; trainView = null; recruitView = null; aiRelationsOpen = false; factionStatusOpen = false; mapTap = null; noticeSeen = ''; hoverId = ''; pressId = ''; chipNotice = null; mapTool = null; moveSelectOpen = false; moveMode = 'corps'; saveSlotMode = null; startFactionSelect = false; popupSink = null; aiEntries = null; rosterPick = null; selectMode = false; selTarget = null; menuOpen = false;
 }
 function startNewGame(faction) { resetCampaignData(faction); resetTransientUi(); titleNotice = ''; startCampaign(); saveCampaign(); }
 function startNewFromTitle() { activeSaveSlot = Array.from({ length: SAVE_SLOTS }, (_, i) => i + 1).find(slot => !hasCampaign(slot)) || activeSaveSlot; startFactionSelect = true; titleNotice = ''; }
@@ -1208,7 +1218,7 @@ function endCampaignTurn() {
   autoDisbandEmpty();   // 전투 손실 등으로 완전히 비어 버린 군단은 진행 시작 때 해제한다
   processTraining();   // 명세 83 D3: 예약한 훈련은 진행하기 맨 앞(turn++ 전)에 경험치로 바뀐다
   inTurnFlow = true;
-  campaign.turn++; hostageStep(); processCustodyTurn(); heroDebuts(); campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; aiSupportUsed = new Set();
+  campaign.turn++; hostageStep(); processCustodyTurn(); heroDebuts(); aiRecruitStep(); campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; aiSupportUsed = new Set();
   for (const [faction, relation] of Object.entries(campaign.relations)) if (relation.status === 'truce' && campaign.turn >= relation.truceUntil) { const A = affinityOf(playerFaction(), faction), calm = A >= TRUCE_RULE.calmA; relation.status = calm ? 'neutral' : 'war'; relation.truceUntil = 0; delete relation.truceSince; relation.since = campaign.turn; campaign.notice = `${faction}군과의 휴전이 끝나 ${calm ? '중립' : '전쟁'} 상태로 돌아갔다.`; showDiplomacyResult(`${faction}군과 ${calm ? '중립 복귀' : '전쟁 재개'}`, ['휴전 기간이 끝났습니다.', `호감도 ${A} (${affinityStage(A).name}) ${calm ? `≥ ${TRUCE_RULE.calmA}이라 중립으로 복귀` : `< ${TRUCE_RULE.calmA}이라 전쟁`}`, `관계: 휴전 → ${calm ? '중립' : '전쟁'}`], calm); }
   roster.forEach((corps, index) => attachPopups(() => {
     const from = corps.at;
@@ -1269,20 +1279,50 @@ function placeCustodyHero(p, faction, ref, city) {
   }
   let f = [preferred, ...enemyForces.filter(f => forceFaction(f) === faction)].find(f => f && f.role !== 'garrison' && f.army.units.length < Sim.ARMY_MAX);
   if (!f) {
-    f = { id: Math.max(-1, ...enemyForces.map(f => f.id)) + 1, fac: faction, at: city, home: city, active: true, level: p.growth.lv, role: 'expedition', army: { team: 'enemy', name: '', at: [18, 18], leader: p.key, units: [], growth: [], formation: 'block', trig: { t: 60, near: 12 } } }; enemyForces.push(f);
+    f = { id: Math.max(-1, ...enemyForces.map(f => f.id)) + 1, fac: faction, at: city, home: city, active: true, level: p.growth.lv, role: 'expedition', army: { team: 'enemy', role: 'expedition', name: '', at: [18, 18], leader: p.key, units: [], growth: [], formation: 'block', trig: { t: 60, near: 12 } } }; enemyForces.push(f);
   }
   const leaderMissing = !f.army.units.some(namedRosterUnit);
   if (leaderMissing) { f.army.units.unshift(p.key); f.army.growth.unshift({ ...p.growth }); f.army.leader = p.key; } else { f.army.units.push(p.key); f.army.growth.push({ ...p.growth }); }
   f.active = true; if (f === preferred) f.at = city; f.army.name = faction + '군 · ' + Sim.U[f.army.leader].name + ' 부대'; return true;
 }
+const roninFaction = key => FACTIONS.find(f => FACTION_HEROES[f].includes(key));   // 역사상 소속 (등용 보너스·기본 합류처)
+const roninList = () => Object.entries(campaign.ronin || {}).filter(([k]) => !heroCorpsRef(k) && !(campaign.fallen || []).includes(k)).map(([key, r]) => ({ key, ...r, stage: stageById(r.at) }));
+const recruitChance = (key, f) => Math.min(RECRUIT.max, RECRUIT.base + (roninFaction(key) === f ? RECRUIT.kin : 0));
+function recruitCheck(key, P = playerFaction()) {   // 플레이어 등용 가능 여부 → 사유 문자열('' 이면 가능)
+  const r = campaign.ronin?.[key]; if (!r || heroCorpsRef(key)) return '이미 다른 곳에 있습니다';
+  if (stageFaction(stageById(r.at)) !== P) return `${stageById(r.at).name}을(를) 차지해야 합니다`;
+  if (r.cool > campaign.turn) return `다시 찾아가려면 ${r.cool - campaign.turn}턴`;
+  if (grainRoom(P, RECRUIT.cost) < 1) return `군량 부족 (−${RECRUIT.cost})`;
+  if (roster.every(c => c.units.every(Boolean)) && roster.length >= ROSTER_MAX) return '군단에 빈 자리가 없습니다';
+  return '';
+}
+function recruitRonin(key) {   // 플레이어 등용 시도: 군량을 쓰고 확률로 합류, 실패하면 대기
+  const P = playerFaction(), why = recruitCheck(key, P); if (why) return { ok: false, msg: why };
+  const r = campaign.ronin[key], name = Sim.U[key].name, p = recruitChance(key, P); spendGrain(P, RECRUIT.cost);
+  if (custodyRoll('ronin|' + key + '|' + r.cool) < p && placeCustodyHero({ key, growth: Sim.levelStats(key, 'player', 1) }, P, null, r.at)) {
+    delete campaign.ronin[key]; campaign.notice = `${name} 등용 성공! ${stageById(r.at).name}의 군단에 합류했다.`; return { ok: true, msg: `${name} 등용 성공 (${Math.round(p * 100)}%)` };
+  }
+  r.cool = campaign.turn + RECRUIT.cool; return { ok: false, msg: `${name}이(가) 거절했습니다 (${Math.round(p * 100)}%) — ${RECRUIT.cool}턴 뒤 다시` };
+}
+function aiRecruitStep() {   // 턴 진행: AI 세력은 자기 도시의 재야를 턴마다 확률로 등용한다 (군량 여유가 있을 때)
+  const lines = [];
+  for (const r of roninList()) {
+    const f = r.stage.owner === 'enemy' ? r.stage.faction : null; if (!f || !FACTIONS.includes(f) || factionDead(f) || grainRoom(f, RECRUIT.cost) < 1) continue;
+    if (custodyRoll('aironin|' + r.key) >= RECRUIT.ai + (roninFaction(r.key) === f ? RECRUIT.aiKin : 0)) continue;
+    spendGrain(f, RECRUIT.cost);
+    if (placeCustodyHero({ key: r.key, growth: enemyGrowth(r.key, r.stage.level) }, f, null, r.at)) { delete campaign.ronin[r.key]; lines.push(`${Sim.U[r.key].name} → ${f}군 등용(${r.stage.name})`); }
+  }
+  if (lines.length) aiNews('B', '재야 등용', lines, true, '세력 소식');
+  return lines;
+}
 function heroDebuts() {   // 명세85: 등장 시기가 된 장수는 자기 세력 수도로 합류한다 (세력이 멸망했으면 나오지 않음). 한 번만 처리
   const done = campaign.debuted ||= [], lines = [];
   for (const [f, list] of Object.entries(FACTION_HEROES)) for (const key of list) {
     if (done.includes(key) || debutTurn(key) <= 1 || debutTurn(key) > campaign.turn) continue;
-    done.push(key); const cap = f === playerFaction() ? playerCapital() : campaignCapital(f), st = stageById(cap);
-    if (factionDead(f) || !st || stageFaction(st) !== f) continue;
-    const growth = f === playerFaction() ? Sim.levelStats(key, 'player', 1) : enemyGrowth(key, st.level);
-    if (placeCustodyHero({ key, growth }, f, null, cap)) lines.push(`${Sim.U[key].name} → ${f}군 합류`);
+    const ronin = campaign.ronin?.[key], cap = f === playerFaction() ? playerCapital() : campaignCapital(f), st = stageById(cap);
+    if (factionDead(f) || !st || stageFaction(st) !== f) { if (!ronin) done.push(key); continue; }   // 재야는 세력이 없어져도 재야로 남는다
+    done.push(key); const growth = f === playerFaction() ? Sim.levelStats(key, 'player', 1) : enemyGrowth(key, st.level);
+    if (placeCustodyHero({ key, growth }, f, null, cap)) { lines.push(`${Sim.U[key].name} → ${f}군 합류`); if (ronin) delete campaign.ronin[key]; }
   }
   if (lines.length) { (campaign.digest ||= []).push({ title: '장수 등장', line: lines.join(' · ') }); if (lines.some(t => t.endsWith(playerFaction() + '군 합류'))) campaign.notice = lines.filter(t => t.endsWith(playerFaction() + '군 합류')).join(' · ') + '! ' + (campaign.notice || ''); }
   return lines;
@@ -1745,6 +1785,7 @@ function button(id, x, y, w, h, text, on, size = 16, o) {   // o(명세 80, 전�
   if (o.off) dimOver({ x, y, w, h });
   btns.push({ id, x, y, w, h, on: !!on, primary, off: !!o.off, hover, press });
 }
+const recruitLabel = () => { const n = roninList().filter(r => stageFaction(r.stage) === playerFaction()).length; return n ? `인재 (${n})` : '인재'; };   // 명세 86: 내 도시에 있는 재야 수
 const trainLabel = () => (campaign.training || []).length ? `훈련 (예약 ${campaign.training.length}명)` : '훈련';   // 명세 83 R9
 const sprOff = id => !!(stratPractice && stratPractice.step >= 1 && stratPractice.step <= 6 && !practiceAllows(id));   // 명세 80 R3: 실습 중 허용 목록 밖 버튼은 흐리게(사유는 배너)
 const LUBU_ART_KEYS=new Set([...FACTION_HEROES['여포'],'f_xian','f_bing']);
@@ -2012,7 +2053,7 @@ function drawMenu() {   // 시스템: PC·모바일 공통 기능을 용도별 �
 }
 // 전략 화면 튜토리얼 (명세 외 요청): 새 게임 첫 진입 때 1회 자동, 이후 지도의 '도움말' 버튼. 페이지 = [제목, 줄들(문자열 또는 [PC, 모바일]), PC 강조 사각형, 모바일 강조 사각형]
 let heroCloseT = -9;   // 장수 창 닫기 직후 0.4초는 아래 세력 현황 버튼으로 새는 더블 탭 무시
-const STRAT_KEYS = ['campaign:scout', 'campaign:diplomacy', 'campaign:move', 'campaign:roster', 'campaign:save', 'campaign:load', 'campaign:heroes', 'campaign:train'];   // 명세 80 R6·83 R7: 숫자 1~8 (버튼 배지와 같은 순서)
+const STRAT_KEYS = ['campaign:scout', 'campaign:diplomacy', 'campaign:move', 'campaign:roster', 'campaign:save', 'campaign:load', 'campaign:heroes', 'campaign:train', 'campaign:recruit'];   // 명세 80 R6·83 R7·86: 숫자 1~9 (버튼 배지와 같은 순서)
 const STRAT_TUT = [
   ['목표', ['모든 도시를 점령하면 승리합니다.', `세력은 ${FACTIONS.join('·')} ${FACTIONS.length}곳입니다.`, '다른 세력과는 외교로 휴전·동맹을 맺을 수 있습니다.', ['아래 상자는 세력별 도시 수·관계, 위 버튼은 세력 장수 목록입니다.', '왼쪽 아래 세력 현황 버튼에서 도시 수·관계와 세력 장수를 봅니다.']], [[10, 604, 980, 102]], [[104, 630, 160, 86]]],
   ['지도 읽기', ['도시 색은 세력, 깃발 숫자는 주둔한 내 군단 수입니다.', ['★은 수도, 곡·병·요·교는 곡창·병영·요새·교역입니다.', '★은 수도입니다. 선택한 도시 위에만 유형 글자가 보입니다.'], ['글자가 없는 도시는 군현입니다.', '곡·병·요·교는 곡창·병영·요새·교역, 없으면 군현입니다.'], ['빈 곳 끌기·방향키·미니맵 클릭으로 지도를 움직입니다.', '빈 곳 끌기·왼쪽 위 미니맵 터치로 지도를 움직입니다.']], [[10, 10, 170, 120]], [[10, 10, 170, 120]]],
@@ -2328,7 +2369,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.412', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.413', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2441,7 +2482,7 @@ const MAP_TAP_SLOP = 12, NOTICE_SEC = 6;   // 12 가상px(≈6 CSS px) 넘게 �
 const mapKeys = new Set();
 const clampMcam = () => { mcam.x = Math.max(0, Math.min(WORLD_W - MAP_VW, mcam.x)); mcam.y = Math.max(0, Math.min(WORLD_H - VH, mcam.y)); };
 function centerMap(id) { const s = stageById(id || (roster[campaign.corps] && roster[campaign.corps].at)); mapSel = null; if (s) { mcam.x = s.x - MAP_VW / 2; mcam.y = s.y - VH / 2; } clampMcam(); }
-const mapFree = () => state === 'map' && !custodyOpen() && !(stratTutStep >= 0 || (stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) || saveSlotMode || campaign.pendingEncounter || warnMove || allyChoice || diplomacyResult || diplomacyView || heroView || trainView || scoutView || econView || factionStatusOpen || moveSelectOpen || campaign.movement.length);   // 팝업이 없을 때만 카메라 입력을 받는다
+const mapFree = () => state === 'map' && !custodyOpen() && !(stratTutStep >= 0 || (stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) || saveSlotMode || campaign.pendingEncounter || warnMove || allyChoice || diplomacyResult || diplomacyView || heroView || trainView || recruitView || scoutView || econView || factionStatusOpen || moveSelectOpen || campaign.movement.length);   // 팝업이 없을 때만 카메라 입력을 받는다
 const inMapMini = p => p.x >= MAP_MINI.x && p.x < MAP_MINI.x + MAP_MINI.w && p.y >= MAP_MINI.y && p.y < MAP_MINI.y + MAP_MINI.h;
 function miniJump(p) { mcam.x = (p.x - MAP_MINI.x) * (WORLD_W / MAP_MINI.w) - MAP_VW / 2; mcam.y = (p.y - MAP_MINI.y) * (WORLD_H / MAP_MINI.h) - VH / 2; clampMcam(); }
 function drawMapSea(g = ctx) {
@@ -2580,7 +2621,7 @@ function drawStageMap() {
   ctx.save(); ctx.globalAlpha = sprOff('campaign:scout') ? 0.45 : 1; ctx.strokeStyle = COLORS.gold; ctx.fillStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(1043, 354, 6, 0, TAU); ctx.moveTo(1047.5, 358.5); ctx.lineTo(1054, 365); ctx.stroke();   // 정찰: 돋보기 (버튼 좌상단 기준 +18,+16)
   ctx.globalAlpha = sprOff('campaign:diplomacy') ? 0.45 : 1; ctx.beginPath(); ctx.moveTo(1153, 365); ctx.lineTo(1153, 348); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1153, 348); ctx.lineTo(1166, 352); ctx.lineTo(1153, 357); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();   // 외교: 백기 (+18,+10..27)
   button('campaign:move', 1025, 400, 100, 36, '이동', moveSelectOpen || moveMode === 'city', 16, { key: 3, off: sprOff('campaign:move') }); button('campaign:roster', 1135, 400, 100, 36, '군단 편성', false, 16, { key: 4, off: sprOff('campaign:roster') });   // 라벨 고정 '이동' — 상태는 안내줄·칩이 말한다
-  button('campaign:train', 1025, 442, 210, 36, trainLabel(), false, 16, { key: 8, off: sprOff('campaign:train') });   // 명세 83 R6: 행동 그룹 둘째 줄 (켜짐 표시 없음)
+  button('campaign:train', 1025, 442, 100, 36, trainLabel(), false, 16, { key: 8, off: sprOff('campaign:train') }); button('campaign:recruit', 1135, 442, 100, 36, recruitLabel(), false, 16, { key: 9, off: sprOff('campaign:recruit') });   // 명세 86: 훈련 줄을 훈련 | 인재 로 나눈다   // 명세 83 R6: 행동 그룹 둘째 줄 (켜짐 표시 없음)
   button('campaign:save', 1025, 504, 100, 36, '저장', false, 16, { key: 5, off: sprOff('campaign:save') }); button('campaign:load', 1135, 504, 100, 36, '로드', false, 16, { key: 6, off: sprOff('campaign:load') });
   button('campaign:end', 1025, 564, 210, 48, '진행하기', false, 18, { primary: true, off: sprOff('campaign:end') });   // primary(단색 금) — 켜짐(on)과 구분. 위 시스템 줄과 24 띄움, 단축키 없음
   panel(1025, 620, 210, 84, 'rgba(255,255,255,.35)', 1, 'rgba(0,0,0,.3)');   // 진행 안내 문구는 진행하기 버튼 아래
@@ -2598,6 +2639,7 @@ function drawStageMap() {
   if (scoutView) drawScoutView();
   if (econView) drawEconView();
   if (trainView) drawTrainView();
+  if (recruitView) drawRecruitView();
   if (factionStatusOpen && !heroView) { if (aiRelationsOpen) drawAiRelations(); else drawFactionStatus(); }   // 세력 장수 창(모바일 1240×708)이 세력 현황 위에 쌓이면 아래 팝업은 완전히 가려지므로 그리지도 판정하지도 않는다 (닫으면 복귀)
   if (diplomacyView) drawDiplomacyView();
   if (heroView) drawFactionHeroes();
@@ -2621,7 +2663,7 @@ function drawMapPanelMobile(sel, stationedAt) {   // 모바일: 오른쪽 패널
   const o = id => ({ off: sprOff(id) });
   button('campaign:scout', xs[0], rows[1], bw, TOUCH, '정찰', mapTool === 'scout', 17, o('campaign:scout')); button('campaign:diplomacy', xs[1], rows[1], bw, TOUCH, '외교', mapTool === 'diplomacy', 17, o('campaign:diplomacy'));
   button('campaign:move', xs[0], rows[2], bw, TOUCH, '이동', moveSelectOpen || moveMode === 'city', 17, o('campaign:move')); button('campaign:roster', xs[1], rows[2], bw, TOUCH, '군단 편성', false, 17, o('campaign:roster'));
-  button('campaign:train', 1012, rows[3], 250, TOUCH, trainLabel(), false, 17, o('campaign:train'));
+  button('campaign:train', xs[0], rows[3], bw, TOUCH, trainLabel(), false, 17, o('campaign:train')); button('campaign:recruit', xs[1], rows[3], bw, TOUCH, recruitLabel(), false, 17, o('campaign:recruit'));
   button('campaign:save', xs[0], rows[4], bw, TOUCH, '저장', false, 17, o('campaign:save')); button('campaign:load', xs[1], rows[4], bw, TOUCH, '로드', false, 17, o('campaign:load'));
   button('campaign:end', 1012, rows[5], 250, TOUCH, '진행하기', false, 19, { primary: true, off: sprOff('campaign:end') });
   if (campaign.notice !== noticeSeen) { noticeSeen = campaign.notice; noticeUntil = T + NOTICE_SEC; }   // 알림은 글이 바뀔 때 6초만 띄운다 (같은 글이면 다시 안 띄움). 모드 안내는 아래 칩이 맡는다
@@ -2629,7 +2671,7 @@ function drawMapPanelMobile(sel, stationedAt) {   // 모바일: 오른쪽 패널
     const chip = moveMode === 'city' && !moveSelectOpen ? '이동할 도시를 터치하세요 (같은 도시를 다시 터치하면 취소)' : mapTool === 'scout' ? '정찰할 적 도시를 터치하세요 (내 군단과 같거나 이어진 도시)' : mapTool === 'diplomacy' ? '외교할 세력의 수도를 터치하세요(빛나는 곳)' : '';
     if (!chip) chipNotice = null; else if (chipNotice === null) chipNotice = campaign.notice;   // 칩이 처음 보일 때의 알림은 칩이 같은 말을 하므로 토스트를 생략한다 (글이 바뀌면 다시 6초)
     if (chip) { panel(190, 6, 800, 44, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.82)'); label(chip, 200, 28, 15, COLORS.goldSel, 'left', 780); }
-    if (campaign.notice && T < noticeUntil && !trainView && !(chip && campaign.notice === chipNotice)) { const lines = wrapText(campaign.notice, 36).slice(0, 2), ty = chip ? 56 : 6; panel(190, ty, 800, 12 + lines.length * 28, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.72)'); lines.forEach((t, i) => label(t, 200, ty + 18 + i * 28, 15, COLORS.silver, 'left', 780)); }
+    if (campaign.notice && T < noticeUntil && !trainView && !recruitView && !(chip && campaign.notice === chipNotice)) { const lines = wrapText(campaign.notice, 36).slice(0, 2), ty = chip ? 56 : 6; panel(190, ty, 800, 12 + lines.length * 28, 'rgba(255,255,255,.35)', 1, 'rgba(8,20,25,.72)'); lines.forEach((t, i) => label(t, 200, ty + 18 + i * 28, 15, COLORS.silver, 'left', 780)); }
   }
 }
 function drawFactionStatus() {   // 명세 78 M1: 모바일 지도 하단의 세력 요약·관계 박스를 대신하는 팝업 (같은 데이터·문구)
@@ -2736,6 +2778,48 @@ function trainClick(a) {   // 훈련 팝업 입력 (a = 'campaign:train:' 뒤)
     if (V.sel.has(k)) { V.sel = new Set([...V.sel].filter(x => x !== k)); return; }
     const next = new Set(V.sel).add(k), why = trainCheck(next, rows).why; if (why) V.msg = why; else V.sel = next;
   }
+}
+const RECRUIT_PER = () => mobile ? 6 : 10;
+const recruitRows = () => { const P = playerFaction(); return roninList().sort((a, b) => (stageFaction(b.stage) === P) - (stageFaction(a.stage) === P) || Sim.GRADE_MUL[Sim.GRADE[b.key]] - Sim.GRADE_MUL[Sim.GRADE[a.key]] || a.key.localeCompare(b.key)); };
+function recruitClick(a) {   // 인재 등용 팝업 입력 (a = 'campaign:recruit:' 뒤)
+  const pages = Math.max(1, Math.ceil(recruitRows().length / RECRUIT_PER()));
+  if (a === 'close') { recruitView = null; return; }
+  if (a === 'prev' || a === 'next') { recruitView.page = (recruitView.page + (a === 'next' ? 1 : -1) + pages) % pages; recruitView.msg = ''; return; }
+  if (a.startsWith('try:')) { const r = recruitRonin(a.slice(4)); recruitView.msg = r.msg; recruitView.ok = r.ok; }
+}
+function drawRecruitView() {
+  const V = recruitView, rows = recruitRows(), per = RECRUIT_PER(), pages = Math.max(1, Math.ceil(rows.length / per)), P = playerFaction();
+  V.page = Math.max(0, Math.min(V.page, pages - 1));
+  const { x, y, w, h } = trainRect();
+  ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, COLORS.gold, 4, 'rgba(8,20,25,.99)');
+  label('인재 등용', 640, mobile ? 28 : 81, 26, COLORS.gold, 'center'); label(`${V.page + 1}/${pages}`, mobile ? 1236 : 1086, mobile ? 28 : 81, 15, COLORS.silver2, 'right');
+  if (!mobile) {
+    label(`재야 장수가 머무는 도시를 차지하면 등용할 수 있습니다 — 시도마다 군량 −${RECRUIT.cost}, 실패하면 ${RECRUIT.cool}턴 대기 · 역사상 같은 세력이면 +${Math.round(RECRUIT.kin * 100)}%`, 640, 113, 15, COLORS.silver2, 'center', 900);
+    [['장수', 270], ['머무는 곳', 470], ['역사상 소속', 660], ['성공', 790]].forEach(([t, tx]) => label(t, tx, 145, 13, COLORS.silver2, 'left'));
+  }
+  if (!rows.length) label('남은 재야 장수가 없습니다', 640, 330, 20, COLORS.silver2, 'center');
+  rows.slice(V.page * per, V.page * per + per).forEach((r, i) => {
+    const u = Sim.U[r.key], why = recruitCheck(r.key, P), lock = !!why, own = stageFaction(r.stage), where = `${r.stage.name} · ${own === INDEP ? '독립' : own === P ? '아군' : own + '군'}`, hist = roninFaction(r.key), pct = Math.round(recruitChance(r.key, P) * 100);
+    const rx = mobile ? [34, 646][i % 2] : 194, ry = mobile ? 52 + 150 * Math.floor(i / 2) : 173 + 38 * i - 17, rw = mobile ? 600 : 892, rh = mobile ? 140 : 34, cy = ry + rh / 2;
+    ctx.fillStyle = mobile || i % 2 === 0 ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.02)'; ctx.fillRect(rx, ry, rw, rh); ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.strokeRect(rx, ry, rw, rh);
+    const bw = mobile ? 200 : 150, bx = rx + rw - bw - (mobile ? 12 : 6), bh = mobile ? TOUCH : 28, by = mobile ? ry + rh - bh - 10 : cy - 14;
+    if (mobile) {
+      label(`${u.name} ${Sim.GRADE[r.key] || '-'}급 · ${catTitle(r.key)}`, rx + 16, ry + 26, 22, COLORS.goldSel, 'left', rw - 32);
+      label(`${where} · ${hist}군 계열${lock ? ` · 성공 ${pct}%` : ''}`, rx + 16, ry + 60, 20, COLORS.silver, 'left', rw - 32); if (!lock) label(`성공 ${pct}%`, rx + 16, ry + 108, 22, COLORS.gold, 'left', rw - bw - 44);
+      if (lock) label(why, rx + 16, ry + 108, 20, COLORS.danger, 'left', rw - 32);
+    } else {
+      drawUnitIcon(r.key, 234, cy - 14, 26, 28, 'player');
+      label(`${u.name} / ${Sim.GRADE[r.key] || '-'}급 · ${catTitle(r.key)}`, 270, cy, 15, COLORS.goldSel, 'left', 190);
+      label(where, 470, cy, 14, own === P ? COLORS.gold : COLORS.silver, 'left', 180); label(`${hist}군`, 660, cy, 14, hist === P ? COLORS.gold : COLORS.silver2, 'left', 120); label(`${pct}%`, 790, cy, 14, COLORS.silver, 'left', 50);
+      if (lock) label(why, 840, cy, 13, COLORS.danger, 'left', 236);
+    }
+    if (!lock) button('campaign:recruit:try:' + r.key, bx, by, bw, bh, `등용 −${RECRUIT.cost}`, false, mobile ? 18 : 15, { primary: true });
+  });
+  const G = grainOf(P), up = campaign.econLog[P]?.upkeep || 0;
+  label(`군량 ${G} · 유지비 ${up} · 경고선 ${ECON.warn}`, 640, mobile ? 560 : 577, mobile ? 20 : 14, COLORS.silver2, 'center', 1180);
+  if (V.msg) label(V.msg, 640, mobile ? 590 : 599, mobile ? 22 : 15, V.ok ? COLORS.gold : COLORS.danger, 'center', 1180);
+  const by = 620, bh = mobile ? TOUCH : 36, B = mobile ? { prev: [34, 140], next: [182, 140], close: [1020, 216] } : { prev: [194, 80], next: [282, 80], close: [996, 90] };
+  button('campaign:recruit:prev', B.prev[0], by, B.prev[1], bh, '◀', false, 18); button('campaign:recruit:next', B.next[0], by, B.next[1], bh, '▶', false, 18); button('campaign:recruit:close', B.close[0], by, B.close[1], bh, '닫기', true, 16);
 }
 const trainRect = () => ({ x: mb(170, 20), y: mb(45, 6), w: mb(940, 1240), h: mb(630, 708) });
 function drawTrainView() {
@@ -3321,6 +3405,8 @@ function uiClickCore(id) {
   if (id === 'campaign:scout:close') { scoutView = null; return; }
   if (id === 'campaign:train') { if (mapFree()) { mapTool = null; moveSelectOpen = false; moveMode = 'corps'; trainView = { page: 0, sel: new Set((campaign.training || []).map(t => t.k)), msg: '' }; } return; }
   if (id.startsWith('campaign:train:')) { if (trainView) trainClick(id.slice(15)); return; }
+  if (id === 'campaign:recruit') { if (mapFree()) { mapTool = null; moveSelectOpen = false; moveMode = 'corps'; recruitView = { page: 0, msg: '' }; } return; }
+  if (id.startsWith('campaign:recruit:')) { if (recruitView) recruitClick(id.slice(17)); return; }
   if (id === 'campaign:econ') { econView = true; moveSelectOpen = false; return; }
   if (id === 'campaign:econ:close') { econView = false; return; }
   if (id === 'campaign:ally:help' && allyChoice) { const c = allyChoice; allyChoice = null; allyHelpIds = c.ids; startBattle(c.stage); return; }
@@ -3450,6 +3536,7 @@ cv.addEventListener('pointerdown', e => {
   if (state === 'title') { if (mobile) goFullscreen(); if (startFactionSelect) { if (b && (b.id.startsWith('start-faction:'))) uiClick(b.id); } else if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); } else if (b && b.id === 'title:new') startNewFromTitle(); else if (b && b.id === 'title:load') saveSlotMode = 'load'; return; }
   if ((state === 'map' || state === 'roster') && custodyOpen()) { if (b && (b.id.startsWith('custody:') || isTurnOpt(b.id))) uiClick(b.id); return; }
   if (state === 'map' && stratTutStep >= 0) { if (b && b.id.startsWith('stut:')) uiClick(b.id); return; }   // 전략 튜토리얼 중에는 튜토리얼 버튼만
+  if (state === 'map' && recruitView) { const r = trainRect(); if (p.x < r.x || p.x >= r.x + r.w || p.y < r.y || p.y >= r.y + r.h) recruitView = null; else if (b && b.id.startsWith('campaign:recruit:')) uiClick(b.id); return; }
   if (state === 'map' && trainView) { const r = trainRect(); if (p.x < r.x || p.x >= r.x + r.w || p.y < r.y || p.y >= r.y + r.h) trainView = null; else if (b && b.id.startsWith('campaign:train:')) uiClick(b.id); return; }   // 명세 83 R8: 팝업 밖(어두운 배경)을 누르면 닫힘, 안 빈 곳은 무시. 뒤의 도시·지도는 반응하지 않는다
   if (state === 'map' && mapFree()) { if (inMapMini(p)) { mapDrag = { id: e.pointerId, mini: true }; miniJump(p); return; } if (!b && p.x < MAP_VW) { mapDrag = { id: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; return; } }   // 지도: 미니맵을 누르면 그 위치로, 빈 곳을 끌면 지도가 움직인다 (도시 버튼은 pointerdown 한 번에 동작)
   if (state === 'map' && b && isTurnOpt(b.id) && (diplomacyResult || campaign.movement.length || turnSummary)) { uiClick(b.id); return; }   // 턴 진행 중 팝업의 이동·소식 토글
@@ -3515,8 +3602,8 @@ addEventListener('keydown', e => {
   if (state === 'map' && stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) { if (e.key === 'Enter' || e.key === ' ') uiClick('spr:next'); return; }   // 실습 카드: 건너뛰기·Esc 없음
   if (state === 'map' && stratTutStep >= 0) { if (e.key === 'Escape') finishStratTut(); else if (e.key === 'ArrowLeft') stratTutNav('prev'); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) stratTutNav('next'); return; }
   if (state === 'map') { if (e.key.startsWith('Arrow')) mapKeys.add(e.key); else if (e.key === 'Home' && mapFree()) centerMap(); }
-  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (trainView) trainView = null; else if (heroView) heroView = null; else if (aiRelationsOpen) aiRelationsOpen = false; else if (factionStatusOpen) factionStatusOpen = false; else if (moveSelectOpen) moveSelectOpen = false; else if (mapFree() && (mapTool || moveMode === 'city')) { mapTool = null; moveMode = 'corps'; } }   // 명세 80: 장수 → 관계 → 현황 → (모드 취소 / 이동 목록) 순
-    else { const m = !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !/^(Arrow|Home|End|Page|Insert|Delete|Clear)/.test(e.key || '') && /^(?:Digit|Numpad)([1-8])$/.exec(e.code || ''); /* NumLock 꺼진 숫자패드(key=Arrow*)는 방향키로 취급 */ if (m && mapFree()) uiClick(STRAT_KEYS[+m[1] - 1]); } return; }   // 숫자 1~8: 전략 화면 버튼 (e.code 라 한글 IME·NumLock 무관, 팝업 중에는 꺼짐, 진행하기 키 없음)
+  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (recruitView) recruitView = null; else if (trainView) trainView = null; else if (heroView) heroView = null; else if (aiRelationsOpen) aiRelationsOpen = false; else if (factionStatusOpen) factionStatusOpen = false; else if (moveSelectOpen) moveSelectOpen = false; else if (mapFree() && (mapTool || moveMode === 'city')) { mapTool = null; moveMode = 'corps'; } }   // 명세 80: 장수 → 관계 → 현황 → (모드 취소 / 이동 목록) 순
+    else { const m = !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !/^(Arrow|Home|End|Page|Insert|Delete|Clear)/.test(e.key || '') && /^(?:Digit|Numpad)([1-9])$/.exec(e.code || ''); /* NumLock 꺼진 숫자패드(key=Arrow*)는 방향키로 취급 */ if (m && mapFree()) uiClick(STRAT_KEYS[+m[1] - 1]); } return; }   // 숫자 1~8: 전략 화면 버튼 (e.code 라 한글 IME·NumLock 무관, 팝업 중에는 꺼짐, 진행하기 키 없음)
   if (state === 'roster') { if (e.code === 'Escape') uiClick('roster:back'); return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') { if (!tutorialBattle) finishTutorial(); } else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 4 ? finishTutorial() : tutorialStep++; return; }
   if (S.events.length) { if (['Enter', ' ', 'Escape'].includes(e.key)) advanceBattleEvent(); return; }
