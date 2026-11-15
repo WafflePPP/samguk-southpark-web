@@ -2062,6 +2062,7 @@ const STRAT_TUT = [
   ['군량', ['군량 칩에 보유량과 턴당 증감(+N/턴)이 나옵니다.', '기동 군단은 병사 수만큼 유지비가 들고 이동하면 더 듭니다.', '이동하지 않고 아군 도시에 머문 군단은 병력이 보충됩니다.', '군량 0 이면 기근: 보충 중단, 2턴째부터 병사가 탈영합니다.'], [[1025, 220, 210, 44]], [[1012, 120, 250, 86]]],
   ['전투와 포로', ['적 도시로 이동하면 도착한 턴에 교전이 시작됩니다.', '이름 있는 장수는 체력 0 이 되면 전사하거나 포박됩니다.', '포박한 적 장수는 전투 뒤 처형·포로·투항을 고릅니다.', '일반 병사의 전사·투항은 결과 화면에서 정리됩니다.'], [], []],
   ['저장과 편성', ['저장·로드는 전략 화면에서만 할 수 있습니다.', ['군단 편성에서 배치하고, 세력 장수 버튼(관계 상자 위)에서 상세를 봅니다.', '군단 편성에서 배치하고, 세력 현황 → 세력 장수에서 상세를 봅니다.'], '턴이 끝나면 N턴 요약이 나오고 정찰로 도시를 살핍니다.', ['이 안내는 오른쪽 위 제목줄의 도움말 버튼으로 다시 봅니다.', '이 안내는 왼쪽 아래의 도움말 버튼으로 다시 봅니다.']], [[1025, 504, 210, 36], [1180, 26, 66, 30], [870, 604, 120, 32]], [[1012, 502, 250, 86], [10, 630, 86, 86], [104, 630, 160, 86]]],
+  ['인재 등용', ['재야 장수가 머무는 도시를 차지하면 등용할 수 있습니다.', ['훈련 오른쪽 인재 버튼(숫자 9)에서 시도합니다. 시도마다 군량 −' + RECRUIT.cost + '.', '훈련 오른쪽 인재 버튼에서 시도합니다. 시도마다 군량 −' + RECRUIT.cost + '.'], '성공 ' + Math.round(RECRUIT.base * 100) + '%, 역사상 같은 세력 인물이면 +' + Math.round(RECRUIT.kin * 100) + '%. 실패하면 ' + RECRUIT.cool + '턴 대기.', '1턴은 10일. 남은 재야는 역사상 합류 시기에 원래 세력으로 갑니다.'], [[1135, 442, 100, 36]], [[1141, 402, 121, 86]]],
   ['병종 상성', [matchupChain() + '.', MU_RULE + '.', '장수 상세와 전투 정보창에 ▲강한 상대 ▼약한 상대로 나옵니다.'], [], []],
 ];
 function finishStratTut() {
@@ -2098,7 +2099,7 @@ const SPR_CARDS = {   // [제목, 줄들(문자열 또는 [PC, 모바일]), 버�
   0: ['전략 화면 연습', ['6단계를 직접 눌러 봅니다. 건너뛸 수 없습니다.', '목표: 모든 도시를 점령하면 승리합니다.', '연습이 끝나면 한 일은 모두 되돌립니다. (저장되지 않음)'], '시작'],
   7: ['연습 끝', ['연습 중 한 일은 모두 되돌렸습니다. 지금부터 실제 1턴입니다.', '저장·로드는 전략 화면에서만 됩니다 (오른쪽 저장 버튼).', ['N턴 요약·정찰·세력 장수는 오른쪽 위 도움말 버튼에서 다시 봅니다.', 'N턴 요약·정찰·장수는 왼쪽 아래 도움말에서 다시 봅니다.']], '실제 원정 시작'],
 };
-const SPR_BLOCK = /^(campaign:(help|factions|save|load|heroes|scout|news|diff|movemode|train)(:|$)|save-slot:|stut:|tut:|title:|start-)/;   // 실습 중 어떤 단계에서도 막는 버튼
+const SPR_BLOCK = /^(campaign:(help|factions|save|load|heroes|scout|news|diff|movemode|train|recruit)(:|$)|save-slot:|stut:|tut:|title:|start-)/;   // 실습 중 어떤 단계에서도 막는 버튼
 const practiceModal = () => !!(campaign.movement.length || diplomacyResult || diplomacyQueue.length || turnSummary || diplomacyView || econView || moveSelectOpen || state === 'roster' || campaign.pendingEncounter || warnMove || allyChoice);   // 모달 팝업·편성 화면: 안의 입력은 기존 규칙에 맡긴다
 function beginStratIntro() {   // 연습 전투 승리 직후·(연습 전투를 끈) 새 게임 직후: 처음이면 실습, 실습을 끄면 기존 읽기형 7쪽
   if (stratTutSeen) return;
@@ -2369,7 +2370,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.414', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.415', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
