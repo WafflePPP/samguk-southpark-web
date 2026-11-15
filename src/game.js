@@ -18,44 +18,45 @@ const PAD = [[7, -1, -1, '↖'], [8, 0, -1, '↑'], [9, 1, -1, '↗'], [4, -1, 0
 let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false, menuOpen = false, supportOpen = false, titleNotice = '';
 // 원정 지도는 퍼스트퀸4 방식의 거점 이동용 최소 흐름이다. 전투 규칙·편성은 기존 Sim 전투를 그대로 쓴다.
 // 명세84: 도시48·관문6 (12주). 명세73 의 북동부 18거점 좌표는 (+800,+200) 이동. [번호,id,이름,주,세력,x,y,지형,Lv,등급,양방향 연결].
+// 명세85: 소유는 191년 10월(삼국지14 PK「二袁の思惑」구도). 7세력 밖 군벌·공백지는 '독립'(INDEP) 도시, 여포 하비는 설계 타협.
 const STAGE_ROWS = [
   [1,'chenliu','진류','연주','조조',1100,1050,'f',18,'상','hulao ye puyang xuchang handan dingtao qiao'],
   [2,'ye','업','기주','원소',1160,670,'f',22,'상','huguan puyang pingyuan zhongshan hejian handan'],
-  [3,'puyang','복양','연주','원소',1230,900,'p',16,'상','pingyuan handan changyi'],
-  [4,'xiaopei','소패','서주','유비',1430,1050,'p',8,'초','xiapi changyi dingtao'],
+  [3,'puyang','복양','연주','독립',1230,900,'p',16,'상','pingyuan handan changyi'],
+  [4,'xiaopei','소패','서주','독립',1430,1050,'p',8,'초','xiapi changyi dingtao'],
   [5,'xiapi','하비','서주','여포',1640,1120,'f',30,'최','beihai guangling donghai'],
-  [6,'guangling','광릉','서주','여포',1750,1290,'w',20,'상','donghai'],
-  [7,'xuchang','허창','예주','조조',1010,1230,'f',30,'최','runan qiao'],
-  [8,'luoyang','낙양','사례','조조',760,1050,'f',17,'중','huguan hulao pingyang hangu'],
+  [6,'guangling','광릉','서주','독립',1750,1290,'w',20,'상','donghai'],
+  [7,'xuchang','허창','예주','독립',1010,1230,'f',30,'최','runan qiao'],
+  [8,'luoyang','낙양','사례','독립',760,1050,'f',17,'중','huguan hulao pingyang hangu'],
   [9,'jinyang','진양','병주','장양',860,590,'m',11,'중','ji huguan shangdang pingyang'],
   [10,'huguan','호관','병주','장양',980,740,'g',10,'중','shangdang handan'],
   [11,'nanpi','남피','기주','원소',1400,600,'r',12,'중','ji beiping pingyuan hejian'],
-  [12,'pingyuan','평원','청주','원소',1370,770,'p',12,'중','beihai linzi jinan'],
-  [13,'beihai','북해','청주','여포',1640,890,'p',22,'상','linzi jinan langya'],
-  [14,'ji','계','유주','공손찬',1320,400,'f',14,'중','beiping zhongshan zhuo yuyang'],
-  [15,'beiping','북평','유주','원소',1520,460,'m',15,'중','xiangping yuyang'],
+  [12,'pingyuan','평원','청주','유비',1370,770,'p',12,'중','beihai linzi jinan'],
+  [13,'beihai','북해','청주','독립',1640,890,'p',22,'상','linzi jinan langya'],
+  [14,'ji','계','유주','독립',1320,400,'f',14,'중','beiping zhongshan zhuo yuyang'],
+  [15,'beiping','북평','유주','공손찬',1520,460,'m',15,'중','xiangping yuyang'],
   [16,'xiangping','양평','유주','공손도',1700,320,'m',16,'중','pinggu'],
-  [17,'runan','여남','예주','유비',1240,1300,'p',6,'초','qiao'],
-  [18,'hulao','호뢰관','사례','조조',920,1050,'g',10,'중',''],
+  [17,'runan','여남','예주','독립',1240,1300,'p',6,'초','qiao'],
+  [18,'hulao','호뢰관','사례','독립',920,1050,'g',10,'중',''],
   [19,'shangdang','상당','병주','장양',850,780,'m',10,'중','pingyang'],
   [20,'pingyang','평양','병주','장양',670,760,'p',9,'초',''],
   [21,'zhongshan','중산','기주','원소',1260,540,'p',11,'중','zhuo'],
   [22,'handan','한단','기주','원소',1040,850,'p',8,'초',''],
   [23,'hejian','하간','기주','원소',1300,660,'p',10,'중',''],
-  [24,'zhuo','탁','유주','공손찬',1210,350,'p',13,'중',''],
+  [24,'zhuo','탁','유주','독립',1210,350,'p',13,'중',''],
   [25,'yuyang','어양','유주','공손찬',1460,310,'m',12,'중',''],
   [26,'pinggu','평곽','유주','공손도',1860,380,'r',17,'중',''],
-  [27,'linzi','임치','청주','원소',1520,730,'f',24,'상','jinan'],
-  [28,'jinan','제남','청주','원소',1460,880,'p',18,'상','changyi'],
-  [29,'changyi','창읍','연주','원소',1320,1000,'p',9,'초','dingtao'],
-  [30,'dingtao','정도','연주','유비',1280,1110,'w',5,'초','qiao'],
-  [31,'qiao','초','예주','유비',1180,1195,'p',6,'초',''],
-  [32,'langya','낭야','서주','여포',1790,920,'p',26,'상','donghai'],
-  [33,'donghai','동해','서주','여포',1810,1110,'r',20,'상',''],
-  [34,'hangu','함곡관','사례','조조',600,1050,'g',12,'중','hongnong'],
-  [35,'hongnong','홍농','사례','조조',440,1070,'f',15,'중','tongguan'],
-  [36,'tongguan','동관','사례','조조',280,1070,'g',14,'중','changan'],
-  [37,'changan','장안','사례','조조',120,1050,'f',26,'상',''],
+  [27,'linzi','임치','청주','독립',1520,730,'f',24,'상','jinan'],
+  [28,'jinan','제남','청주','독립',1460,880,'p',18,'상','changyi'],
+  [29,'changyi','창읍','연주','독립',1320,1000,'p',9,'초','dingtao'],
+  [30,'dingtao','정도','연주','독립',1280,1110,'w',5,'초','qiao'],
+  [31,'qiao','초','예주','독립',1180,1195,'p',6,'초',''],
+  [32,'langya','낭야','서주','독립',1790,920,'p',26,'상','donghai'],
+  [33,'donghai','동해','서주','독립',1810,1110,'r',20,'상',''],
+  [34,'hangu','함곡관','사례','독립',600,1050,'g',12,'중','hongnong'],
+  [35,'hongnong','홍농','사례','독립',440,1070,'f',15,'중','tongguan'],
+  [36,'tongguan','동관','사례','독립',280,1070,'g',14,'중','changan'],
+  [37,'changan','장안','사례','독립',120,1050,'f',26,'상',''],
 ];
 
 const WORLD_W = 2160, WORLD_H = 1500;   // v0.1.400 도시 최적화(37거점) — 지도 월드 크기 (카메라로 1000×720 만 보인다)
@@ -68,12 +69,14 @@ const MAP_MOUNTAINS = [
   { name: '숭산', x: 830, y: 1160, n: 3, dx: 28, dy: -4, h: 43, lx: 860, ly: 1205 },
   { name: '태산', x: 1505, y: 980, n: 3, dx: 26, dy: -6, h: 48, lx: 1535, ly: 1030 },
 ];
-const OLD_STAGE = { chenliu: ['연주 중심 도시', 5], ye: ['원소군 수도', 13], puyang: ['연주 전초', 17], xiaopei: ['유비군 수도', 23], guangling: ['강가 관문', 37], xiapi: ['여포군 수도', 47], xuchang: ['조조군 수도·예주 영천군', 43] };
+const OLD_STAGE = { chenliu: ['조조군 수도', 5], ye: ['원소군 수도', 13], puyang: ['연주 전초', 17], xiaopei: ['서주 서쪽 관문 도시', 23], guangling: ['강가 관문', 37], xiapi: ['여포군 수도', 47], xuchang: ['예주 영천군', 43] };
+// 191년 10월 독립 도시의 실제 주인(표시용). 공백 = 주인 없는 땅 (삼국지14 PK 위키: 낙양·허창 공백, 복양 유대, 북해 공융, 광릉 장초, 여남 공주)
+const INDEP = '독립', INDEP_LORD = { puyang: '유대', changyi: '유대', dingtao: '유대', xiaopei: '도겸', langya: '도겸', donghai: '도겸', guangling: '장초', beihai: '공융', linzi: '초화', jinan: '초화', ji: '유우', zhuo: '유우', runan: '공주', qiao: '원술', xuchang: '공백', luoyang: '공백', hulao: '공백', hangu: '동탁', hongnong: '동탁', tongguan: '동탁', changan: '동탁' };
 const STAGES = STAGE_ROWS.map(([stage, id, name, region, faction, x, y, t, level, d, links]) => ({
-  id, name, region, faction, stage, level, grade: { 초: '초급', 중: '중급', 상: '상급', 최: '최상' }[d], note: OLD_STAGE[id] ? OLD_STAGE[id][0] : `${region} 거점`,
+  id, name, region, faction, stage, level, grade: { 초: '초급', 중: '중급', 상: '상급', 최: '최상' }[d], note: INDEP_LORD[id] ? (INDEP_LORD[id] === '공백' ? '주인 없는 땅' : INDEP_LORD[id] + ' 영지') : OLD_STAGE[id] ? OLD_STAGE[id][0] : `${region} 거점`,
   kind: t === 'g' ? 'gate' : 'city', theme: { p: 'plains', r: 'riverside', w: 'riverside', m: 'mountain', f: 'fortress', g: 'fortress' }[t], ...(t === 'w' ? { wideRiver: true } : {}),
   x, y, owner: faction === '여포' ? 'player' : 'enemy', links: links ? links.split(' ') : [], mapSeed: OLD_STAGE[id] ? OLD_STAGE[id][1] : 100 + stage,
-  ...(['xiapi', 'ye', 'xuchang', 'xiaopei', 'jinyang', 'ji', 'xiangping'].includes(id) ? { capital: true } : {}),
+  ...(['xiapi', 'ye', 'chenliu', 'pingyuan', 'jinyang', 'beiping', 'xiangping'].includes(id) ? { capital: true } : {}),
 }));
 for (const s of STAGES) for (const id of s.links) { const t = STAGES.find(x => x.id === id); if (!t) throw new Error(`${s.id}: 없는 도시 ${id}`); if (!t.links.includes(s.id)) t.links.push(s.id); }   // 길은 양방향
 const INITIAL_FACTIONS = STAGES.map(s => s.faction);
@@ -86,28 +89,41 @@ function checkProvinceWins() {   // 평정 소식(명세 71 §2-1): 플레이어
   const fresh = full.filter(n => !campaign.pacified.includes(n)); if (!fresh.length) return fresh;
   campaign.pacified.push(...fresh); const line = fresh.map(n => (n.endsWith('주') ? n : n + '주') + ' 평정').join(' · '); campaign.notice = line + '! ' + (campaign.notice || ''); campaign.digest ||= []; campaign.digest.push({ title: '주 평정', line }); return fresh;
 }
-const START_STAGE = 'xiapi', CAPITALS = { '여포': 'xiapi', '원소': 'ye', '조조': 'xuchang', '유비': 'xiaopei', '장양': 'jinyang', '공손찬': 'ji', '공손도': 'xiangping' }, PLAYABLE_FACTIONS = ['여포', '조조', '유비'];   // 새 게임 선택 가능 세력. 원소·장양·공손찬·공손도는 AI 전용 (명세 71 원소 → v0.1.344 장양·공손찬·공손도 제거)
-const FACTIONS = ['여포', '원소', '조조', '유비', '장양', '공손찬', '공손도'], INITIAL_RULERS = { '여포': 'lubu', '원소': 'yuan', '조조': 'cao', '유비': 'liubei', '장양': 'zhangyang', '공손찬': 'gong', '공손도': 'gongsundu' }, SUCCESSORS = { lubu: ['lulingqi'], yuan: ['yuantan'], cao: ['caopi'], liubei: ['guan'], zhangyang: ['yangchou'], gong: ['gongsunxu'], gongsundu: ['gongsunkang'] };   // 양추→장양·공손속→공손찬·공손강→공손도 후계 (혈연 아님 포함, 명세 71)
+const START_STAGE = 'xiapi', CAPITALS = { '여포': 'xiapi', '원소': 'ye', '조조': 'chenliu', '유비': 'pingyuan', '장양': 'jinyang', '공손찬': 'beiping', '공손도': 'xiangping' }, PLAYABLE_FACTIONS = ['여포', '조조', '유비'];   // 새 게임 선택 가능 세력. 원소·장양·공손찬·공손도는 AI 전용 (명세 71 원소 → v0.1.344 장양·공손찬·공손도 제거)
+const FACTIONS = ['여포', '원소', '조조', '유비', '장양', '공손찬', '공손도'], INITIAL_RULERS = { '여포': 'lubu', '원소': 'yuan', '조조': 'cao', '유비': 'liubei', '장양': 'zhangyang', '공손찬': 'gong', '공손도': 'gongsundu' }, SUCCESSORS = { lubu: ['lulingqi'], yuan: ['yuantan'], cao: ['caoang', 'caopi'], liubei: ['guan'], zhangyang: ['yangchou'], gong: ['gongsunxu'], gongsundu: ['gongsunkang'] };   // 양추→장양·공손속→공손찬·공손강→공손도 후계 (혈연 아님 포함, 명세 71)
 const FACTION_HEROES = {   // 명세 71: 도시 수 × 2 (원소 10도시 : 20명 기준) = 52명. 제거 장수는 Sim.U·GRADE·art 데이터를 지우지 않고 여기서만 뺀다(ARMIES·시험이 직접 사용)
   '여포': ['lubu', 'jang', 'diao', 'gao', 'chengong', 'lulingqi',
     'haomeng', 'caoxing', 'weixu', 'houcheng', 'songxian', 'chenglian', 'xusi', 'wangkai', 'zhangmiao', 'zhangchao', 'xuelan', 'lifeng_lu', 'dong', 'lijue', 'hua'],
   '원소': ['yuan', 'yan', 'wen', 'gaolan', 'quyi', 'jushou', 'tianfeng', 'shenpei', 'yuantan', 'yuanxi', 'chunyuqiong', 'hanmeng', 'jiangyiqu', 'guotu', 'fengji', 'yuanshang', 'xinping', 'lvkuang', 'xuyou', 'hanjuzi',
-    'gaogan', 'chenlin', 'lvweihuang', 'xunchen', 'xinpi', 'gaorou', 'qianzhao', 'suiyuanjin', 'zhangnan_yuan', 'zhangyi_yuan', 'jiaochu', 'lifu', 'yinkui', 'shenrong', 'mayan', 'lvyang', 'guoyuan', 'lvxiang'],
-  '조조': ['cao', 'xia', 'xiahouyuan', 'dian', 'zhanghe', 'guo', 'xun', 'caopi',
+    'zhanghe', 'dongzhao', 'gaogan', 'chenlin', 'lvweihuang', 'xunchen', 'xinpi', 'gaorou', 'qianzhao', 'suiyuanjin', 'zhangnan_yuan', 'zhangyi_yuan', 'jiaochu', 'lifu', 'yinkui', 'shenrong', 'mayan', 'lvyang', 'guoyuan', 'lvxiang'],
+  '조조': ['cao', 'xia', 'xiahouyuan', 'dian', 'guo', 'xun', 'caopi',
     'sima', 'simalang', 'xuchu', 'caoren', 'caohong', 'caozhen', 'caoxiu', 'caoang', 'caozhi', 'zhaorui', 'xuhuang', 'yujin', 'yuejin', 'lidian', 'manchong', 'chengyu', 'xunyou', 'liuye', 'jiaxu', 'haozhao', 'wenpin', 'zangba', 'yinli', 'lvqian'],
-  '유비': ['liubei', 'guan', 'zhangfei', 'zhao', 'mizhu', 'jianyong', 'sunqian',
+  '유비': ['liubei', 'guan', 'zhangfei', 'mizhu', 'jianyong', 'sunqian',
     'kong', 'pangtong', 'fazheng', 'weiyan', 'huang', 'machao', 'jiangwei', 'guanping', 'zhoucang', 'yanyan', 'liushan', 'mifang', 'lady_mi', 'chenzhen'],   // v0.1.299: 제갈량·유선 제외, 장비·조운·미축·간옹·손건 추가 (사용자 지시)
-  '장양': ['zhangyang', 'yangchou', 'dongzhao', 'yangfeng'],
-  '공손찬': ['gong', 'tiankai', 'yangang', 'gongsunxu', 'guanjing', 'gongsunfan'],
+  '장양': ['zhangyang', 'yangchou', 'yangfeng'],
+  '공손찬': ['gong', 'tiankai', 'yangang', 'gongsunxu', 'guanjing', 'gongsunfan', 'zhao'],   // 명세85: 191년 조운은 공손찬 휘하, 장합·동소는 원소 휘하
   '공손도': ['gongsundu', 'gongsunkang', 'gongsungong', 'gongsunyuan'],
 };
-{ const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key])) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
+// 명세85 장수 등장(191년 10월 시작, 1턴 = 10일): 표에 없는 장수는 시작부터 있고, 'YYYY-MM' 은 그 달 상순에 자기 세력 수도로 합류, 'x' 는 이 시나리오에 나오지 않는다(이미 사망·그 세력을 섬긴 적 없음).
+// 근거: 191년에 그 군주를 섬기면 시작, 아니면 연의(정사) 합류 시기. 연의 10회 연주 인재(정욱·곽가·유엽·만총·여건·우금·전위) = 192년 청주병 뒤 → 193-01. 개별 시기는 기획 지식(링크 확인 못 함), 명세 85 표.
+const HERO_191 = {
+  chengong: '194-05', zhangmiao: '194-05', zhangchao: '194-05', xuelan: '194-05', lifeng_lu: '194-05', xusi: '194-05', wangkai: '194-05', dong: 'x', lijue: 'x', hua: 'x',
+  yuanshang: '196-01', jiaochu: '199-04', zhangnan_yuan: '199-04', suiyuanjin: '200-01', lvweihuang: '200-01', hanjuzi: '200-01', jiangyiqu: '200-10', zhangyi_yuan: '202-06', mayan: '202-06', shenrong: '202-06', lifu: '202-06', yinkui: '202-06', guoyuan: '202-06', lvyang: '202-06',
+  dian: '193-01', guo: '193-01', xuchu: '193-01', yujin: '193-01', chengyu: '193-01', manchong: '193-01', lvqian: '193-01', liuye: '193-01', xunyou: '193-01', simalang: '196-06', xuhuang: '196-10', zangba: '198-12', yinli: '198-12', jiaxu: '199-11', caozhen: '200-01', sima: '201-01', caopi: '202-01', caozhi: '207-01', wenpin: '208-09', haozhao: '219-01', zhaorui: '220-01',
+  mizhu: '194-12', sunqian: '194-12', mifang: '194-12', lady_mi: '194-12', zhoucang: '200-08', guanping: '202-01', kong: '207-12', pangtong: '209-12', weiyan: '209-12', huang: '209-12', chenzhen: '209-12', fazheng: '211-12', machao: '214-06', yanyan: '214-06', liushan: '223-04', jiangwei: '228-12',
+  yangfeng: '196-07', gongsunyuan: '228-01',
+};
+const SCENARIO = { year: 191, month: 10 }, TURNS_PER_MONTH = 3;   // 1턴 = 10일 (상·중·하순), 36턴 = 1년 (사용자 결정 2026-11-15)
+const campaignDate = turn => { const m = SCENARIO.month - 1 + Math.floor((turn - 1) / TURNS_PER_MONTH); return `${SCENARIO.year + Math.floor(m / 12)}년 ${m % 12 + 1}월 ${['상', '중', '하'][(turn - 1) % TURNS_PER_MONTH]}순`; };
+const debutTurn = key => { const d = HERO_191[key]; if (!d) return 1; if (d === 'x') return Infinity; const [y, mo] = d.split('-').map(Number); return (y - SCENARIO.year) * 12 * TURNS_PER_MONTH + (mo - SCENARIO.month) * TURNS_PER_MONTH + 1; };
+const START_HEROES = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, l]) => [f, l.filter(k => debutTurn(k) <= 1)]));
+{ const assigned = Object.values(FACTION_HEROES).flat(); if (new Set(assigned).size !== assigned.length || assigned.some(key => !Sim.U[key]) || Object.keys(HERO_191).some(k => !assigned.includes(k))) throw new Error('장수 세력 배치표가 중복되었거나 장수 정보가 없습니다.'); }
 const stageById = id => STAGES.find(s => s.id === id);
 // 군단 편성 (명세 55): 기동 군단 수 = 장수 수 × 30%(최소 1). 군주가 첫 군단장, 군단장은 나머지 중 등급 높은 순. 남는 장수는 등급순 snake 분배로 슬롯 6·12(7·13번째 칸)·1·2·3·4·5… 에 배치. 3번째마다 원정군.
-const CORPS_RATIO = 0.3, CORPS_COUNT = { '원소': 8, '조조': 8, '여포': 4, '유비': 3 }, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
+const CORPS_RATIO = 0.3, CORPS_COUNT = { '원소': 4, '조조': 2, '여포': 2, '유비': 2 }, MEMBER_SLOTS = [6, 12, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
 const gradeMul = k => Sim.GRADE_MUL[Sim.GRADE[k]];
-const CORPS_OVERRIDE = { '유비': [{ lead: 'liubei', slots: { 6: 'guan', 12: 'zhangfei', 1: 'zhao' } }, { lead: 'mizhu', slots: { 6: 'jianyong', 12: 'sunqian' } }] };   // 사용자 지정 편성: 군주 군단(유비·관우·장비·조운) / 2군단(미축·간옹·손건)
-const FACTION_MEMBERS = Object.fromEntries(Object.entries(FACTION_HEROES).map(([f, list]) => {
+const CORPS_OVERRIDE = { '유비': [{ lead: 'liubei', slots: { 6: 'guan', 12: 'zhangfei' } }, { lead: 'jianyong', slots: {} }] };   // 191년: 군주 군단(유비·관우·장비) / 2군단(간옹) (조운은 공손찬, 미축·손건은 194년 합류)   // 사용자 지정 편성: 군주 군단(유비·관우·장비·조운) / 2군단(미축·간옹·손건)
+const FACTION_MEMBERS = Object.fromEntries(Object.entries(START_HEROES).map(([f, list]) => {
   const fixed = (CORPS_OVERRIDE[f] || []).map(c => ({ lead: c.lead, slots: { ...c.slots } })), used = new Set(fixed.flatMap(c => [c.lead, ...Object.values(c.slots)]));   // 명세 84: 지정 편성은 앞에 두고 남은 장수는 자동 군단으로
   const n = (CORPS_COUNT[f] || Math.max(1, Math.round(list.length * CORPS_RATIO))) - fixed.length;   // CORPS_COUNT: 군량 유지비 때문에 군단 수를 고정 — 원소·조조(게임성 검증 2026-11-08), 여포·유비(v0.1.400 37거점: 시작 순수입 +4 이상 유지, 사용자 선택)
   if (n <= 0) return [f, fixed];
@@ -121,10 +137,10 @@ const FACTION_CORPS = Object.fromEntries(Object.entries(FACTION_MEMBERS).map(([f
 const placeMembers = (faction, n, units) => { for (const [slot, key] of Object.entries(FACTION_MEMBERS[faction][n].slots)) units[slot] = key; };
 const factionCities = f => STAGES.filter(s => INITIAL_FACTIONS[s.stage - 1] === f).sort((a, b) => (b.id === CAPITALS[f]) - (a.id === CAPITALS[f]));   // 수도가 맨 앞
 const startCity = (f, n) => { const c = factionCities(f); return c[n % c.length].id; };   // n번째 군단의 시작 도시: 자기 세력 도시에 라운드로빈 (수도 우선)
-if (Object.entries(FACTION_HEROES).some(([f, h]) => { const all = FACTION_MEMBERS[f].flatMap(c => [c.lead, ...Object.values(c.slots)]); return all.length !== h.length || new Set(all).size !== h.length || FACTION_MEMBERS[f].some(c => Object.keys(c.slots).some(k => k >= Sim.ARMY_MAX)); })) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
+if (Object.entries(START_HEROES).some(([f, h]) => { const all = FACTION_MEMBERS[f].flatMap(c => [c.lead, ...Object.values(c.slots)]); return all.length !== h.length || new Set(all).size !== h.length || FACTION_MEMBERS[f].some(c => Object.keys(c.slots).some(k => k >= Sim.ARMY_MAX)); })) throw new Error('군단 편성이 세력 장수와 맞지 않습니다.');
 // 세력 선택 화면 표시용: 시작 도시 수·군단 수
 const START_FACTION_DESC = { '여포': '기병 돌파 · 공격형', '조조': '영토 운영 · 균형형', '유비': '소수 정예 · 결속형' };
-const START_NOTICE = { '여포': '하비에서 소패·북해를 잇고 장양과의 신뢰를 활용한다.', '조조': '허창에서 진류·낙양을 지키고 동맹 유비와 협력한다.', '유비': '소패에서 동맹 조조와 협력하며 하비를 노린다.', '장양': '진양에서 호관을 지키고 신뢰하는 여포와 협력한다.', '공손찬': '계에서 북평·남피의 원소군과 맞선다.', '공손도': '양평에서 북평을 거쳐 유주로 진출한다.' };   // 세력별 첫 안내(명세 71 §5, 도시 이름은 시험이 실제 도시와 대조)
+const START_NOTICE = { '여포': '하비 한 도시에서 도겸의 소패와 공융의 북해를 노린다.', '조조': '진류 한 도시에서 공백지 허창과 유대의 복양을 노린다.', '유비': '평원 한 도시에서 동맹 공손찬과 함께 원소에 맞선다.', '장양': '진양에서 호관을 지키고 신뢰하는 여포와 협력한다.', '공손찬': '북평에서 유우의 계와 원소의 남피를 마주한다.', '공손도': '양평에서 북평을 거쳐 유주로 진출한다.' };   // 세력별 첫 안내(명세 71 §5, 도시 이름은 시험이 실제 도시와 대조)
 const startFactionInfo = f => ({ cities: INITIAL_FACTIONS.filter(x => x === f).length, corps: FACTION_CORPS[f].length });
 const playerFaction = () => campaign.playerFaction || '여포';
 const playerCapital = () => CAPITALS[playerFaction()] || START_STAGE;
@@ -133,11 +149,11 @@ const campaignWon = () => !unclaimedCities().length;
 const capitalFor = force => campaignCapital(forceFaction(force)) || START_STAGE;
 const neutralRel = () => ({ status: 'neutral', truceUntil: 0 });
 const DEFAULT_RELATIONS = Object.fromEntries(FACTIONS.filter(f => f !== '여포').map(f => [f, neutralRel()]));   // 모듈 시작용(여포 시작) 기본값 — 새 게임은 initialPlayerRelations 로 다시 만든다
-function pairRel(a, b) { return { status: [a,b].sort().join('|') === '유비|조조' ? 'ally' : 'neutral', truceUntil: 0 }; }
+function pairRel(a, b) { return { status: [a,b].sort().join('|') === '공손찬|유비' ? 'ally' : 'neutral', truceUntil: 0 }; }
 function initialAiRelations(player = '여포') { const out = {}; for (const a of FACTIONS) for (const b of FACTIONS) if (a < b && a !== player && b !== player) out[a + '|' + b] = pairRel(a, b); return out; }   // 플레이어를 뺀 세력 쌍 전부
 // ---- 역사 기반 외교 (명세 62): 세력 쌍의 호감도가 제안 성공 확률·AI 선전포고·휴전 만료 결과를 바꾼다. 수치는 모두 설계값 ----
-const AFFINITY_INIT = { '여포|원소': -25, '여포|유비': -15, '여포|조조': -55, '원소|유비': 25, '원소|조조': -40, '유비|조조': 15, '공손찬|원소': -80, '공손찬|유비': 45, '공손찬|장양': 10, '공손찬|조조': 0, '공손찬|여포': 0, '공손도|공손찬': 0, '공손도|원소': -20, '공손도|조조': 10, '공손도|여포': 0, '공손도|유비': 0, '공손도|장양': 0, '여포|장양': 45, '원소|장양': 0, '장양|조조': 25, '유비|장양': 5 };   // 7세력 21쌍 (명세 71 §4, 설계값 — 키는 이름순 정렬)
-const AFFINITY_WHY = { '여포|조조': '연주를 두고 다퉜고 하비에서 끝내 맞붙은 숙적', '여포|유비': '서주에서 받아 주었다가 하비를 빼앗고 소패까지 공격한 사이', '여포|원소': '한때 공조했으나 끝내 불화한 사이 (설계값)', '원소|조조': '초기 협력 뒤 관도에서 맞서는 숙적', '원소|유비': '서주에서 쫓긴 유비가 원소에게 의탁한 사이', '유비|조조': '함께 여포를 쳤으나 서주를 두고 결별하는 사이', '공손찬|원소': '유주 패권을 두고 7년 대립해 역경에서 끝장을 보는 사이 (중산·북평 접경)', '공손찬|유비': '유비가 공손찬 휘하에서 자란 동문 사이', '공손찬|장양': '공통의 적 원소를 둔 사이 (설계값)', '공손찬|조조': '직접 충돌 기록이 없는 사이', '공손찬|여포': '접점이 없는 사이', '공손도|공손찬': '북평을 사이에 둔 유주 세력 (시작 관계 설계값)', '공손도|원소': '북평–양평 접경, 유주 인접 경쟁 (설계값, 사료 확인 못 함)', '공손도|조조': '훗날 조조가 요동을 책봉하는 사이 (설계값)', '공손도|여포': '접점이 없는 사이', '공손도|유비': '접점이 없는 사이', '공손도|장양': '접점이 없는 사이', '여포|장양': '원소에게 쫓긴 여포를 받아 준 장양', '원소|장양': '원소의 뜻을 거스르고 여포를 보호한 장양 (상당–호관 접경) — 시작 관계는 보통(소세력 초반 생존용 설계값, 2026-11-09)', '장양|조조': '헌제 환궁을 돕고 동소가 조조와 교류한 사이', '유비|장양': '접점이 없는 사이 (설계값)' };
+const AFFINITY_INIT = { '여포|원소': -25, '여포|유비': -15, '여포|조조': -55, '원소|유비': -30, '원소|조조': 40, '유비|조조': 0, '공손찬|원소': -80, '공손찬|유비': 45, '공손찬|장양': 10, '공손찬|조조': 0, '공손찬|여포': 0, '공손도|공손찬': 0, '공손도|원소': -20, '공손도|조조': 10, '공손도|여포': 0, '공손도|유비': 0, '공손도|장양': 0, '여포|장양': 45, '원소|장양': 0, '장양|조조': 25, '유비|장양': 5 };   // 7세력 21쌍 (명세 71 §4, 설계값 — 키는 이름순 정렬)
+const AFFINITY_WHY = { '여포|조조': '연주를 두고 다퉜고 하비에서 끝내 맞붙은 숙적', '여포|유비': '서주에서 받아 주었다가 하비를 빼앗고 소패까지 공격한 사이', '여포|원소': '한때 공조했으나 끝내 불화한 사이 (설계값)', '원소|조조': '반동탁 연합의 맹우 — 원소가 조조를 동군태수로 세운 사이(191년)', '원소|유비': '공손찬 편에 선 평원의 유비와 기주의 원소가 맞서는 사이(191년)', '유비|조조': '반동탁 연합에서 함께 싸운 사이(191년)', '공손찬|원소': '유주 패권을 두고 7년 대립해 역경에서 끝장을 보는 사이 (중산·북평 접경)', '공손찬|유비': '유비가 공손찬 휘하에서 자란 동문 사이', '공손찬|장양': '공통의 적 원소를 둔 사이 (설계값)', '공손찬|조조': '직접 충돌 기록이 없는 사이', '공손찬|여포': '접점이 없는 사이', '공손도|공손찬': '북평을 사이에 둔 유주 세력 (시작 관계 설계값)', '공손도|원소': '북평–양평 접경, 유주 인접 경쟁 (설계값, 사료 확인 못 함)', '공손도|조조': '훗날 조조가 요동을 책봉하는 사이 (설계값)', '공손도|여포': '접점이 없는 사이', '공손도|유비': '접점이 없는 사이', '공손도|장양': '접점이 없는 사이', '여포|장양': '원소에게 쫓긴 여포를 받아 준 장양', '원소|장양': '원소의 뜻을 거스르고 여포를 보호한 장양 (상당–호관 접경) — 시작 관계는 보통(소세력 초반 생존용 설계값, 2026-11-09)', '장양|조조': '헌제 환궁을 돕고 동소가 조조와 교류한 사이', '유비|장양': '접점이 없는 사이 (설계값)' };
 const AFFINITY_STAGES = [[0, '적대', '#ff7d6a'], [0, '냉담', '#ffb06a'], [0, '보통', '#d0d0d0'], [0, '우호', '#b5ec6a'], [0, '신뢰', '#7dff9a']];   // ≤-35 적대 · ≤-10 냉담 · ≤14 보통 · ≤39 우호 · 그 위 신뢰
 const affinityStage = A => { const s = AFFINITY_STAGES[A <= -35 ? 0 : A <= -10 ? 1 : A <= 14 ? 2 : A <= 39 ? 3 : 4]; return { name: s[1], col: s[2] }; };
 const dipInit = () => ({ affinity: { ...AFFINITY_INIT }, affLast: {}, truceStreak: {}, dipCool: {}, aiCool: {}, warSince: {}, dipLog: [], giftCool: {}, giftLog: {}, tributeStreak: {}, goodwill: {}, envoyCool: {}, hostages: [], aidLast: {}, hostLog: [], siegeNote: [], affV389: true });   // 뒤 7개: 호감도 올리기(명세 72)
@@ -157,8 +173,9 @@ const FACTION_STYLE = {
   '장양': { main: '#8a5a2e', light: '#efd2ae', dark: '#4a2e14' },
   '공손찬': { main: '#d9531e', light: '#ffc9a8', dark: '#6e260c' },   // 원소 노랑과 명도 차를 벌리려 붉은 주황 (깃발 글자 '공' 은 공손도와 같고 색으로만 구분)
   '공손도': { main: '#9b86d6', light: '#e6dcff', dark: '#4a3a82' },
+  '독립': { main: '#8d8a80', light: '#e4e1d6', dark: '#4a4840' },   // 명세85 독립 도시(7세력 밖 군벌·공백지) — 회색
 };
-const FACTION_MARK = { '여포': '여', '원소': '원', '조조': '조', '유비': '유', '장양': '장', '공손찬': '공', '공손도': '공' };   // 깃발 한 글자 (공손찬·공손도는 색으로 구분, 텍스트 UI 는 항상 전체 이름)
+const FACTION_MARK = { '여포': '여', '원소': '원', '조조': '조', '유비': '유', '장양': '장', '공손찬': '공', '공손도': '공', '독립': '독' };   // 깃발 한 글자 (공손찬·공손도는 색으로 구분, 텍스트 UI 는 항상 전체 이름)
 // 세력 고유 병종(명세 53 §3.6): 정규화한 병종 키가 표에 있으면 고유 키로 바꾼다. FACTION_UNIT_RATE 로 치환 비율(슬롯 번호 기준 10칸 중 몇 칸)을 조절한다.
 function swatch(f, x, y, w, h = w) { ctx.fillStyle = FACTION_STYLE[f].main; ctx.fillRect(x, y, w, h); ctx.strokeStyle = FACTION_STYLE[f].light; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }   // 색 견본: 어두운 여포 검정도 밝은 윤곽으로 보인다 (QA v0.1.272 경미 1)
 const FACTION_UNITS = { '여포': { shield: 'f_xian', cav: 'f_bing' }, '원소': { sword: 'f_ji', archer: 'f_nu' }, '조조': { sword: 'f_qing', cav: 'f_hubao' }, '유비': { sword: 'f_dan', shield: 'f_bai', spear: 'f_bai' } };
@@ -329,12 +346,13 @@ function addEnemyFaction(faction) {   // AI 세력의 군단 전부: 군단장(�
 }
 const stageEnemyCount = stage => allForces().filter(f => f.active && f.at === stage.id && forceFaction(f) !== playerFaction()).reduce((n, f) => n + f.army.units.length, 0);
 const campaign = { playerFaction: '여포', at: START_STAGE, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: JSON.parse(JSON.stringify(DEFAULT_RELATIONS)), aiRelations: initialAiRelations(), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, lvCap30: true, milestoneV1: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, training: [], trainNews: [], notice: START_NOTICE['여포'], ...econInit(), ...dipInit() };
-const relationOf = faction => campaign.relations?.[faction] || DEFAULT_RELATIONS[faction] || { status: 'neutral', truceUntil: 0 };
+const INDEP_REL = Object.freeze({ status: 'war', truceUntil: 0 });   // 독립 도시는 외교가 없고 늘 공격할 수 있다 (명세85)
+const relationOf = faction => faction === INDEP ? INDEP_REL : campaign.relations?.[faction] || DEFAULT_RELATIONS[faction] || { status: 'neutral', truceUntil: 0 };
 // 원정 지도 편성: 기존 본대·기마대·궁병대는 한 군단의 6명 단위 묶음이다.
 const ROSTER_MAX = 100;
 const roster = [];   // 원정 지도 편성: 한 군단 = 18칸, 슬롯 0 이 군단장(이름 있는 장수)
 const LEGACY_MAX_LEVEL = 99;   // 명세 82: 상한 30 이전 저장의 포로 Lv 검증 한계 (읽을 때 lvCap30 이 30 으로 내린다)
-const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 30, SAVE_SLOTS = 3;   // v30: 도시 최적화 54→37거점(서량·익주·형주·양주 삭제, v0.1.400) — v29 이하 저장은 거부하고 새 게임 안내 / v29: 거점 18→54·장수 126명(명세 84) — v28 이하 저장은 거부하고 새 게임 안내 / v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
+const SAVE_KEY = 'sgsp-campaign-v1', SAVE_VERSION = 31, SAVE_SLOTS = 3;   // v31: 191년 10월 시나리오(명세85: 도시 소유·독립 도시·장수 등장 debuted) — v30 이하 저장은 거부 / v30: 도시 최적화 54→37거점(서량·익주·형주·양주 삭제, v0.1.400) — v29 이하 저장은 거부하고 새 게임 안내 / v29: 거점 18→54·장수 126명(명세 84) — v28 이하 저장은 거부하고 새 게임 안내 / v28: 호감도 올리기 7필드(giftCool·giftLog·tributeStreak·goodwill·envoyCool·hostages·aidLast, 명세 72) — v27: 원작 북동부 도시16·관문2, 이전 지도 저장 거부 — v26: 주 9개·도시 26 (명세 71) — v25: 도시 31·장수 50·군단 16 (명세 67) — v24: 역사 외교 호감도(affinity·affLast·truceStreak·dipCool·aiCool·warSince·dipLog) — v23: 도시 특성·군량(grain·famine·econOwner·unrest·econLog) — v22: 기동 군단 70% 감소(30군단·군단당 장수 여럿) — v21: 조조 능력치 배율 3.8·전투력식 군사/치유 보정(성장치 재산정) — v20: 병종 역할 능력치(성장치 재산정) — v19: 장수 전사·포로·처우 — 이전 저장은 보존하되 불러오지 않는다
 let stratPractice = null;   // 명세 76: 전략 화면 실습 상태 {step,flags,snap,stepT,advT,denyT} (저장하지 않는 모듈 변수). null 이 아니면 saveCampaign·startBattle 이 막힌다
 let tutorialBattle = null;   // 명세 70: 새 게임 연습 전투 상태(저장하지 않는 모듈 변수). null 이 아니면 saveCampaign 이 막힌다
 let mapFx = null;   // 군단 이동 안내 확대 연출 상태 (명세 81 C, 저장 안 함)
@@ -361,7 +379,7 @@ function distributePlayerInfantry() {
 }
 function resetCampaignData(faction = '여포') {
   STAGES.forEach((s, i) => { s.faction = INITIAL_FACTIONS[i]; s.owner = s.faction === faction ? 'player' : 'enemy'; }); enemyForces.length = 0;
-  campaign.prisoners = []; campaign.fallen = []; campaign.custodyNews = []; campaign.training = []; campaign.trainNews = [];
+  campaign.prisoners = []; campaign.fallen = []; campaign.custodyNews = []; campaign.debuted = []; campaign.training = []; campaign.trainNews = [];
   const at = CAPITALS[faction];
   Object.assign(campaign, { playerFaction: faction, at, corps: 0, from: null, battle: null, invasion: false, destination: null, movement: [], movementPage: 0, pendingEncounter: null, responsePage: 0, intel: [], turn: 1, completed: false, relations: initialPlayerRelations(faction), aiRelations: initialAiRelations(faction), aiBattles: [], capitals: { ...CAPITALS }, rulers: { ...INITIAL_RULERS }, heirsV1: true, heroRosterV1: true, heroRosterV2: true, heroGradeV1: true, heroGradeV2: true, heroGradeV3: true, dead: {}, digest: [], newsLog: [], newsMode: 'important', aiLast: {}, frontlineHp50: true, hp30v1: true, hp50v2: true, hpReduced30: true, lvCap30: true, milestoneV1: true, enemyRolesLv1: true, enemyWavesLv2: true, enemyRatioLv3: true, enemyRatioLv4: true, enemyCurveV1: true, uniqueItemsV1: true, expeditionWaves: {}, rewarded: {}, items: { ironsword: 2, armor: 2, bowguard: 1, charm: 1, seal_ar: 1, seal_dr: 1, green_dragon: 1, twin_halberd: 1, sky_halberd: 0 }, notice: `${faction}군의 수도 ${stageById(at).name}에서 원정을 시작한다.` });
   buildPlayerRoster(faction); for (const f of FACTIONS) if (f !== faction) addEnemyFaction(f);
@@ -509,7 +527,7 @@ function resolveSuccession(deadKeys, reason = '전사') {   // 군주 전사 시
   }
 }
 const pairKey = (a, b) => [a, b].sort().join('|');
-const aiRel = (a, b) => (campaign.aiRelations && campaign.aiRelations[pairKey(a, b)]) || { status: 'neutral', truceUntil: 0 };
+const aiRel = (a, b) => a === INDEP || b === INDEP ? INDEP_REL : (campaign.aiRelations && campaign.aiRelations[pairKey(a, b)]) || { status: 'neutral', truceUntil: 0 };
 const alliedFactions = (a, b) => a !== b && (FACTION_ALLIES[a] === b || FACTION_ALLIES[b] === a || aiRel(a, b).status === 'ally');
 function guestInfo(stage) {
   const forces = allForces().filter(f => f.active && f.at === stage.id), hostile = new Set(forces.filter(f => relationOf(forceFaction(f)).status === 'war').map(forceFaction));
@@ -727,6 +745,7 @@ function aiPickTarget(faction, here) {   // 이 세력이 전쟁 중인 상대�
   const goals = [];
   if (relationOf(faction).status === 'war') goals.push({ id: AI_GOAL.on ? aiPlayerGoal(faction) : playerCapital(), kind: 'player' });
   for (const other of aiFactions()) if (other !== faction && !factionDead(other) && !alliedFactions(faction, other) && aiRel(faction, other).status === 'war') for (const s of factionStages(other)) goals.push({ id: s.id, kind: 'ai' });
+  for (const s of factionStages(INDEP)) goals.push({ id: s.id, kind: 'ai' });   // 독립 도시는 늘 목표
   let best = null;
   for (const goal of goals) { const path = routeVia(here.id, goal.id, s => aiPassable(faction, s)), eff = path.length - (AI_PLAYER_BIAS.on && goal.kind === 'player' ? AI_PLAYER_BIAS.hops : 0); if (path.length > 1 && (!best || eff < best.eff || eff === best.eff && goal.kind === 'player')) best = { path, kind: goal.kind, eff }; }
   return best;
@@ -1096,7 +1115,7 @@ function aiCaptureCity(st, att, def, defenders) {   // 아군이 점령할 때�
 function aiEnterCity(force) {
   if (!aiDiplomacyOn) return;
   const s = stageById(force.at), fa = forceFaction(force); if (!s || s.owner !== 'enemy' || !s.faction || s.faction === fa) return;
-  const key = pairKey(fa, s.faction), r = campaign.aiRelations[key]; if (!r || FACTION_ALLIES[fa] === s.faction) return;
+  const key = pairKey(fa, s.faction), r = s.faction === INDEP ? INDEP_REL : campaign.aiRelations[key]; if (!r || FACTION_ALLIES[fa] === s.faction) return;
   const was = r.status; if (was === 'ally') return;
   if (was !== 'war') {
     addAffinity(fa, s.faction, was === 'truce' ? -WAR_COST.truce : -10, was === 'truce' ? '휴전 파기(군단 진입)' : '영토 침범'); r.status = 'war'; r.truceUntil = 0; r.lock = campaign.turn + 8; const lead = Sim.U[force.army.leader] ? Sim.U[force.army.leader].name : force.army.name;
@@ -1167,6 +1186,12 @@ function aiBattleStep() {   // 타 세력 전투: 시작 → 진행(다음 턴) 
     const R = b.startA / Math.max(1, b.startD); if (aiRoll('b' + key) >= (R >= 1.2 ? AI_BATTLE_CHANCE : 0.3)) continue;   // 전력비 1.2 이상이면 60%, 그 미만(어려움에서만 가능)은 30%
     announceAiBattle(b);
   }
+  for (const att of aiFactions()) {   // 독립 도시 공격 (독립 쪽은 기동 군단이 없어 먼저 치지 않는다)
+    const key = pairKey(att, INDEP); if (factionDead(att) || campaign.aiBattles.some(b => pairKey(b.att, b.def) === key)) continue;
+    const b = planAiBattle(att, INDEP); if (!b) continue;
+    const R = b.startA / Math.max(1, b.startD); if (aiRoll('b' + key) >= (R >= 1.2 ? AI_BATTLE_CHANCE : 0.3)) continue;
+    announceAiBattle(b);
+  }
 }
 function turnOptionButtons(x, y, gap = 8) {   // 턴 진행 중 팝업에서도 바꿀 수 있는 소식 표시 토글. x 는 버튼 2개 폭 기준이라 가운데로 보정
   const bw = mb(112, 280); button('campaign:opt:news', x + (bw + gap) / 2, y, bw, tb(28), '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 12);
@@ -1183,7 +1208,7 @@ function endCampaignTurn() {
   autoDisbandEmpty();   // 전투 손실 등으로 완전히 비어 버린 군단은 진행 시작 때 해제한다
   processTraining();   // 명세 83 D3: 예약한 훈련은 진행하기 맨 앞(turn++ 전)에 경험치로 바뀐다
   inTurnFlow = true;
-  campaign.turn++; hostageStep(); processCustodyTurn(); campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; aiSupportUsed = new Set();
+  campaign.turn++; hostageStep(); processCustodyTurn(); heroDebuts(); campaign.movement = []; campaign.movementPage = 0; campaign.pendingEncounter = null; aiSupportUsed = new Set();
   for (const [faction, relation] of Object.entries(campaign.relations)) if (relation.status === 'truce' && campaign.turn >= relation.truceUntil) { const A = affinityOf(playerFaction(), faction), calm = A >= TRUCE_RULE.calmA; relation.status = calm ? 'neutral' : 'war'; relation.truceUntil = 0; delete relation.truceSince; relation.since = campaign.turn; campaign.notice = `${faction}군과의 휴전이 끝나 ${calm ? '중립' : '전쟁'} 상태로 돌아갔다.`; showDiplomacyResult(`${faction}군과 ${calm ? '중립 복귀' : '전쟁 재개'}`, ['휴전 기간이 끝났습니다.', `호감도 ${A} (${affinityStage(A).name}) ${calm ? `≥ ${TRUCE_RULE.calmA}이라 중립으로 복귀` : `< ${TRUCE_RULE.calmA}이라 전쟁`}`, `관계: 휴전 → ${calm ? '중립' : '전쟁'}`], calm); }
   roster.forEach((corps, index) => attachPopups(() => {
     const from = corps.at;
@@ -1250,6 +1275,18 @@ function placeCustodyHero(p, faction, ref, city) {
   if (leaderMissing) { f.army.units.unshift(p.key); f.army.growth.unshift({ ...p.growth }); f.army.leader = p.key; } else { f.army.units.push(p.key); f.army.growth.push({ ...p.growth }); }
   f.active = true; if (f === preferred) f.at = city; f.army.name = faction + '군 · ' + Sim.U[f.army.leader].name + ' 부대'; return true;
 }
+function heroDebuts() {   // 명세85: 등장 시기가 된 장수는 자기 세력 수도로 합류한다 (세력이 멸망했으면 나오지 않음). 한 번만 처리
+  const done = campaign.debuted ||= [], lines = [];
+  for (const [f, list] of Object.entries(FACTION_HEROES)) for (const key of list) {
+    if (done.includes(key) || debutTurn(key) <= 1 || debutTurn(key) > campaign.turn) continue;
+    done.push(key); const cap = f === playerFaction() ? playerCapital() : campaignCapital(f), st = stageById(cap);
+    if (factionDead(f) || !st || stageFaction(st) !== f) continue;
+    const growth = f === playerFaction() ? Sim.levelStats(key, 'player', 1) : enemyGrowth(key, st.level);
+    if (placeCustodyHero({ key, growth }, f, null, cap)) lines.push(`${Sim.U[key].name} → ${f}군 합류`);
+  }
+  if (lines.length) { (campaign.digest ||= []).push({ title: '장수 등장', line: lines.join(' · ') }); if (lines.some(t => t.endsWith(playerFaction() + '군 합류'))) campaign.notice = lines.filter(t => t.endsWith(playerFaction() + '군 합류')).join(' · ') + '! ' + (campaign.notice || ''); }
+  return lines;
+}
 function custodyAction(key, action) {
   const p = campaign.prisoners.find(p => p.key === key); if (!p) return false;
   const name = Sim.U[key].name, owner = p.owner;
@@ -1307,7 +1344,7 @@ function aiHeroFates(b) {
 function drawCustody() {
   const pending = pendingPrisoners(), manage = custodyView || pending.length, CN = mb(5, 4), rp = mb(92, 104), list = manage ? (pending.length ? pending : campaign.prisoners.filter(p => p.owner === playerFaction())) : [], lines = manage ? [] : turnSummary ? turnSummary.lines : campaign.custodyNews, shown = manage ? Math.min(CN, list.length) : Math.min(9, lines.length), ph = Math.min(680, Math.max(300, (manage ? 210 : 180) + shown * (manage ? rp : 48))), fy = 20 + ph - mb(74, 92);
   ctx.fillStyle = '#082027'; ctx.fillRect(0, 0, VW, VH); panel(20, 20, 1240, ph, COLORS.gold, 3);
-  label(turnSummary && !manage ? `${turnSummary.turn}턴 요약` : manage ? (pending.length ? '전투 후 포로 처우 결정' : '군단 편성 · 포로 관리') : '장수 전사·포로 일괄 보고', 50, 58, 27, COLORS.gold);
+  label(turnSummary && !manage ? `${turnSummary.turn}턴 요약 · ${campaignDate(turnSummary.turn)}` : manage ? (pending.length ? '전투 후 포로 처우 결정' : '군단 편성 · 포로 관리') : '장수 전사·포로 일괄 보고', 50, 58, 27, COLORS.gold);
   drawUnitIcon(manage && list[0] ? list[0].key : rulerKey(playerFaction()), 1100, 36, 92, 96);
   if (!manage) {
     const pages = Math.max(1, Math.ceil(lines.length / 9)); custodyPage = Math.max(0, Math.min(custodyPage, pages - 1));
@@ -2291,7 +2328,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.411', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.412', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2524,7 +2561,7 @@ function drawStageMap() {
   if (mobile) drawMapPanelMobile(sel, stationedAt); else {
   panel(1005, 20, 250, 696, COLORS.gold, 3, 'rgba(8,20,25,.88)');
   label('전략', 1130, 46, 27, COLORS.gold, 'center');
-  label(`${campaign.turn}턴`, 1025, 78, 15, COLORS.silver);   // 점령 수는 아래 목표 줄에만 (중복 제거)
+  label(`${campaign.turn}턴 · ${campaignDate(campaign.turn)}`, 1025, 78, 15, COLORS.silver, 'left', 210);   // 점령 수는 아래 목표 줄에만 (중복 제거)
   { const mode = moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역 선택' : mapTool === 'scout' ? '지도에서 정찰할 적 도시 선택' : mapTool === 'diplomacy' ? '지도에서 외교할 수도 선택' : '';   // 명세 80 R3: 모드 안내를 한 줄로 (세 모드 공통)
     label(mode || `이동 예정 ${roster.filter(c => c.target).length}개 군단`, 1130, 100, 14, mode ? COLORS.gold : COLORS.silver2, 'center'); }
   label(`목표: 모든 거점 점령 ${STAGES.length - unclaimedCities().length}/${STAGES.length}`, 1025, 120, 13, COLORS.gold);
@@ -2575,7 +2612,7 @@ function drawStageMap() {
 function drawMapPanelMobile(sel, stationedAt) {   // 모바일: 오른쪽 패널을 터치 크기(86px 이상) 버튼 2열 격자로 다시 짠다
   const f = stageFaction(sel), W = 258;
   panel(1006, 4, 268, 712, COLORS.gold, 3, 'rgba(8,20,25,.9)');
-  label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴`, 1016, 24, 15, COLORS.silver, 'left', W);   // 명세 83 R6: 제목 '전략'과 '주둔 군단' 줄을 없애 훈련 줄 자리를 만든다 (지도의 깃발·아이콘이 같은 정보)
+  label(`점령 ${STAGES.filter(s => s.owner === 'player').length}/${STAGES.length} · ${campaign.turn}턴 · ${campaignDate(campaign.turn)}`, 1016, 24, 15, COLORS.silver, 'left', W);   // 명세 83 R6: 제목 '전략'과 '주둔 군단' 줄을 없애 훈련 줄 자리를 만든다 (지도의 깃발·아이콘이 같은 정보)
   label(`${isCapital(sel) ? '★' : ''}${sel.name} · ${f} · ${sel.kind === "gate" ? "관문" : CITY_SIZES[citySize(sel)].name} · ${sel.grade}`, 1016, 50, 15, COLORS.goldSel, 'left', W);
   { const ci = capitalInfo(sel); if (ci) label(ci.line1, 1016, 76, 15, ci.col, 'left', W); else label(`도시수비 ${guardsAt(sel).reduce((n, g) => n + g.army.units.length, 0)}/${guardCap(sel)}명 · Lv${CITY_SIZES[citySize(sel)].level + cityKind(sel).lv}`, 1016, 76, 15, sel.theme === 'fortress' ? '#ffb06a' : COLORS.silver2, 'left', W); }
   { const ci = capitalInfo(sel); label(ci ? ci.line2 : kindLine(sel).split(' · ').slice(0, 2).join(' · '), 1016, 102, 15, COLORS.silver2, 'left', W); }
