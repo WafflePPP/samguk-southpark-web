@@ -168,6 +168,7 @@ function connectHeroPose(u,pose,t,smooth=false) {
     layers=layers.filter(l=>l.weight>.001).sort((a,b)=>b.weight-a.weight).slice(0,4);
     const total=layers.reduce((n,l)=>n+l.weight,0);for(const l of layers)l.weight/=total;
   }
+  for(const l of layers)l.face=u.face;   // 자세만 이어 붙이고, 이동 방향은 이전 이미지가 남지 않게 즉시 맞춘다.
   HERO_TRANSITIONS.set(u,{t,layers,state:pose.state,moveSince});pose.layers=layers;return pose;
 }
 // 화면만 보간하며 공격·피격 판정과 타이머는 변경하지 않는다.
