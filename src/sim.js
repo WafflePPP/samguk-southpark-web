@@ -423,7 +423,7 @@ function createBattle(seed = 1, opts = {}) {
       if (!reserve) S.occ[ti(tx, ty)] = u.id; S.units.push(u); A.units.push(u); if (u.isLeader) A.leader = u;
     });
     A.initialHp = A.units.reduce((n, u) => n + u.maxHp, 0); A.nextHpRetreatCheck = 0; A.retreatByHp = false;
-    if (d.formation) setFormation(A, d.formation);
+    setFormation(A, A.formation);   // 명세 87: 아군도 처음부터 진형 슬롯(기본 = 병과별 배치)을 쓴다 (이전에는 출진 격자 4열을 그대로 써서 궁병이 앞줄에 섰다)
     if (d.team === 'player') setCtrl(S, A, A.leader || A.units[0]);
   });
   return S;
@@ -615,7 +615,7 @@ function die(S, u, killer) {
     event.lines.push(line);
   }
   u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
-  const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1);
+  const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1); if (u.army.org && !u.army.reformT) u.army.reformT = S.t + LINE.reform;   // 명세 87: 1초 뒤 산 병사로 진형을 다시 짠다 (뒷줄이 앞으로)
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
   if (u.team === 'player' && !u.named) S.stats.soldierLost = (S.stats.soldierLost || 0) + 1;   // 일반 병사 전사: 팝업 없이 결과 화면에서 정리
   else if (u.team === 'enemy' && !u.named) S.stats.soldierKilled = (S.stats.soldierKilled || 0) + 1;
@@ -921,14 +921,16 @@ function blockSlots(A, sgn) {
 }
 function setFormation(A, type) {
   if (!FORMATION_NAME[type]) return false; A.formation = type;
-  const sgn = A.team === 'player' ? 1 : -1, mid = Math.floor((A.units.length - 1) / 2), blockMap = type === 'block' ? blockSlots(A, sgn) : null;
-  A.units.forEach((u, i) => {
+  const list = A.units.some(live) ? A.units.filter(live) : A.units;   // 명세 87: 산 병사로만 짠다 (철수한 자리는 뒷줄이 메운다). 아직 아무도 출진하지 않은 지원군은 전원
+  const sgn = A.team === 'player' ? 1 : -1, mid = Math.floor((list.length - 1) / 2), blockMap = type === 'block' ? blockSlots({ units: list }, sgn) : null;
+  list.forEach((u, i) => {
     if (type === 'line') u.slot = { dx: i - mid, dy: 0 };
     else if (type === 'wedge') { const row = Math.ceil(i / 2); u.slot = { dx: i ? (i % 2 ? -row : row) : 0, dy: sgn * row }; }
-    else if (type === 'guard') { const n0 = A.units.filter(v => !v.isLeader).indexOf(u), n = n0 + (n0 >= 5 && A.units.some(v => v.isLeader) ? 1 : 0); u.slot = u.isLeader ? { dx: 0, dy: sgn } : { dx: (n % 4) - 1, dy: sgn * Math.floor(n / 4) }; }
+    else if (type === 'guard') { const n0 = list.filter(v => !v.isLeader).indexOf(u), n = n0 + (n0 >= 5 && list.some(v => v.isLeader) ? 1 : 0); u.slot = u.isLeader ? { dx: 0, dy: sgn } : { dx: (n % 4) - 1, dy: sgn * Math.floor(n / 4) }; }
     else u.slot = blockMap.get(u);   // 기본: 병과별 배치
     u.path = null;
   });
+  for (const u of list) u.lineFront = !list.some(v => v.slot.dx === u.slot.dx && v.slot.dy === u.slot.dy - sgn);   // 바로 앞 칸에 아군 자리가 없으면 전열
   return true;
 }
 // 대형: 슬롯 = 앵커 칸 + (자기 슬롯 - 앵커 슬롯). 앵커: 아군 = 조작 캐릭터, 적 = 대장(없으면 가장 전방 슬롯)
@@ -941,20 +943,55 @@ function homeOf(S, u) {
   const a = anchorOf(u.army); if (!a || a === u) return null;
   return { tx: clamp(a.tx + u.slot.dx - a.slot.dx, 0, MW - 1), ty: clamp(a.ty + u.slot.dy - a.slot.dy, 0, MH - 1) };
 }
-const LEASH = 7, GATHER = 0.6;   // 슬롯에서 추격 한계(칸) / 대장 전진에 필요한 대장 4칸 이내 구성원 비율 (설계값)
-function formation(S, u, t) {   // 시야 안 적은 슬롯 7칸 이내일 때만 추격, 아니면 슬롯 복귀
+// ---------- 명세 87 진형 교전: 군단 기준점(A.org = 슬롯 (0,0) 칸)을 군단이 함께 옮기고, 병사는 자기 자리 근처에서만 싸운다 ----------
+// 플레이어가 내린 돌격 명령(order.melee)만 진형을 풀고 각자 적을 쫓는다. 이름 있는 장수는 진형에 묶이지 않는다. reach: 자기 자리에서 이 칸 수 안의 적만 친다 (전열 3 · 뒷줄 2 · 기병 4) / shoot: 원거리가 사거리 밖 적에게 다가가는 칸 수 / gather: 기준점 전진에 필요한, 자리 1칸 안 병사 비율 / mop: 남은 적이 이 수 이하면 소탕 / spread: 같은 편 군단 기준점이 이 칸 수 안이면 옆으로 비킨다 / edge: 비킬 때 가장자리 여백 / wait: 모이기를 기다리는 최대 초 (모두 설계값)
+const LINE = { reach: 3, reachBack: 2, reachCav: 4, shoot: 3, gather: 0.6, think: 0.25, reform: 1, mop: 3, spread: 10, edge: 7, wait: 2 };
+const lineHome = (A, u) => ({ tx: clamp(A.org.tx + u.slot.dx, 0, MW - 1), ty: clamp(A.org.ty + u.slot.dy, 0, MH - 1) });
+const inLine = (S, u) => u.order.type === 'charge' && !u.order.melee && !u.named && !handCtl(S, u) && !isHealer(u) && u.cls !== 'cleric' && !u.army.mop && (u.team === 'player' || u.army.state === 'advance');   // mop: 남은 적이 적으면 진형을 풀고 쫓는다 (marchArmies)
+function standTile(S, h) {   // 자리가 물·바위면 가장 가까운 걸을 수 있는 칸 (2칸 안), 없으면 null — 못 가는 칸으로 길찾기를 되풀이하지 않게
+  if (okTile(S, h.tx, h.ty)) return h;
+  for (let r = 1; r <= 2; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && okTile(S, h.tx + dx, h.ty + dy)) return { tx: h.tx + dx, ty: h.ty + dy };
+  return null;
+}
+function fightAtHome(S, u, h) {   // 자리(h)를 지키며 싸운다: 붙은 적은 그 자리에서, 자리 근처 적은 나가서, 그 밖이면 자리로 돌아간다
+  if (u.range > 0) {   // 원거리: 사거리 안이면 쏘고, 자리에서 사거리+LINE.shoot 칸 안에 적이 있으면 그만큼만 다가가 쏜다
+    const t = pickTarget(S, u, u.range / TILE, false); if (t && inReach(u, t)) { engage(S, u, t, false); return; }
+    if (cheb(u, h) <= LINE.shoot) { let n = null, bd = u.range / TILE + LINE.shoot; for (const e of S.units) if (live(e) && e.team !== u.team) { const d = Math.hypot(e.tx - h.tx, e.ty - h.ty); if (d < bd) { bd = d; n = e; } } if (n) { stepToward(S, u, n.tx, n.ty); return; } }
+  }
+  else {
+    const adj = pickTarget(S, u, 1.5, false); if (adj && cheb(u, adj) <= 1) { engage(S, u, adj, false); return; }
+    const R = u.category === 'cavalry' ? LINE.reachCav : u.lineFront ? LINE.reach : LINE.reachBack;
+    if (cheb(u, h) <= R + 1) { let t = null, bd = R + 1; for (const e of S.units) if (live(e) && e.team !== u.team) { const d = cheb(h, e); if (d < bd || d === bd && t && cheb(u, e) < cheb(u, t)) { bd = d; t = e; } } if (t) { engage(S, u, t, true); return; } }
+  }
+  h = standTile(S, h); if (!h) return;
+  const d = cheb(u, h); if (d > 1) { stepToward(S, u, h.tx, h.ty); return; }
+  if (d === 1 && !S.occ[ti(h.tx, h.ty)] && okTile(S, h.tx, h.ty) && diagOk(S, u.tx, u.ty, h.tx - u.tx, h.ty - u.ty) && u.root <= 0) beginStep(S, u, h.tx, h.ty);   // 바로 옆 자리는 길찾기 없이 한 걸음. 남이 서 있으면 그대로 둔다 (자리 다툼으로 흔들리지 않게)
+}
+function formation(S, u, t) {   // 앵커(조작 장수·대장)를 따르는 대형: 앵커는 직접 싸우고, 나머지는 자기 자리 근처에서만 싸운다
   const h = homeOf(S, u), a = anchorOf(u.army), following = u.team === 'player' && a && a.mv;
   if (following && h && cheb(u, h) > 1) { stepToward(S, u, h.tx, h.ty); return; }   // 자유: 조작 장수가 이동 중일 때만 추종을 전투보다 우선한다
-  const leash = S.tactics >= 2 && u.team === 'enemy' && (u.cls === 'shield' || u.category === 'spear') && u.army.units.some(m => live(m) && isBack(m)) ? 4 : LEASH;   // 후열을 지키는 전열은 멀리 쫓지 않는다 (AI-B-03)
-  if (t && (!h || cheb(u, h) < leash)) { engage(S, u, t, true); return; }
-  if (h && cheb(u, h) > 1) stepToward(S, u, h.tx, h.ty);
+  if (!h) { if (t) engage(S, u, t, true); return; }
+  fightAtHome(S, u, h);
 }
-function advanceUnit(S, u) {   // 적 군단 진격: 대장이 전진, 나머지는 슬롯 (대장은 구성원 60% 가 4칸 안일 때만)
-  const t = pickTarget(S, u, Math.max(SIGHT, u.range) / TILE, false);
-  if (u !== anchorOf(u.army)) return formation(S, u, t);
-  if (t) return engage(S, u, t, true);
-  const m = u.army.units.filter(live); if (m.filter(v => cheb(v, u) <= 4).length < m.length * GATHER) return;
-  const n = nearestEnemy(S, u, 1e9); if (n) engage(S, u, n, true);
+function initOrg(A, m) { let x = 0, y = 0; for (const u of m) { x += u.tx - u.slot.dx; y += u.ty - u.slot.dy; } A.org = { tx: Math.round(x / m.length), ty: Math.round(y / m.length) }; A.lineT = 0; A.movedT = cur ? cur.t : 0; }   // 기준점 = 병사들 (현재 칸 - 자기 슬롯) 평균
+function marchArmies(S) {   // 진형 교전 중인 군단의 기준점: 적과 맞닿으면 멈추고, 병사 60% 가 자리에 있으면 가장 가까운 적 쪽으로 한 칸
+  const alive = { player: 0, enemy: 0 }; for (const u of S.units) if (live(u)) alive[u.team]++;
+  for (const A of S.armies) {
+    A.mop = alive[A.team === 'player' ? 'enemy' : 'player'] <= Math.max(LINE.mop, Math.floor(alive[A.team] / 6));   // 소탕: 남은 적이 3명 이하이거나 우리 수의 1/6 이하 — 진형 자리만 지키다 끝나지 않는 전투를 막는다
+    const m = A.units.filter(u => live(u) && inLine(S, u)); if (!m.length) { A.org = null; continue; }
+    if (A.reformT && S.t >= A.reformT) { A.reformT = 0; setFormation(A, A.formation); }
+    if (!A.org) initOrg(A, m);
+    if (S.t < (A.lineT || 0)) continue; A.lineT = S.t + LINE.think;
+    const foes = S.units.filter(e => live(e) && e.team !== A.team); if (!foes.length) continue;
+    const melee = m.filter(u => !(u.range > 0)), front = melee.length ? melee : m;
+    const contact = front.some(u => { const h = lineHome(A, u); return foes.some(e => melee.length ? cheb(h, e) <= 1 || cheb(u, e) <= 1 : Math.hypot(h.tx - e.tx, h.ty - e.ty) * TILE <= u.range * 0.9); });   // 근접 병사가 있으면 근접 접촉, 원거리뿐이면 사거리에서 멈춘다
+    if (S.t - (A.movedT || 0) < LINE.wait && m.filter(u => cheb(u, lineHome(A, u)) <= 1).length < m.length * LINE.gather) continue;   // 모이기를 기다리되 2초 넘게 멈추지는 않는다 (가장자리에 눌린 자리 등으로 영영 못 모이는 교착 방지)
+    const B = S.armies.find(B => B !== A && B.team === A.team && B.org && Math.abs(B.org.tx - A.org.tx) < LINE.spread && Math.abs(B.org.ty - A.org.ty) < 3);   // 같은 편 군단과 겹치면 옆으로 비켜 전선을 넓힌다 (겹친 두 진형은 자리 다툼만 하고 절반이 놀았다)
+    if (B) { const sx = Math.sign(A.org.tx - B.org.tx) || (A.id < B.id ? -1 : 1), nx = A.org.tx + sx; if (nx > LINE.edge && nx < MW - 1 - LINE.edge) { A.org = { tx: nx, ty: A.org.ty }; A.movedT = S.t; continue; } }
+    if (contact) continue;
+    let t = null, bd = 1e9; for (const e of foes) { const d = Math.hypot(e.tx - A.org.tx, e.ty - A.org.ty); if (d < bd) { bd = d; t = e; } }
+    A.org = { tx: clamp(A.org.tx + Math.sign(t.tx - A.org.tx), 0, MW - 1), ty: clamp(A.org.ty + Math.sign(t.ty - A.org.ty), 0, MH - 1) }; A.movedT = S.t;
+  }
 }
 // ---------- 군사 AI (치유 장수의 군단 추종 · 군사의 후열 유지) ----------
 const isHealer = u => u.spells.includes('heal') || u.special === 'bless';   // 치유 스킬을 쓰는 장수
@@ -1068,7 +1105,7 @@ function updateUnit(S, u, dt) {
   if (u.cls === 'mage' && !handCtl(S, u) && combatKite(S, u)) return;
   if (S.tactics >= 1 && u.cls === 'archer' && !handCtl(S, u) && combatKite(S, u)) return;   // 원거리: 사격 후 쿨타임 중 위기일 때만 전열 쪽으로 한 칸 이탈 (3초에 한 번) (AI-B-02)
   if (o.type === 'attack') { if (!o.target || !live(o.target) || o.target.team === u.team) { u.order = { type: 'idle' }; return; } engage(S, u, o.target, true); return; }
-  if (o.type === 'charge' && u.team === 'enemy' && u.army.state === 'advance') return advanceUnit(S, u);
+  if (inLine(S, u)) { if (!u.army.org) initOrg(u.army, u.army.units.filter(m => live(m) && inLine(S, m))); return fightAtHome(S, u, lineHome(u.army, u)); }   // 명세 87: 플레이어가 내린 돌격(melee)이 아니면 진형을 지키며 싸운다
   if (o.type === 'charge') {
     const stale = !o.tgt || !live(o.tgt) || o.tgt.team === u.team;   // 투항해 같은 편이 된 대상을 계속 노리며 멈춰 서지 않게
     if (!handCtl(S, u)) { const engaged = !stale && dist(u, o.tgt) <= ENGAGE_LOCK * TILE; if (stale || (!engaged && u.thinkT <= 0 && S.t - (o.tgtT || 0) >= 3)) { const n = pickTarget(S, u); if (n && n !== o.tgt) { o.tgt = n; o.tgtT = S.t; } u.thinkT = 0.5; } }   // 가까운 교전 상대는 유지하고, 멀어진 뒤에만 병종 우선순위로 재선정한다
@@ -1151,7 +1188,7 @@ function checkEnd(S) {
 }
 function step(S, dt) {
   if (S.over) return;
-  cur = S; S.t += dt; enemyAI(S); commanderDialogue(S);
+  cur = S; S.t += dt; enemyAI(S); commanderDialogue(S); marchArmies(S);
   for (const k of ['player', 'enemy']) { if (S.lock[k] > 0) S.lock[k] -= dt; if (S.lockAI[k] > 0) S.lockAI[k] -= dt; }
   for (const A of S.armies) if (A.team === 'player' && (!A.ctrl || !live(A.ctrl))) setCtrl(S, A, A.units.find(live));   // 조작 캐릭터가 쓰러지거나 철수하면 다음 캐릭터로
   const order = S.units.filter(live); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(S.rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -1176,7 +1213,7 @@ function setCtrl(S, A, u) {
   if (A.ctrl === u && u.manual) return;
   releaseManualControl(S, u); if (A.ctrl === u) return;
   const old = A.ctrl; A.ctrl = u; u.manual = false; if (u.order.type !== 'retreat') u.order = { type: S.auto ? 'charge' : 'stop' }; u.ctrlIn = null; u.autoCharge = S.auto; u.path = null;
-  if (old && live(old) && old.order.type !== 'retreat') { old.order = { type: S.auto ? 'charge' : A.order }; old.ctrlIn = null; old.manual = false; old.autoCharge = S.auto; }   // 풀려난 캐릭터는 군단 명령을 따른다
+  if (old && live(old) && old.order.type !== 'retreat') { old.order = S.auto ? { type: 'charge' } : { type: A.order, melee: A.order === 'charge' }; old.ctrlIn = null; old.manual = false; old.autoCharge = S.auto; }   // 풀려난 캐릭터는 군단 명령을 따른다
 }
 function takeControl(S, u) {
   if (!S.auto || u.team !== 'player' || u !== u.army.ctrl || u.manual) return;
@@ -1221,14 +1258,14 @@ function setAuto(S, on) {
 function armyOrder(S, A, type, directCtrl = A.ctrl) {   // 현재 직접 조작 중인 캐릭터만 제외 (후퇴는 전원)
   if (type === 'retreat' && A.order !== 'retreat') notice(S, A.team, (A.team === 'player' ? '아군 ' : '적 ') + A.name + '가 후퇴합니다.');
   A.order = type;
-  for (const u of A.units) if (live(u) && (u !== directCtrl || type === 'retreat')) { u.order = { type }; u.path = null; u.autoCharge = false; }
+  for (const u of A.units) if (live(u) && (u !== directCtrl || type === 'retreat')) { u.order = type === 'charge' ? { type, melee: true } : { type }; u.path = null; u.autoCharge = false; }   // 명세 87: 명령으로 내린 돌격은 진형을 푼다
 }
 function focus(S, A, target) { for (const u of A.units) if (live(u) && u !== A.ctrl && u.cls !== 'cleric' && !retreating(u)) { u.order = { type: 'attack', target }; u.path = null; u.autoCharge = false; } }   // 적을 클릭 = 군단이 그 적에게 집중 공격
 const RECALL_X = [20, 19, 21, 18, 22, 17, 23, 16, 24, 15, 25, 14, 26, 13, 27];
 function recall(S, u, quiet = false, directCtrl = u.army.ctrl) {   // 아직 참전하지 않은 지원군만 출진할 수 있다.
   if (!u.out || u.retreated || u.fled || u.dead || u.team !== 'player') return false;
   for (const txs of [RECALL_X.slice(0, 6), RECALL_X.slice(6)]) for (const ty of [58, 59, 60, 57, 61, 56]) for (const tx of txs) {   // 출진 구역: 중앙에서 좌우로 퍼지며 줄 맞춰 채운다 (본대가 있으면 그 옆으로 비켜 선다)
-    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = { type: u === directCtrl ? 'stop' : u.army.order }; u.path = null; if (u === (directCtrl || u.army.leader)) text(S, u.x, u.y - 40, u.army.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
+    if (okTile(S, tx, ty) && !S.occ[ti(tx, ty)]) { u.tx = tx; u.ty = ty; u.x = tcx(tx); u.y = tcy(ty); S.occ[ti(tx, ty)] = u.id; u.out = false; u.order = u === directCtrl ? { type: 'stop' } : { type: u.army.order, melee: u.army.order === 'charge' }; u.path = null; if (u === (directCtrl || u.army.leader)) text(S, u.x, u.y - 40, u.army.name + ' 출진', '#7dff9a'); if (!quiet) notice(S, 'player', '아군 ' + u.name + ' 참전!'); return true; }
   }
   return false;
 }
@@ -1238,7 +1275,7 @@ function deployArmy(S, A, directCtrl = A.ctrl, quiet = false) {
     for (const u of A.units) if (recall(S, u, true, directCtrl)) count++;
     if (count) {
       A.state = A.support ? 'player' : 'advance'; A.order = A.support ? 'idle' : 'charge';
-      for (const u of A.units) if (live(u)) { u.order = { type: A.support && !S.auto ? 'idle' : 'charge' }; u.autoCharge = A.support && S.auto; }
+      for (const u of A.units) if (live(u)) { u.order = { type: A.support && !S.auto ? 'idle' : 'charge', melee: !S.auto }; u.autoCharge = A.support && S.auto; }   // 명세 87: 자동 전투면 진형으로, 수동이면 화면의 '돌격'(난전) 그대로
       if (!A.ctrl || !live(A.ctrl)) setCtrl(S, A, A.leader && live(A.leader) ? A.leader : A.units.find(live));   // 조작 대상이 없으면 군단 전환 때 아무도 못 움직인다
       setFormation(A, A.formation);
     }
