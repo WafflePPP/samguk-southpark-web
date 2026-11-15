@@ -326,7 +326,7 @@ function loadBattleArt() {
     // 아래 add 순서가 기본 처리 순서다. 같은 모델을 여러 작업이 만들면 이 순서상 나중 작업의 그림이 남는다(installAtlasRework 의 installedBy 확인).
     add('heroes-v335',335,shuStyle,h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.join(',')==='thrust,slash','유비·관우·장비 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
     add('heroes-v314',314,lubuStyle.filter(h=>!LULINGQI_STYLE_KEYS.includes(h.key)),h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.length===2,'여포 기준 장수 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
-    add('lubu-v401',401,strongLubu,()=>['lubu'],(h,image)=>{const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,['lubu']);});
+    add('lubu-v401',401,strongLubu,()=>['lubu'],(h,image)=>{const frames=mirrorDirectionRows(heroFrames(h,image));installAtlasRework(h,frames,frames,['lubu']);});
     add('heroes-v318',318,strongGao,h=>[h.key],(h,image)=>{need(h.frames.length===64&&h.actions?.join(',')==='thrust,slash','여포 체격 고순 동작 누락');const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
     add('troops-v323',323,lubuFaceTroops,h=>TROOP_REWORK_BINDINGS[h.key],(h,image,enemyImage)=>{
       need(h.frames.length===64&&h.actions?.join(',')==='thrust,slash','여포 얼굴 기준 병종 동작 누락: '+h.key);
@@ -388,6 +388,7 @@ function installDiaoRework(sheets){
   const body=walk.map(c=>c.bodyHeight).sort((a,b)=>a-b);model.bodyRatio=body[Math.floor(body.length/2)]/model.directionHeight;model.reworked=true;
 }
 function battleDirection(face){return ((Math.round(face/(Math.PI/4))%8)+8)%8;}
+function mirrorDirectionRows(frames){const order=[4,3,2,1,0,7,6,5];return frames.map((_,i)=>frames[Math.floor(i/8)*8+order[i%8]]);}
 function installLubuRework(sheets,key='lubu',actions=['thrust','slash']) {
   const idle=sheets.find(s=>s.kind==='idle')?.frames,walk=sheets.find(s=>s.kind==='walk')?.frames,attack=sheets.find(s=>s.kind==='attack')?.frames;
   if(sheets.length!==3||idle?.length!==8||walk?.length!==32||attack?.length!==32)throw new Error(key+' 방향/동작 이미지 누락');
