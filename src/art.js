@@ -186,6 +186,8 @@ function heroPose(u, s, t) {
       pose.state = 'shoot'; pose.angle = u.face; pose.pull = 0.7 * kick; pose.reach = -3 * kick; pose.lean = -0.12 * Math.cos(u.face) * kick;
     } else if (action === 'spin') {
       pose.state = 'spin'; pose.angle = u.face + Math.PI * 2 * p; pose.lean = 0.12 * Math.sin(p * Math.PI * 2);
+    } else if (s.weapon === 'fan') {
+      pose.state = 'cast'; pose.angle = u.face - 0.35 * kick; pose.reach = 2 * kick; pose.bob += 2 * kick;
     } else if (u.category === 'spear' || s.weapon === 'lance' || s.weapon === 'spear') {
       pose.state = 'thrust'; pose.angle = u.face + 0.9 * (1 - kick); pose.reach = 12 * kick; pose.lean = 0.12 * Math.cos(u.face) * kick;
     } else {
@@ -195,7 +197,7 @@ function heroPose(u, s, t) {
   if (u.dashQ && u.dashQ.length) { pose.state = 'dash'; pose.angle = u.face; pose.reach = 10; pose.lean = 0.22 * Math.cos(u.face); pose.bob = Math.abs(Math.sin(t * 24)) * 3; }
   if (u.hitT > 0 || u.stun > 0 || u.knockQ && u.knockQ.length) { pose.state = u.hitState > 0 ? 'guard' : 'hurt'; pose.angle = u.face + (pose.state === 'guard' ? -0.5 : 1.5); pose.reach = -3; pose.glow = null; pose.lean = 0; }
   pose.breath=Math.sin(t*2.2+(u.id||0))*.007;
-  pose.smooth=u.key==='lubu'&&s.lubuMotion;return connectHeroPose(u,pose,t,pose.smooth);
+  pose.smooth=!!u.named;return connectHeroPose(u,pose,t,pose.smooth);
 }
 
 // 로비·전략·상세도 전투와 같은 캐릭터 이미지를 사용한다.
