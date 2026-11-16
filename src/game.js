@@ -61,7 +61,7 @@ const STAGE_ROWS = [
 
 const WORLD_W = 2160, WORLD_H = 1500;   // v0.1.400 도시 최적화(37거점) — 지도 월드 크기 (카메라로 1000×720 만 보인다)
 // 참조 지도의 상대 위치를 현재 도시 격자에 맞춘 개략 지형이다.
-const YELLOW_RIVER = [[0,805],[360,820],[660,840],[840,920],[960,850],[1100,820],[1220,825],[1360,810],[1480,810],[1610,780],[1700,700],[1860,730],[1980,790]], RIVER_LABEL = [520, 790], SEA_LABEL = [1820, 445];   // v0.1.400: 서량·익주·형주·양주 삭제로 지도 전체를 x −440 이동(명세84 좌표 기준)
+const YELLOW_RIVER = [[0,805],[360,820],[660,840],[840,920],[960,880],[1040,912],[1120,865],[1220,830],[1360,832],[1480,826],[1610,780],[1700,700],[1860,730],[2004,795]], RIVER_LABEL = [520, 790], SEA_LABEL = [1700, 470];   // v0.1.400: 서량·익주·형주·양주 삭제로 지도 전체를 x −440 이동(명세84 좌표 기준)
 const MAP_MOUNTAINS = [
   { name: '태행산맥', x: 1020, y: 450, n: 5, dx: 0, dy: 44, h: 54, lx: 1110, ly: 560 },
   { name: '연산산맥', x: 1180, y: 235, n: 8, dx: 95, dy: 0, h: 32, lx: 1550, ly: 335 },
@@ -2371,7 +2371,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.422', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.423', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2436,11 +2436,10 @@ function drawRelationPanel() {
 const MAP_VW = 1000, MAP_MINI = { x: 10, y: 10, w: 170, h: 118 };   // 월드 2160×1500 비율 유지
 // 원작 통로의 연결을 화면 좌표로 축약한다. 산길·황하 도하는 굽은 경유점으로 표시한다.
 const MAP_ROAD_BENDS = {   // 명세84 굽은 길 경유점(v0.1.400: x −440 이동)
-  'jinyang|ji': [[860,480],[1010,380],[1160,360]],
+  'jinyang|ji': [[860,480],[1010,380],[1140,300],[1250,290]],   // 탁 북쪽으로 (탁 밑을 지나며 중산-탁 길과 엇갈리던 것)
   'huguan|luoyang': [[960,850],[830,940]],
-  'ye|chenliu': [[1080,770],[1040,870],[1060,970]],
   'ji|nanpi': [[1330,500]], 'nanpi|beiping': [[1470,570]],
-  'pingyuan|beihai': [[1480,850]], 'beihai|xiapi': [[1680,1000]],
+  'pingyuan|beihai': [[1440,690],[1590,680]], 'beihai|xiapi': [[1680,1000]],   // 평원-북해는 임치 북쪽으로 돌아 임치-제남 길과 엇갈리지 않는다. 업-진류는 직선(한단을 관통하던 경유점 삭제 — 업·한단·복양·진류가 서로 다 이어져 한단-복양과 한 번 엇갈리는 것은 피할 수 없다)
   'xiapi|guangling': [[1690,1210]],
 };
 function mapRoadPoints(a, b) {
@@ -2490,7 +2489,7 @@ function miniJump(p) { mcam.x = (p.x - MAP_MINI.x) * (WORLD_W / MAP_MINI.w) - MA
 function drawMapSea(g = ctx) {
   g.fillStyle = '#1f6677'; g.beginPath(); g.moveTo(WORLD_W, 0); g.lineTo(2025, 0); g.lineTo(2025, 200);   // 명세84 해안선을 v0.1.400 에서 x −440 이동
   g.bezierCurveTo(2015, 260, 2020, 310, 1980, 340);
-  g.bezierCurveTo(1860, 355, 1680, 340, 1610, 405);
+  g.bezierCurveTo(1955, 395, 1940, 470, 1900, 500); g.bezierCurveTo(1860, 525, 1835, 430, 1790, 405); g.bezierCurveTo(1740, 380, 1650, 375, 1610, 405);   // 요동반도: 평곽·양평이 땅 위에 오도록
   g.bezierCurveTo(1550, 455, 1590, 520, 1720, 550);
   g.bezierCurveTo(1810, 580, 1920, 550, 1995, 590);
   g.bezierCurveTo(2000, 700, 2040, 1250, 2010, WORLD_H);
@@ -2505,7 +2504,8 @@ const MAP_PROVINCE_LABELS = (() => {   // 소속 도시 평균에서 가장 가�
     const c = p.ids.map(stageById), cx = c.reduce((n, s) => n + s.x, 0) / c.length, cy = c.reduce((n, s) => n + s.y, 0) / c.length, hw = p.name.length * 17, spots = [];
     for (let dx = -480; dx <= 480; dx += 12) for (let dy = -480; dy <= 480; dy += 12) spots.push([Math.round(cx + dx), Math.round(cy + dy)]);
     const box = ([x, y]) => [x - hw, y - 20, x + hw, y + 20], free = r => r[0] > 10 && r[2] < WORLD_W - 10 && r[1] > 10 && r[3] < WORLD_H - 10 && !rects.some(o => r[0] < o[2] && o[0] < r[2] && r[1] < o[3] && o[1] < r[3]) && !dots.some(([x, y]) => x > r[0] - 16 && x < r[2] + 16 && y > r[1] - 16 && y < r[3] + 16);
-    const [x, y] = spots.filter(q => free(box(q))).sort((u, v) => Math.hypot(u[0] - cx, u[1] - cy) - Math.hypot(v[0] - cx, v[1] - cy))[0]; rects.push(box([x, y])); return [p.name, x, y];
+    const own = ([x, y]) => STAGES.reduce((m, s) => Math.hypot(s.x - x, s.y - y) < Math.hypot(m.x - x, m.y - y) ? s : m).region === p.name;   // 가장 가까운 도시가 이 주 소속인 자리만 (길이 바뀌어 기주 이름이 연주 복양 옆으로 밀려 가던 것)
+    const [x, y] = spots.filter(q => own(q) && free(box(q))).sort((u, v) => Math.hypot(u[0] - cx, u[1] - cy) - Math.hypot(v[0] - cx, v[1] - cy))[0]; rects.push(box([x, y])); return [p.name, x, y];
   });
 })();
 const provinceUnified = name => { const cities = STAGES.filter(s => provinceOf(s) === name); return cities.length > 0 && cities.every(s => stageFaction(s) === stageFaction(cities[0])); };
@@ -2599,10 +2599,12 @@ function drawStageMap() {
   btns.push(...cityBtns);
   drawMapMini();
   if (mobile) button('campaign:factions', 104, 630, 160, TOUCH, '세력 현황', false, 17, { off: sprOff('campaign:factions') });   // 명세 78 M1: 모바일은 세력 요약·관계 박스 대신 팝업 (지도 하단을 덮지 않는다)
-  button('campaign:help', mobile ? 10 : 1180, mobile ? 630 : 26, mobile ? TOUCH : 66, mobile ? TOUCH : 30, '도움말', false, mobile ? 17 : 14, { primary: true, off: sprOff('campaign:help') });   // 평상시에는 밝은 주 버튼, 단계 실습 중에는 입력 잠금 상태를 그대로 표시한다
+  const helpBtn = () => button('campaign:help', mobile ? 10 : 1180, mobile ? 630 : 26, mobile ? TOUCH : 66, mobile ? TOUCH : 30, '도움말', false, mobile ? 17 : 14, { primary: true, off: sprOff('campaign:help') });   // 평상시에는 밝은 주 버튼, 단계 실습 중에는 입력 잠금 상태를 그대로 표시한다
+  if (mobile) helpBtn();
   if (!mobile) { drawRelationPanel(); button('campaign:heroes', 870, 604, 120, 32, '세력 장수', false, 15, { key: 7, off: sprOff('campaign:heroes') }); }   // 명세 80 R1: 세력 관계 상자 윗변에 붙인 탭(도시 판정보다 나중에 push 되어 클릭을 이긴다)
   if (mobile) drawMapPanelMobile(sel, stationedAt); else {
   panel(1005, 20, 250, 696, COLORS.gold, 3, 'rgba(8,20,25,.88)');
+  helpBtn();   // PC: 반투명 오른쪽 패널보다 나중에 그린다 (먼저 그리면 패널에 덮여 꺼진 버튼처럼 흐려 보였다)
   label('전략', 1130, 46, 27, COLORS.gold, 'center');
   label(`${campaign.turn}턴 · ${campaignDate(campaign.turn)}`, 1025, 78, 15, COLORS.silver, 'left', 210);   // 점령 수는 아래 목표 줄에만 (중복 제거)
   { const mode = moveMode === 'city' && !moveSelectOpen ? '지도에서 이동할 지역 선택' : mapTool === 'scout' ? '지도에서 정찰할 적 도시 선택' : mapTool === 'diplomacy' ? '지도에서 외교할 수도 선택' : '';   // 명세 80 R3: 모드 안내를 한 줄로 (세 모드 공통)
