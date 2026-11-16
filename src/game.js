@@ -929,6 +929,7 @@ function retreatAll(stage) {   // 방어 포기: 그 도시에 있던 모든 군
   const active = roster[campaign.corps]; if (active) campaign.at = active.at;
   return moved;
 }
+const needsIntel = e => !!e && e.invasion && !e.intelSeen && !(e.responders || []).length;   // 명세 88 F1: 침공 정보 창은 대응할 군단이 없을 때(수비군 자동 방어·무방비)만 — 대응 창에 공격 세력·전투력이 이미 있다
 function finishMovementStep() {
   campaign.pendingEncounter = null; campaign.responsePage = 0;
   if (campaign.movementPage < campaign.movement.length - 1) { campaign.movementPage++; flushMovePopups(); }
@@ -1204,12 +1205,12 @@ function aiBattleStep() {   // 타 세력 전투: 시작 → 진행(다음 턴) 
   }
 }
 function turnOptionButtons(x, y, gap = 8) {   // 턴 진행 중 팝업에서도 바꿀 수 있는 소식 표시 토글. x 는 버튼 2개 폭 기준이라 가운데로 보정
-  const bw = mb(112, 280); button('campaign:opt:news', x + (bw + gap) / 2, y, bw, tb(28), '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 12);
+  const bw = mb(112, 280); button('campaign:opt:move', x, y, bw, tb(28), '적 이동: ' + MOVE_NAME[campaign.moveMode || 'skip'], false, 12); button('campaign:opt:news', x + bw + gap, y, bw, tb(28), '소식: ' + NEWS_NAME[campaign.newsMode || 'important'], false, 12);   // 명세 88 F2: 적 이동 안내 기본은 건너뛰기 — 여기서 상세로 되돌린다
 }
 const isTurnOpt = id => !!id && id.startsWith('campaign:opt:');
 const MOVE_MODES = ['detail', 'skip'], MOVE_NAME = { detail: '상세', skip: '건너뛰기' };   // 턴 진행 중 적 군단 이동 안내: 상세(군단마다 한 장씩) / 건너뛰기(아군과 상호작용하는 것만)
 function skipEnemyMoves() {   // 건너뛰기: 적 군단 이동 안내는 생략하되, 아군(도시·군단·동맹 주둔)과 맞닿는 이동·팝업이 딸린 이동은 남겨 반드시 팝업으로 알린다
-  if ((campaign.moveMode || 'detail') !== 'skip') return;
+  if ((campaign.moveMode || 'skip') !== 'skip') return;
   campaign.movement = campaign.movement.filter(m => m.team === 'player' || (m.popups && m.popups.length) || !!movementEncounter(m) || (stageById(m.to) && (stageById(m.to).owner === 'player' || hostsPlayer(stageById(m.to)))));
   campaign.movementPage = 0;
 }
@@ -2370,7 +2371,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.417', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.419', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
@@ -2644,7 +2645,7 @@ function drawStageMap() {
   if (factionStatusOpen && !heroView) { if (aiRelationsOpen) drawAiRelations(); else drawFactionStatus(); }   // 세력 장수 창(모바일 1240×708)이 세력 현황 위에 쌓이면 아래 팝업은 완전히 가려지므로 그리지도 판정하지도 않는다 (닫으면 복귀)
   if (diplomacyView) drawDiplomacyView();
   if (heroView) drawFactionHeroes();
-  if (campaign.pendingEncounter) campaign.pendingEncounter.invasion && !campaign.pendingEncounter.intelSeen ? drawInvasionIntel() : drawResponseSelect();
+  if (campaign.pendingEncounter) needsIntel(campaign.pendingEncounter) ? drawInvasionIntel() : drawResponseSelect();
   else if (campaign.movement.length) drawMovementNotice();
   if (diplomacyResult) drawDiplomacyResult();   // 팝업은 대응 군단·이동 안내 창 위에 그려야 버튼이 가려지지 않는다
   if (allyChoice) drawAllyChoice();
@@ -2698,7 +2699,7 @@ function drawInvasionIntel() {
   shown.forEach((force, row) => { const commander = Sim.U[force.army.leader]?.name || force.army.name, role = force.role === 'garrison' ? '도시수비' : '기동'; label(`${commander} · ${role} Lv${force.level} · ${force.army.units.length}명 · ⚔${forcePow(force)}`, x + 55, y + mb(118, 146) + row * mb(27, 36), 15, COLORS.silver, 'left', w - 110); });
   if (forces.length > shown.length) label(`외 ${forces.length - shown.length}개 군단`, x + 55, y + mb(118, 146) + shown.length * mb(27, 36), 14, COLORS.silver2);
   label(enemyRolesAt(encounter.stage), x + w / 2, y + mb(99, 108), 13, COLORS.silver, mb('left', 'center'), w - 40);
-  button('campaign:intel:continue', x + w / 2 - 110, y + h - mb(50, TOUCH + 10), 220, tb(36), encounter.guardDefense ? '수비군 자동 방어' : '대응 군단 선택', true, 16);
+  button('campaign:intel:continue', x + w / 2 - 110, y + h - mb(50, TOUCH + 10), 220, tb(36), encounter.guardDefense ? '수비군 자동 방어' : encounter.unopposed ? '확인 — 무방비 함락' : '대응 군단 선택', true, 16);
 }
 function drawMovementNotice() {
   const x = 10, y = 10, w = mb(420, 600), h = mb(150, 330), pages = campaign.movement.length, move = campaign.movement[campaign.movementPage];
@@ -2975,7 +2976,9 @@ function drawDiplomacyResult() {
   ctx.fillStyle = 'rgba(10,12,20,.72)'; ctx.fillRect(0, 0, VW, VH); panel(x, y, w, h, col, 4, 'rgba(8,20,25,.99)');
   label(r.kind || (r.ok ? '외교 결과' : '외교 실패'), x + w / 2, y + 40, 18, COLORS.silver2, 'center'); label(r.title, x + w / 2, y + 84, 27, col, 'center');
   lines.forEach((t, i) => label(t, x + w / 2, y + 128 + i * 34, 17, COLORS.silver, 'center'));
-  button('campaign:diplomacy:ok', x + w / 2 - 80, y + h - bh - 18, 160, bh, '확인', true, 18);
+  const more = diplomacyQueue.length;   // 명세 88 F3: 소식이 더 쌓여 있으면 남은 수를 보이고 [모두 확인]으로 한 번에 닫는다
+  if (!more) button('campaign:diplomacy:ok', x + w / 2 - 80, y + h - bh - 18, 160, bh, '확인', true, 18);
+  else { label(`남은 소식 ${more}건`, x + w - 24, y + 40, 15, COLORS.silver2, 'right'); button('campaign:diplomacy:ok', x + w / 2 - 168, y + h - bh - 18, 160, bh, '다음', true, 18); button('campaign:diplomacy:all', x + w / 2 + 8, y + h - bh - 18, 160, bh, '모두 확인', false, 18); }
 }
 const signed = n => (n < 0 ? '−' : '+') + Math.abs(Math.round(n));
 function dipButtonText(P, faction, action) {   // 버튼 글자: 성공률 / 불가("—") / 전쟁은 파기 대가
@@ -3357,7 +3360,7 @@ function uiClick(id) {   // 군단 편성 조작 뒤에는 비어 버린 군단�
 function uiClickCore(id) {
   if (aiRelationsOpen) { if (id === 'campaign:relations:close') aiRelationsOpen = false; return; }
   if (id === 'campaign:relations') { if (T - heroCloseT < 0.4) return; if (scoutView || diplomacyView || factionStatusOpen) aiRelationsOpen = true; return; }
-  if (id === 'campaign:opt:news') id = 'campaign:news';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
+  if (id === 'campaign:opt:news') id = 'campaign:news'; else if (id === 'campaign:opt:move') id = 'campaign:movemode';   // 턴 진행 중 팝업의 토글 버튼은 지도 패널 토글과 같다
   if (id === 'spr:next') { practiceNext(); return; }
   if (stratPractice && state !== 'title' && !practiceAllows(id)) { stratPractice.denyT = T; return; }   // 허용 목록 밖 버튼은 배너만 깜박인다 (명세 76)
   if ((state === 'map' || state === 'roster') && custodyOpen() && !id.startsWith('custody:') && id !== 'campaign:movemode' && id !== 'campaign:news') return;
@@ -3395,7 +3398,7 @@ function uiClickCore(id) {
     const keepFrom = campaign.movementPage + 1; campaign.movement = campaign.movement.filter((m, i) => i < keepFrom || m.team === 'player' || (m.popups && m.popups.length) || !!movementEncounter(m) || (stageById(m.to) && (stageById(m.to).owner === 'player' || hostsPlayer(stageById(m.to)))));
     campaign.notice = '아군과 상호작용하지 않는 적 군단 이동 안내를 건너뛰었습니다.'; id = 'campaign:movement:close';
   }
-  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; resetCityGuards(encounter.stage, captureRatio(encounter.stage)); relocateCapitals(); const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${captureNote(encounter.stage)}${prize ? ' 점령 보상: ' + prize + '.' : ''}`; if (!completeCampaignIfWon()) finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
+  if (id === 'campaign:movement:close') { const encounter = movementEncounter(campaign.movement[campaign.movementPage]); if (state !== 'map') return; if (encounter && encounter.capture) { encounter.stage.owner = 'player'; resetCityGuards(encounter.stage, captureRatio(encounter.stage)); relocateCapitals(); const prize = captureReward(encounter.stage); campaign.notice = `${encounter.stage.name}을 무혈 점령했습니다.${captureNote(encounter.stage)}${prize ? ' 점령 보상: ' + prize + '.' : ''}`; if (!completeCampaignIfWon()) finishMovementStep(); return; } if (encounter) { campaign.pendingEncounter = encounter; campaign.responsePage = 0; campaign.notice = encounter.invasion ? (needsIntel(encounter) ? `${encounter.stage.name} 침공군 정보를 확인하세요.` : `${encounter.stage.name} 방어에 나설 군단을 선택하세요.`) : `${encounter.stage.name}에서 공격할 군단을 선택하세요.`; saveCampaign(); return; } finishMovementStep(); return; }
   if (id === 'campaign:response:prev' || id === 'campaign:response:next') { const pages = Math.ceil(campaign.pendingEncounter.responders.length / respN()), d = id.endsWith('next') ? 1 : -1; campaign.responsePage = Math.max(0, Math.min(pages - 1, campaign.responsePage + d)); return; }
   if (id === 'campaign:response:abandon') { const encounter = campaign.pendingEncounter; if (encounter.invasion) { if (encounter.stage.owner === 'player' && guardsAt(encounter.stage).length) { retreatAll(encounter.stage); resolveGuardDefense(encounter); return; } enemyTakesCity(encounter.stage); if (encounter.stage.id === playerCapital()) { defeatCampaign(`${encounter.stage.name} 방어를 포기하여 원정에 패배했습니다.`); return; } const moved = retreatAll(encounter.stage); campaign.notice = `${encounter.stage.name} 방어를 포기했다.${moved.length ? ' ' + moved.map(m => `${corpsName(m.c)} → ${m.back.name}`).join(', ') + ' 퇴각.' : ''}`; } else { const mover = roster[encounter.moverIndex]; if (mover) mover.at = encounter.from; campaign.notice = `${encounter.stage.name} 공격을 포기하고 철수했다.`; } finishMovementStep(); return; }
   if (/^campaign:response:\d+$/.test(id)) {
@@ -3418,9 +3421,10 @@ function uiClickCore(id) {
   }
   if (id === 'campaign:warn:ok' && warnMove) { const w = warnMove; warnMove = null; moveCampaign(w.id, true); moveMode = 'corps'; moveSelectOpen = true; return; }
   if (id === 'campaign:warn:cancel') { warnMove = null; moveMode = 'corps'; moveSelectOpen = true; campaign.notice = '이동 계획을 취소했습니다.'; return; }
-  if (id === 'campaign:movemode') { campaign.moveMode = MOVE_MODES[(MOVE_MODES.indexOf(campaign.moveMode || 'detail') + 1) % MOVE_MODES.length]; campaign.notice = `턴 진행 중 적 군단 이동 안내: ${MOVE_NAME[campaign.moveMode]}${campaign.moveMode === 'skip' ? ' (아군과 상호작용하는 이동은 팝업으로 알린다)' : ''}`; saveCampaign(); return; }
+  if (id === 'campaign:movemode') { campaign.moveMode = MOVE_MODES[(MOVE_MODES.indexOf(campaign.moveMode || 'skip') + 1) % MOVE_MODES.length]; campaign.notice = `턴 진행 중 적 군단 이동 안내: ${MOVE_NAME[campaign.moveMode]}${campaign.moveMode === 'skip' ? ' (아군과 상호작용하는 이동은 팝업으로 알린다)' : ''}`; saveCampaign(); return; }
   if (id === 'campaign:news') { campaign.newsMode = NEWS_MODES[(NEWS_MODES.indexOf(campaign.newsMode || 'important') + 1) % NEWS_MODES.length]; campaign.notice = `타 세력 소식: ${NEWS_NAME[campaign.newsMode]}`; saveCampaign(); return; }
   if (id === 'campaign:diplomacy:ok') { diplomacyResult = diplomacyQueue.shift() || null; return; }
+  if (id === 'campaign:diplomacy:all') { diplomacyResult = null; diplomacyQueue = []; return; }
   if (id === 'campaign:diplomacy:close') { diplomacyView = null; return; }
   if (id.startsWith('campaign:diplomacy:tab:')) { diplomacyTab = id.slice(23) === 'raise' ? 'raise' : 'talk'; upliftSel = null; upliftPick = false; upliftPage = 0; return; }
   if (id.startsWith('campaign:diplomacy:opt:')) { upliftSel = id.slice(23); upliftPick = false; return; }
@@ -3541,7 +3545,7 @@ cv.addEventListener('pointerdown', e => {
   if (state === 'map' && trainView) { const r = trainRect(); if (p.x < r.x || p.x >= r.x + r.w || p.y < r.y || p.y >= r.y + r.h) trainView = null; else if (b && b.id.startsWith('campaign:train:')) uiClick(b.id); return; }   // 명세 83 R8: 팝업 밖(어두운 배경)을 누르면 닫힘, 안 빈 곳은 무시. 뒤의 도시·지도는 반응하지 않는다
   if (state === 'map' && mapFree()) { if (inMapMini(p)) { mapDrag = { id: e.pointerId, mini: true }; miniJump(p); return; } if (!b && p.x < MAP_VW) { mapDrag = { id: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; return; } }   // 지도: 미니맵을 누르면 그 위치로, 빈 곳을 끌면 지도가 움직인다 (도시 버튼은 pointerdown 한 번에 동작)
   if (state === 'map' && b && isTurnOpt(b.id) && (diplomacyResult || campaign.movement.length || turnSummary)) { uiClick(b.id); return; }   // 턴 진행 중 팝업의 이동·소식 토글
-  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && b.id === 'campaign:diplomacy:ok' : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && (b.id.startsWith('campaign:diplomacy:') || b.id.startsWith('campaign:relations')) : heroView ? b && b.id.startsWith('campaign:heroes:') : econView ? b && b.id === 'campaign:econ:close' : scoutView ? b && (b.id === 'campaign:scout:close' || b.id.startsWith('campaign:relations')) : factionStatusOpen ? b && (b.id.startsWith('campaign:factions') || b.id.startsWith('campaign:relations') || b.id === 'campaign:heroes') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) { if (mobile && b.id.startsWith('stage:')) { if (!mapDrag && p.x < MAP_VW) mapTap = { id: b.id, pid: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; } else uiClick(b.id); } } return; }   // 모바일 도시는 손을 뗄 때 선택(끌면 지도 이동) — 명세 78 M3
+  if (state === 'map' || state === 'roster') { if (saveSlotMode) { if (b && b.id.startsWith('save-slot:')) uiClick(b.id); return; } const response = campaign.pendingEncounter; if (state !== 'map' || (warnMove ? b && b.id.startsWith('campaign:warn:') : allyChoice ? b && b.id.startsWith('campaign:ally:') : diplomacyResult ? b && (b.id === 'campaign:diplomacy:ok' || b.id === 'campaign:diplomacy:all') : response ? b && (b.id.startsWith('campaign:response:') || b.id.startsWith('campaign:intel:')) : campaign.movement.length ? b && b.id.startsWith('campaign:movement:') : diplomacyView ? b && (b.id.startsWith('campaign:diplomacy:') || b.id.startsWith('campaign:relations')) : heroView ? b && b.id.startsWith('campaign:heroes:') : econView ? b && b.id === 'campaign:econ:close' : scoutView ? b && (b.id === 'campaign:scout:close' || b.id.startsWith('campaign:relations')) : factionStatusOpen ? b && (b.id.startsWith('campaign:factions') || b.id.startsWith('campaign:relations') || b.id === 'campaign:heroes') : !moveSelectOpen || b && b.id.startsWith('campaign:move:'))) { if (b) { if (mobile && b.id.startsWith('stage:')) { if (!mapDrag && p.x < MAP_VW) mapTap = { id: b.id, pid: e.pointerId, x: p.x, y: p.y, cx: mcam.x, cy: mcam.y }; } else uiClick(b.id); } } return; }   // 모바일 도시는 손을 뗄 때 선택(끌면 지도 이동) — 명세 78 M3
   if (tutorialStep >= 0) { if (b && b.id.startsWith('tut:')) uiClick(b.id); return; }
   if (S.events.length) { advanceBattleEvent(); return; }
   if (S.over) { if (b && b.id.startsWith('rep:')) { if (b.id === 'rep:side') repToggle(); else if (b.id === 'rep:done') { if (T - overAt > 0.5) finishBattle(); } else repTurn(b.id === 'rep:next' ? 1 : -1); } return; }   // 빈 곳 탭은 아무 일도 없다
