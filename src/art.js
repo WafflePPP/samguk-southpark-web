@@ -154,8 +154,8 @@ function drawHorse(g, x, y, r, f, coat, t, moving) {
 }
 
 const HERO_TRANSITIONS=new WeakMap();
-function connectHeroPose(u,pose,t,smooth=false) {
-  const key=pose.state+':'+battleDirection(u.face),old=HERO_TRANSITIONS.get(u),reset=!old||t<old.t||t-old.t>.5,moveSince=smooth&&pose.state==='move'?(reset||old.state!=='move'?t:old.moveSince??t):null,sample={...pose};
+function connectHeroPose(u,pose,t,smooth=false,face=u.face) {
+  const key=pose.state+':'+battleDirection(face),old=HERO_TRANSITIONS.get(u),reset=!old||t<old.t||t-old.t>.5,moveSince=smooth&&pose.state==='move'?(reset||old.state!=='move'?t:old.moveSince??t):null,sample={...pose};
   if(moveSince!=null)sample.walkFrame=Math.floor(Math.max(0,t-moveSince)*8)%4;
   let layers;
   if(reset)layers=[{key,pose:sample,face:u.face,weight:1}];
@@ -168,7 +168,7 @@ function connectHeroPose(u,pose,t,smooth=false) {
     layers=layers.filter(l=>l.weight>.001).sort((a,b)=>b.weight-a.weight).slice(0,4);
     const total=layers.reduce((n,l)=>n+l.weight,0);for(const l of layers)l.weight/=total;
   }
-  for(const l of layers)l.face=u.face;   // 자세만 이어 붙이고, 이동 방향은 이전 이미지가 남지 않게 즉시 맞춘다.
+  for(const l of layers)l.face=face;   // 자세만 이어 붙이고, 이동 방향은 이전 이미지가 남지 않게 즉시 맞춘다.
   HERO_TRANSITIONS.set(u,{t,layers,state:pose.state,moveSince});pose.layers=layers;return pose;
 }
 // 화면만 보간하며 공격·피격 판정과 타이머는 변경하지 않는다.
@@ -198,7 +198,9 @@ function heroPose(u, s, t) {
   if (u.dashQ && u.dashQ.length) { pose.state = 'dash'; pose.angle = u.face; pose.reach = 10; pose.lean = 0.22 * Math.cos(u.face); pose.bob = Math.abs(Math.sin(t * 24)) * 3; }
   if (u.hitT > 0 || u.stun > 0 || u.knockQ && u.knockQ.length) { pose.state = u.hitState > 0 ? 'guard' : 'hurt'; pose.angle = u.face + (pose.state === 'guard' ? -0.5 : 1.5); pose.reach = -3; pose.glow = null; pose.lean = 0; }
   pose.breath=Math.sin(t*2.2+(u.id||0))*.007;
-  pose.smooth=!!u.named;return connectHeroPose(u,pose,t,pose.smooth);
+  // 한 칸을 이동하는 도중 입력/조준이 바뀌어도 보행은 실제 이동 방향을 따른다.
+  const face=pose.state==='move'&&u.mv&&(u.mv.nx!==u.tx||u.mv.ny!==u.ty)?Math.atan2(u.mv.ny-u.ty,u.mv.nx-u.tx):u.face;
+  pose.smooth=!!u.named;return connectHeroPose(u,pose,t,pose.smooth,face);
 }
 
 // 로비·전략·상세도 전투와 같은 캐릭터 이미지를 사용한다.
@@ -299,16 +301,16 @@ function loadBattleArt() {
   // 미리 받기: 처리할 순서대로 앞의 AHEAD 장을 동시에 받아 둔다. 창을 두는 것은 해독된 시트(장당 약 6MB)가 한꺼번에 메모리에 쌓이지 않게 하려는 것.
   const AHEAD=6,jobs=[],wanted=new Set();let wantSeq=0;
   const queued=()=>[...jobs.filter(j=>j.want&&!j.done).sort((a,b)=>a.want-b.want),...jobs.filter(j=>!j.want&&!j.done)];
-  const fetchJob=j=>{if(!j.image){j.image=Promise.all([fetchImage(j.path,j.version),j.enemyPath?fetchImage(j.enemyPath,j.version):Promise.resolve(null)]);j.image.catch(()=>{});}return j.image;};
+  const fetchJob=j=>{if(!j.image){j.image=Promise.all([fetchImage(j.path,j.version),j.enemyPath?fetchImage(j.enemyPath,j.version):Promise.resolve(null),...(j.extraPaths||[]).map(path=>fetchImage(path,j.version))]);j.image.catch(()=>{});}return j.image;};
   const mark=()=>{for(const key of wanted){let last=null;for(const j of jobs)if(j.keys.includes(key))last=j;if(last&&!last.done&&!last.want)last.want=++wantSeq;}for(const j of queued().slice(0,AHEAD+1))fetchJob(j);};   // 같은 모델을 여러 작업이 만들면 기본 순서상 마지막 작업이 최종 그림이다
   BATTLE_ART.want=keys=>{let added=false;for(const k of keys)if(!wanted.has(k)){wanted.add(k);added=true;}if(added&&jobs.length)mark();};
-  const add=(folder,version,list,keysOf,run)=>{for(const h of list)jobs.push({name:h.key||h.file,path:'src/assets/'+folder+'/'+h.file,enemyPath:h.enemyFile?'src/assets/'+folder+'/'+h.enemyFile:null,version,keys:keysOf(h),run:images=>run(h,images[0],images[1]),index:jobs.length});};
+  const add=(folder,version,list,keysOf,run)=>{for(const h of list)jobs.push({name:h.key||h.file,path:'src/assets/'+folder+'/'+h.file,enemyPath:h.enemyFile?'src/assets/'+folder+'/'+h.enemyFile:null,version,extraPaths:(h.extraFiles||[]).map(file=>'src/assets/'+folder+'/'+file),keys:keysOf(h),run:images=>run(h,images[0],images[1],images.slice(2)),index:jobs.length});};
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>fetchImage('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=Promise.all(names.map(name=>fetchImage('src/assets/battle-v274/'+name,274)));
-  const FOLDERS=[['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['lubu-faction-v405',405],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400]];
+  const FOLDERS=[['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['lubu-faction-v405',405],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400],['zhangliao-v287',287]];
   const manifests=()=>Promise.all(FOLDERS.map(([folder,version])=>manifest(folder,version)));
-  BATTLE_ART.promise=Promise.all([base,manifests()]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,lubuPolishedHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes])=>{
+  BATTLE_ART.promise=Promise.all([base,manifests()]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,lubuPolishedHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes,zhangliaoSheets])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
@@ -340,7 +342,7 @@ function loadBattleArt() {
       need(h.frames.length===64&&h.actions?.join(',')==='thrust,slash','여령기 동작 누락');
       const scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));installAtlasRework(h,frames,frames,['lulingqi']);
     });
-    add('heroes-v339',342,finalHeroes,h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.length===2,'최종 장수 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
+    add('heroes-v339',342,finalHeroes.filter(h=>h.key!=='zhangliao'),h=>[h.key],(h,image)=>{need(h.frames.length===56&&h.actions?.length===2,'최종 장수 동작 누락: '+h.key);const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,[h.key]);});
     add('troops-v339',342,finalTroops,h=>FINAL_REWORK_BINDINGS[h.key],(h,image,enemyImage)=>{
       need(h.frames.length===56&&h.actions?.length===2,'최종 병사 동작 누락: '+h.key);
       const keys=FINAL_REWORK_BINDINGS[h.key],scale=troopAtlasScale(h.frames),frames=h.frames.map(b=>extractTroopSprite(image,b,false,scale));
@@ -357,6 +359,12 @@ function loadBattleArt() {
     for(const [folder,version,list]of [['a-heroes-v396',396,aUniqueHeroes],['a-heroes-v398',398,aCaoHeroes],['a-heroes-v400',400,aLiuHeroes]])add(folder,version,list,h=>['a_'+h.key],(h,image)=>{
       need(h.frames.length===56&&h.actions?.length===2,'A등급 고유 장수 동작 누락: '+h.key);
       const frames=heroFrames(h,image);installAtlasRework(h,frames,frames,['a_'+h.key]);
+    });
+    // 장료 전용 원화의 복식과 실제 후면 대각선 자세를 보존한다. 공용 jang 시트와 분리한다.
+    need(zhangliaoSheets.length===3&&zhangliaoSheets.map(s=>s.kind).join(',')==='idle,walk,attack','장료 전용 시트 누락');
+    add('zhangliao-v287',287,[{key:'zhangliao',file:zhangliaoSheets[0].file,extraFiles:zhangliaoSheets.slice(1).map(s=>s.file)}],()=>['zhangliao'],(h,image,enemyImage,extra)=>{
+      const images=[image,...extra],frames=zhangliaoSheets.flatMap((sheet,i)=>heroFrames(sheet,images[i]));
+      installAtlasRework({...h,actions:['thrust','slash']},frames,frames,['zhangliao']);
     });
     mark();
     for(let j;(j=queued()[0]);){
