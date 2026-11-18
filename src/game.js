@@ -2358,6 +2358,15 @@ function drawEvent(e) {
   else label(e.text, VW / 2, y + 50, 24, col, 'center');
   label(mobile ? '화면을 탭하여 계속' : '클릭 / Enter', x + w - 16, y + h - 14, 14, '#68645d', 'right');
 }
+function loadInterfaceImage(name) {
+  if (typeof Image !== 'function') return null;
+  const image = new Image();
+  image.src = 'src/assets/interface-v427/' + name + '.jpg';
+  return image;
+}
+const lobbyLandscape = loadInterfaceImage('river-fortress');
+const campaignLandscape = loadInterfaceImage('central-plains');
+
 function drawArtBackdrop(){
   ctx.fillStyle='#172b27';ctx.fillRect(0,0,VW,VH);
   if(BATTLE_ART.ready&&BATTLE_ART.reference){ctx.save();ctx.imageSmoothingEnabled=false;for(let y=0;y<VH;y+=256)for(let x=0;x<VW;x+=256)ctx.drawImage(BATTLE_ART.reference,490,25,256,256,x,y,256,256);ctx.fillStyle='rgba(5,16,20,.78)';ctx.fillRect(0,0,VW,VH);ctx.restore();}
@@ -2368,16 +2377,33 @@ function drawUnitIcon(key,x,y,w,h,team='player'){
 }
 function drawTitleWeapons() {
   if (BATTLE_ART.titleWeapons.length !== 3) return;
-  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = .68;
-  [[20, 435, -.05], [445, 445, .03], [870, 435, -.04]].forEach(([x, y, angle], i) => { ctx.save(); ctx.translate(x + 195, y + 130); ctx.rotate(angle); ctx.drawImage(BATTLE_ART.titleWeapons[i], -195, -130, 390, 260); ctx.restore(); });
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = .84;
+  for (const [i, weapon] of BATTLE_ART.titleWeapons.entries()) {
+    ctx.drawImage(weapon, 350 + i * 196, 530, 188, 125);
+  }
   ctx.restore();
 }
 function drawTitle() {
-  drawArtBackdrop();
-  const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
+  if (lobbyLandscape?.naturalWidth) ctx.drawImage(lobbyLandscape, 0, 0, VW, VH);
+  else drawArtBackdrop();
+  const shade = ctx.createLinearGradient(0, 0, 0, VH);
+  shade.addColorStop(0, 'rgba(10,16,27,.12)');
+  shade.addColorStop(.55, 'rgba(10,16,27,.04)');
+  shade.addColorStop(1, 'rgba(7,14,20,.60)');
+  ctx.fillStyle = shade; ctx.fillRect(0, 0, VW, VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.426', 24, 30, 16, COLORS.silver2);
-  const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
+  const titleY = mb(125,112);
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '900 ' + mb(118,104) + 'px "Batang", "Noto Serif KR", serif';
+  ctx.lineJoin = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = '#38291f';
+  ctx.strokeText('삼국', VW / 2, titleY);
+  const gold = ctx.createLinearGradient(0, titleY - 52, 0, titleY + 52);
+  gold.addColorStop(0, '#fff3c4'); gold.addColorStop(.55, '#efcf83'); gold.addColorStop(1, '#b5844c');
+  ctx.fillStyle = gold; ctx.fillText('삼국', VW / 2, titleY); ctx.restore();
+  label('v0.1.427', 24, 30, 16, COLORS.silver2);
+  const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'#ac8954',2,'rgba(13,23,28,.93)');
+  ctx.strokeStyle = '#554b39'; ctx.lineWidth = 1; ctx.strokeRect(347,py+5,586,ph-10);
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});
   label(mobile?'조이스틱 이동 · 오른쪽 행동 · 적 탭 집중 공격':'이동 WASD·QEZC · 행동 Space · 군단 변경 ↑↓ · 시스템 Esc',VW/2,by+bh+36,16,COLORS.silver2,'center',550);
@@ -2515,16 +2541,33 @@ const MAP_PROVINCE_LABELS = (() => {   // 소속 도시 평균에서 가장 가�
 })();
 const provinceUnified = name => { const cities = STAGES.filter(s => provinceOf(s) === name); return cities.length > 0 && cities.every(s => stageFaction(s) === stageFaction(cities[0])); };
 function drawCityGate(s, style, on) {
-  if (s.kind === 'gate') {
-    ctx.save(); ctx.fillStyle = style.main; ctx.strokeStyle = on ? COLORS.gold : style.light; ctx.lineWidth = 2;
-    for (const dx of [-20, 10]) { ctx.fillRect(s.x + dx, s.y - 26, 10, 38); ctx.strokeRect(s.x + dx, s.y - 26, 10, 38); }
-    ctx.fillRect(s.x - 12, s.y - 18, 24, 8); ctx.strokeRect(s.x - 12, s.y - 18, 24, 8); ctx.restore(); return;
+  ctx.save(); ctx.translate(s.x, s.y); ctx.scale(2, 2);
+  const block = (x, y, w, h, color) => { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); };
+  const timber = '#51392e', stone = '#9d9581', ink = '#232a29', trim = on ? '#ffe19a' : style.light;
+  function tower(x, y, halfWidth) {
+    block(x-halfWidth+1,y,halfWidth*2-2,5,timber);
+    block(x-halfWidth+2,y+1,halfWidth*2-4,2,style.main);
+    block(x-1,y+1,2,2,'#f4cf84');
+    block(x-halfWidth-1,y-1,halfWidth*2+2,2,ink);
+    block(x-halfWidth,y-2,halfWidth*2,1,trim);
+    block(x-halfWidth+2,y-4,halfWidth*2-4,2,style.main);
+    block(x-halfWidth+3,y-5,halfWidth*2-6,1,trim);
   }
-  ctx.save(); ctx.fillStyle = style.main; ctx.strokeStyle = on ? COLORS.gold : style.light; ctx.lineWidth = on ? 3 : 2;
-  ctx.beginPath(); ctx.moveTo(s.x - 18, s.y + 12); ctx.lineTo(s.x - 18, s.y - 15);
-  for (let i = 0; i < 3; i++) { const x = s.x - 18 + i * 12; ctx.lineTo(x, s.y - 21); ctx.lineTo(x + 6, s.y - 21); ctx.lineTo(x + 6, s.y - 15); ctx.lineTo(x + 12, s.y - 15); }
-  ctx.lineTo(s.x + 18, s.y + 12); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#0a1018'; ctx.beginPath(); ctx.moveTo(s.x - 6, s.y + 12); ctx.lineTo(s.x - 6, s.y + 1); ctx.arc(s.x, s.y + 1, 6, Math.PI, 0); ctx.lineTo(s.x + 6, s.y + 12); ctx.closePath(); ctx.fill();
+  block(-11,5,22,2,'rgba(10,18,19,.55)');
+  if (s.kind === 'gate') {
+    block(-8,-4,16,3,timber);
+    for (const x of [-7,7]) {
+      block(x-3,-5,6,11,ink); block(x-2,-4,4,9,stone);
+      block(x-2,2,2,1,'#69695b'); tower(x,-7,4);
+    }
+  } else {
+    block(-10,-3,20,9,ink); block(-9,-2,18,7,stone);
+    for (const x of [-9,-5,3,7]) block(x,-4,2,2,'#ccc3a7');
+    block(-8,1,3,1,'#777668'); block(5,3,3,1,'#777668');
+    block(-3,1,6,5,ink); block(-2,0,4,2,ink);
+    tower(0,-6,7);
+    if (isCapital(s)) tower(0,-11,5);
+  }
   ctx.restore();
 }
 function drawMapMini() {
@@ -2538,12 +2581,16 @@ function drawMapMini() {
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(m.x + mcam.x * k, m.y + mcam.y * k, MAP_VW * k, VH * k);
 }
 function drawStageMap() {
-  drawArtBackdrop();
+  ctx.fillStyle = '#172723'; ctx.fillRect(0, 0, VW, VH);
   mapFxTick(); const cam = mapFxCamera(), corps = roster[campaign.corps], here = stageById(corps.at), sel = stageById(mapSel) || here, ox = cam.x, oy = cam.y, mx = mcam.x, my = mcam.y;   // ox·oy·k: 그리기용 유효 카메라, mx·my: 도시 판정(btns)용 원본 카메라
   const vis = (x, y, m = 70) => x >= ox - m && x <= ox + MAP_VW / cam.k + m && y >= oy - m && y <= oy + VH / cam.k + m;
   const stationedAt = s => roster.map((c, i) => ({ c, i })).filter(({ c }) => c.units.some(Boolean) && c.at === s.id);   // 이 도시에 주둔 중인 아군 군단
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, MAP_VW, VH); ctx.clip(); if (cam.k !== 1) ctx.scale(cam.k, cam.k); ctx.translate(-ox, -oy);
   ctx.fillStyle = '#182a25'; ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+  if (campaignLandscape?.naturalWidth) {
+    ctx.save(); ctx.globalAlpha = .66;
+    ctx.drawImage(campaignLandscape, 0, 0, WORLD_W, WORLD_H); ctx.restore();
+  }
   drawMapSea();
   if (vis(...SEA_LABEL)) label('발해', ...SEA_LABEL, 27, '#b6d5da', 'center');
   for (const m of MAP_MOUNTAINS) {
