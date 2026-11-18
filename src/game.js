@@ -1772,7 +1772,17 @@ function label(s, x, y, size, col, align = 'left', maxW, edge = 'rgba(0,0,0,.8)'
   ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
   ctx.lineWidth = size / 5; ctx.strokeStyle = edge; ctx.lineJoin = 'round'; if (maxW && mobile) { ctx.strokeText(s, x, y, maxW); ctx.fillStyle = col; ctx.fillText(s, x, y, maxW); } else { ctx.strokeText(s, x, y); ctx.fillStyle = col; ctx.fillText(s, x, y); }
 }
-function panel(x, y, w, h, border, bw = 2, fill = 'rgba(10,12,20,.92)') { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); ctx.strokeStyle = border; ctx.lineWidth = bw; ctx.strokeRect(x, y, w, h); }
+function panel(x, y, w, h, border, bw = 2, fill = 'rgba(19,23,31,.96)') {
+  ctx.fillStyle = fill; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = border; ctx.lineWidth = bw; ctx.strokeRect(x, y, w, h);
+  if (w >= 72 && h >= 32) {
+    // Raised top/left and inked bottom/right, on the same grid as the map tiles.
+    ctx.fillStyle = 'rgba(238,209,151,.18)';
+    ctx.fillRect(x+2,y+2,w-4,2); ctx.fillRect(x+2,y+4,2,h-8);
+    ctx.fillStyle = 'rgba(19,15,25,.45)';
+    ctx.fillRect(x+2,y+h-4,w-4,2); ctx.fillRect(x+w-4,y+4,2,h-8);
+  }
+}
 function bar(x, y, w, h, p, col) { ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x, y, w, h); ctx.fillStyle = col; ctx.fillRect(x, y, w * Math.max(0, Math.min(1, p)), h); }
 function button(id, x, y, w, h, text, on, size = 16, o) {   // o(명세 80, 전략 화면 버튼만): { primary, key, off } — 없으면 예전 모양 그대로
   if (!o) { panel(x, y, w, h, on ? COLORS.gold : COLORS.silver2, on ? 3 : 2); label(text, x + w / 2, y + h / 2, size, on ? COLORS.goldSel : COLORS.silver, 'center', mobile ? w - 12 : undefined); btns.push({ id, x, y, w, h }); return; }
@@ -2361,14 +2371,19 @@ function drawEvent(e) {
 function loadInterfaceImage(name) {
   if (typeof Image !== 'function') return null;
   const image = new Image();
-  image.src = 'src/assets/interface-v427/' + name + '.jpg';
+  image.src = 'src/assets/interface-v428/' + name + '.png';
   return image;
 }
 const lobbyLandscape = loadInterfaceImage('river-fortress');
 const campaignLandscape = loadInterfaceImage('central-plains');
+const mapLandmarks = loadInterfaceImage('landmarks');
 
 function drawArtBackdrop(){
   ctx.fillStyle='#172b27';ctx.fillRect(0,0,VW,VH);
+  if (campaignLandscape?.naturalWidth) {
+    ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=.24;
+    ctx.drawImage(campaignLandscape,0,0,VW/2,VH/2,0,0,VW,VH); ctx.restore(); return;
+  }
   if(BATTLE_ART.ready&&BATTLE_ART.reference){ctx.save();ctx.imageSmoothingEnabled=false;for(let y=0;y<VH;y+=256)for(let x=0;x<VW;x+=256)ctx.drawImage(BATTLE_ART.reference,490,25,256,256,x,y,256,256);ctx.fillStyle='rgba(5,16,20,.78)';ctx.fillRect(0,0,VW,VH);ctx.restore();}
 }
 function drawUnitIcon(key,x,y,w,h,team='player'){
@@ -2384,7 +2399,10 @@ function drawTitleWeapons() {
   ctx.restore();
 }
 function drawTitle() {
-  if (lobbyLandscape?.naturalWidth) ctx.drawImage(lobbyLandscape, 0, 0, VW, VH);
+  if (lobbyLandscape?.naturalWidth) {
+    ctx.save(); ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(lobbyLandscape, 0, 0, VW, VH); ctx.restore();
+  }
   else drawArtBackdrop();
   const shade = ctx.createLinearGradient(0, 0, 0, VH);
   shade.addColorStop(0, 'rgba(10,16,27,.12)');
@@ -2401,7 +2419,7 @@ function drawTitle() {
   const gold = ctx.createLinearGradient(0, titleY - 52, 0, titleY + 52);
   gold.addColorStop(0, '#fff3c4'); gold.addColorStop(.55, '#efcf83'); gold.addColorStop(1, '#b5844c');
   ctx.fillStyle = gold; ctx.fillText('삼국', VW / 2, titleY); ctx.restore();
-  label('v0.1.427', 24, 30, 16, COLORS.silver2);
+  label('v0.1.428', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'#ac8954',2,'rgba(13,23,28,.93)');
   ctx.strokeStyle = '#554b39'; ctx.lineWidth = 1; ctx.strokeRect(347,py+5,586,ph-10);
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
@@ -2541,6 +2559,17 @@ const MAP_PROVINCE_LABELS = (() => {   // 소속 도시 평균에서 가장 가�
 })();
 const provinceUnified = name => { const cities = STAGES.filter(s => provinceOf(s) === name); return cities.length > 0 && cities.every(s => stageFaction(s) === stageFaction(cities[0])); };
 function drawCityGate(s, style, on) {
+  if (mapLandmarks?.naturalWidth) {
+    const tile = s.kind === 'gate' ? 2 : isCapital(s) ? 1 : 0;
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(mapLandmarks,tile*40,0,40,40,s.x-20,s.y-30,40,40);
+    // A faction-coloured standard stays visible even in an unoccupied town.
+    ctx.fillStyle = COLORS.ink; ctx.fillRect(s.x-19,s.y-13,10,14);
+    ctx.fillStyle = on ? COLORS.goldSel : style.light; ctx.fillRect(s.x-18,s.y-12,2,15);
+    ctx.fillStyle = style.main; ctx.fillRect(s.x-16,s.y-12,6,9);
+    ctx.fillStyle = style.light; ctx.fillRect(s.x-16,s.y-12,6,2);
+    ctx.restore(); return;
+  }
   ctx.save(); ctx.translate(s.x, s.y); ctx.scale(2, 2);
   const block = (x, y, w, h, color) => { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); };
   const timber = '#51392e', stone = '#9d9581', ink = '#232a29', trim = on ? '#ffe19a' : style.light;
@@ -2588,7 +2617,7 @@ function drawStageMap() {
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, MAP_VW, VH); ctx.clip(); if (cam.k !== 1) ctx.scale(cam.k, cam.k); ctx.translate(-ox, -oy);
   ctx.fillStyle = '#182a25'; ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   if (campaignLandscape?.naturalWidth) {
-    ctx.save(); ctx.globalAlpha = .66;
+    ctx.save(); ctx.globalAlpha = .73; ctx.imageSmoothingEnabled = false;
     ctx.drawImage(campaignLandscape, 0, 0, WORLD_W, WORLD_H); ctx.restore();
   }
   drawMapSea();
@@ -2597,6 +2626,11 @@ function drawStageMap() {
     for (let i = 0; i < m.n; i++) {
       const x = m.x + i * m.dx, y = m.y + i * m.dy, h = m.h + (i % 3) * 7;
       if (!vis(x, y, 100)) continue;
+      if (mapLandmarks?.naturalWidth) {
+        ctx.save(); ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(mapLandmarks,120,5,40,35,x-35,y-h,71,h+18); ctx.restore();
+        continue;
+      }
       ctx.beginPath(); ctx.moveTo(x - 35, y + 18); ctx.lineTo(x - 6, y - h); ctx.lineTo(x + 36, y + 18); ctx.closePath();
       ctx.fillStyle = '#77745c'; ctx.fill(); ctx.strokeStyle = '#414b3a'; ctx.lineWidth = 2; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - 6, y - h); ctx.lineTo(x + 36, y + 18); ctx.lineTo(x + 3, y + 7); ctx.closePath(); ctx.fillStyle = '#4a5743'; ctx.fill();
