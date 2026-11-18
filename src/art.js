@@ -213,7 +213,8 @@ function drawBattlePortrait(g,x,y,w,h,s,o={}){
   const ref=battleFrameHeight(image),foot=image.footX??image.width/2;
   const scale=Math.min(battleSpriteHeight(Math.min(w/6,h/5.4),s)/ref,Math.max(0,w/2-2)/Math.max(foot,image.width-foot),Math.max(0,h-4)/image.height);
   g.save();g.beginPath();g.rect(x,y,w,h);g.clip();
-  drawBattleBody(g,x+w/2,y+h-2,scale*ref/battleSpriteHeight(1,s),Math.PI/4,s,{...o,pose:{state:'idle'}});
+  const belowAnchor=s.lubuSprite?Math.max(0,image.height-1-image.footY):0;
+  drawBattleBody(g,x+w/2,y+h-2-belowAnchor*scale,scale*ref/battleSpriteHeight(1,s),Math.PI/4,s,{...o,pose:{state:'idle'}});
   g.restore();
 }
 
@@ -308,9 +309,9 @@ function loadBattleArt() {
   const manifest=(folder,version)=>fetch('src/assets/'+folder+'/layout.json?v='+version+'&try='+attempt).then(r=>{if(!r.ok)throw new Error(folder+' 아트 목록 로드 실패');return r.json();});
   Promise.all(['fangtian-halberd.png','green-dragon-blade.png','serpent-spear.png'].map(name=>fetchImage('src/assets/title-v353/'+name,353))).then(images=>{if(attempt===BATTLE_ART.attempt)BATTLE_ART.titleWeapons=images;},()=>{});   // 로비 배경 실패가 전투 아트 로드를 막지 않는다.
   const base=Promise.all(names.map(name=>fetchImage('src/assets/battle-v274/'+name,274)));
-  const FOLDERS=[['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['lubu-faction-v405',405],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400],['zhangliao-v287',287]];
+  const FOLDERS=[['heroes-v335',335],['heroes-v314',314],['lubu-v401',401],['heroes-v318',318],['lulingqi-v362',362],['troops-v323',323],['troops-v325',325],['heroes-v339',342],['troops-v339',342],['lubu-faction-v387',387],['lubu-faction-v405',405],['a-heroes-v396',396],['a-heroes-v398',398],['a-heroes-v400',400],['zhangliao-v287',287],['lubu-v426',426]];
   const manifests=()=>Promise.all(FOLDERS.map(([folder,version])=>manifest(folder,version)));
-  BATTLE_ART.promise=Promise.all([base,manifests()]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,lubuPolishedHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes,zhangliaoSheets])=>{
+  BATTLE_ART.promise=Promise.all([base,manifests()]).then(([images,parts])=>[images,...parts]).then(async ([images,shuStyle,lubuStyle,strongLubu,strongGao,lulingqiStyle,lubuFaceTroops,lubuCommonTroops,finalHeroes,finalTroops,lubuFactionHeroes,lubuPolishedHeroes,aUniqueHeroes,aCaoHeroes,aLiuHeroes,zhangliaoSheets,newLubuSheets])=>{
     const complete=(list,bindings)=>list.length===Object.keys(bindings).length&&new Set(list.map(h=>h.key)).size===list.length&&Object.keys(bindings).every(k=>list.some(h=>h.key===k));
     if(shuStyle.length!==SHU_STYLE_KEYS.length||SHU_STYLE_KEYS.some(k=>!shuStyle.some(h=>h.key===k)))throw new Error('유비·관우·장비 외형 누락');
     if(lubuStyle.length!==LUBU_STYLE_KEYS.length||LUBU_STYLE_KEYS.some(k=>!lubuStyle.some(h=>h.key===k)))throw new Error('여포 기준 장수 외형 누락');
@@ -365,6 +366,12 @@ function loadBattleArt() {
     add('zhangliao-v287',287,[{key:'zhangliao',file:zhangliaoSheets[0].file,extraFiles:zhangliaoSheets.slice(1).map(s=>s.file)}],()=>['zhangliao'],(h,image,enemyImage,extra)=>{
       const images=[image,...extra],frames=zhangliaoSheets.flatMap((sheet,i)=>heroFrames(sheet,images[i]));
       installAtlasRework({...h,actions:['thrust','slash']},frames,frames,['zhangliao']);
+    });
+    for(const h of newLubuSheets) BATTLE_ART.models.set('lu426_'+h.key,{frames:[],back:[]});
+    add('lubu-v426',426,newLubuSheets,h=>['lu426_'+h.key],(h,image)=>{
+      need(h.frames.length===56&&h.actions?.length===2,'여포군 8방향 동작 누락: '+h.key);
+      const frames=heroFrames(h,image);
+      installAtlasRework(h,frames,frames,['lu426_'+h.key]);
     });
     mark();
     for(let j;(j=queued()[0]);){
@@ -475,6 +482,7 @@ function battleArtReady(keys){   // 전부 받았거나, 지형과 keys 모델�
 }
 const BATTLE_FALLBACK_KEYS={player:'ally_sword',enemy:'soldier'};
 function battleModelKey(s,team){
+  if(s.lubuSprite)return 'lu426_'+s.lubuSprite;
   let key=s.battleStyle;if(key==='ally_sword'&&s.weapon==='spear')key='ally_spear';if(key==='soldier'&&s.weapon==='spear')key='enemy_spear';
   if(key==='ally_shield'&&s.weapon==='spear')key='ally_shield_spear';if(key==='shield'&&s.weapon==='sword')key='shield_sword';
   if(team==='player')key=({soldier:'ally_sword',enemy_spear:'ally_spear',shield:'ally_shield_spear',shield_sword:'ally_shield'})[key]||key;
@@ -518,12 +526,12 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
 }
 if(typeof Image==='function')loadBattleArt();
 
-function drawBattleEffect(g, f, t) {
+function drawBattleEffect(g, f, t, unitStyle, team) {
   const p=Math.max(0,Math.min(1,1-f.t/f.max));
   g.save(); g.globalAlpha*=1-p;
   if(f.kind==='fall') {
     const e=1-(1-p)**2;g.translate(Math.round(f.x+Math.cos(f.ang)*14*e),Math.round(f.y+Math.sin(f.ang)*8*e));g.rotate(p>0.25?(Math.cos(f.ang)>=0?1:-1)*Math.PI/2:0);
-    drawBattleBody(g,0,0,BATTLE_UNIT_RADIUS,f.face,{...STYLES[f.style],weapon:null},{flash:p<0.15,t});g.restore();return;
+    drawBattleBody(g,0,0,BATTLE_UNIT_RADIUS,f.face,unitStyle||STYLES[f.style],{flash:p<0.15,t,team});g.restore();return;
   }
   g.translate(Math.round(f.x/2)*2,Math.round(f.y/2)*2);g.scale(2,2);
   const line=(x,y,xx,yy,col=f.col||'#ffe8a0',w=1)=>pixelLine(g,x,y,xx,yy,col,w), rect=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(Math.round(x),Math.round(y),w,h);};

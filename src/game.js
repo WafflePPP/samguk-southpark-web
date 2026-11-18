@@ -1791,12 +1791,13 @@ const trainLabel = () => (campaign.training || []).length ? `훈련 (예약 ${ca
 const sprOff = id => !!(stratPractice && stratPractice.step >= 1 && stratPractice.step <= 6 && !practiceAllows(id));   // 명세 80 R3: 실습 중 허용 목록 밖 버튼은 흐리게(사유는 배너)
 const LUBU_ART_KEYS=new Set([...FACTION_HEROES['여포'],'f_xian','f_bing']);
 const LUBU_COMMON_ART={sword:'lubu_sword',spear:'lubu_spear',archer:'lubu_archer',mage:'lubu_mage',healer:'lubu_mage'};
+const LUBU_TROOP_SPRITES={sword:'sword',esword:'sword',spear:'spear',shield:'shield',eshield:'shield_spear',archer:'archer',earcher:'archer',cav:'cav',ecav:'cav',mage:'mage',emage:'mage',healer:'healer'};
 const CAO_ART_KEYS=new Set([...FACTION_HEROES['조조'],'f_qing','f_hubao']);
 const LIU_ART_KEYS=new Set([...FACTION_HEROES['유비'],'f_bai','f_dan']);
 const factionUnit=(u,faction,keys)=>keys.has(u.key)||u.army?.name?.startsWith(faction+'군')||!Sim.GRADE[u.key]&&u.team==='player'&&playerFaction()===faction&&!u.army?.name?.includes('동맹군')||u.team==='enemy'&&enemyForces.some(f=>f.id===u.forceId&&forceFaction(f)===faction);
 const lubuFactionUnit=u=>factionUnit(u,'여포',LUBU_ART_KEYS),caoFactionUnit=u=>factionUnit(u,'조조',CAO_ART_KEYS),liuFactionUnit=u=>factionUnit(u,'유비',LIU_ART_KEYS);
 const WEAPON_OF = { sword: ['sword', 'twin'], spear: ['spear', 'lance', 'glaive', 'halberd'] };   // 검병·창병 장수의 무기는 병종에 맞는 것만 고정으로 인정한다 (서황의 도끼·대극사의 극 등 안 맞는 고정 무기는 병종 무기로 바꾼다)
-const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=liuFactionUnit(u),common=(lubu||cao||liu)&&LUBU_COMMON_ART[u.key];let style = STYLES[common||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,battleStyle:u.key==='jang'?u.style:u.key,sizeScale:LUBU_FACE_SCALE[u.key]??.95};if(A_HERO_MODEL_KEYS.has(u.key))style={...style,battleStyle:'a_'+u.key,sizeScale:.95};if(cao)style={...style,sizeScale:(u.named||u.key==='f_hubao') ? .95 : .8,caoMotion:true};if(liu)style={...style,sizeScale:(u.named||u.category==='cavalry') ? .95 : .8,liuMotion:true};if(lubu)style={...style,lubuMotion:true};   // 여포군 장수는 세력 전용 도트, 병사는 병종 공통 도트를 사용
+const styleOf = u => { const lubu=lubuFactionUnit(u),cao=caoFactionUnit(u),liu=liuFactionUnit(u),common=(lubu||cao||liu)&&LUBU_COMMON_ART[u.key];let style = STYLES[common||u.style]; if (style.teamBase && u.team === 'enemy') { const b = STYLES[ENEMY_BASE_STYLE[style.teamBase]]; style = { ...style, body: b.body, trim: b.trim, skin: b.skin, ...(b.horse ? { horse: b.horse } : {}), ...(style.enemyHelm ? { helmColor: style.enemyHelm } : {}) }; } if(LUBU_ART_KEYS.has(u.key))style={...style,battleStyle:u.key==='jang'?u.style:u.key,sizeScale:LUBU_FACE_SCALE[u.key]??.95};if(A_HERO_MODEL_KEYS.has(u.key))style={...style,battleStyle:'a_'+u.key,sizeScale:.95};if(cao)style={...style,sizeScale:(u.named||u.key==='f_hubao') ? .95 : .8,caoMotion:true};if(liu)style={...style,sizeScale:(u.named||u.category==='cavalry') ? .95 : .8,liuMotion:true};if(lubu)style={...style,lubuMotion:true,lubuSprite:LUBU_ART_KEYS.has(u.key)?u.key:LUBU_TROOP_SPRITES[u.key]};   // 여포군 장수는 세력 전용 도트, 병사는 병종 공통 도트를 사용
   return u.key !== 'guan' && !(style.fixedWeapon && WEAPON_OF[u.category]?.includes(style.weapon)) && (u.category === 'sword' || u.category === 'spear') ? { ...style, weapon: u.category === 'spear' ? 'spear' : 'sword' } : style; };
 const battleArtOk = () => BATTLE_ART.ready || battleArtReady([...new Set(S.units.map(u => battleModelKey(styleOf(u), u.team)))]);   // v0.1.406: 이번 전투에 나오는 모델만 준비되면 전투를 연다 (나머지는 뒤에서 계속 받는다)
 const stText = u => u.captured ? '포박' : u.dead ? '전사' : u.fled ? '도주' : u.out ? '철수' : u === u.army.ctrl && u.team === 'player' && (!S.auto || u.manual) ? '조작' : (ORDER_NAME[u.order.type] || '자유');
@@ -1841,7 +1842,10 @@ function drawWorld() {
   if (c && alive(c)) { tileBox(c.tx, c.ty, COLORS.gold, 'rgba(255,211,77,.16)'); if (c.mv) tileBox(c.mv.nx, c.mv.ny, 'rgba(255,211,77,.5)'); }   // 조작 캐릭터가 서 있는 칸
   for (const t of new Set(army().units.filter(u => alive(u) && u.order.type === 'attack' && u.order.target && alive(u.order.target)).map(u => u.order.target))) tileBox(t.tx, t.ty, COLORS.danger, 'rgba(255,90,74,.18)');   // 집중 공격 표적
   for (const m of marks) { const tx = Math.floor(m.x / TILE), ty = Math.floor(m.y / TILE), g = 1.4 - m.t; ctx.strokeStyle = m.col; ctx.globalAlpha = m.t / 0.7; ctx.lineWidth = 3; ctx.strokeRect(tx * TILE - g * 6, ty * TILE - g * 6, TILE + g * 12, TILE + g * 12); ctx.globalAlpha = 1; }
-  for (const f of S.fx) drawBattleEffect(ctx, f, T);
+  for (const f of S.fx) {
+    const fallen = f.kind === 'fall' && S.units.find(u => u.id === f.unitId);
+    drawBattleEffect(ctx, f, T, fallen && styleOf(fallen), fallen?.team);
+  }
   for (const u of S.units.filter(alive).sort((a, b) => a.y - b.y)) { if (u.x < cam.x - 60 || u.x > cam.x + vw + 60 || u.y < cam.y - 90 || u.y > cam.y + vhh + 60) continue; drawUnit(u); }
   for (const p of S.proj) { if (p.big) { ctx.save(); ctx.translate(p.x, p.y); ctx.scale(2, 2); ctx.translate(-p.x, -p.y); drawBattleProjectile(ctx, p); ctx.restore(); } else drawBattleProjectile(ctx, p); }   // 강궁 화살(p.big): 그리기 배율 2배
   for (const t of S.texts) { if (t.k && t.k !== 'sys' && !SHOW[t.k]) continue; ctx.globalAlpha = Math.min(1, t.t * 2); label(String(t.s), t.x, t.y, 18, t.col, 'center'); ctx.globalAlpha = 1; }
@@ -2338,14 +2342,15 @@ function drawEvent(e) {
   if (e.type === 'casualties') {
     const text = e.lines[e.page || 0], u = S.units.find(u => u.dead && text.startsWith((u.team === 'player' ? '아군 ' : '적군 ') + u.name + '이(가) '));
     // 판정과 일괄 이벤트는 유지하고, 표시만 기존 초상 대화창으로 한 명씩 넘긴다.
-    e = { type: 'dialogue', team: u ? u.team : e.team, key: u && u.style, speaker: u ? u.name : '전투 소식', text };
+    e = { type: 'dialogue', unitId: u?.id, team: u ? u.team : e.team, key: u && u.style, speaker: u ? u.name : '전투 소식', text };
   }
   ctx.fillStyle = 'rgba(10,12,20,.55)'; ctx.fillRect(0, 0, VW, VH);
   const col = e.team === 'enemy' ? '#ff8a32' : COLORS.gold, w = e.type === 'dialogue' ? 760 : e.lines ? 820 : 700, h = e.type === 'dialogue' ? 150 : e.lines ? 92 + e.lines.length * 34 : 104, x = (VW - w) / 2, y = (VH - h) / 2;
   panel(x, y, w, h, col, 4, '#e7e1cf');
   if (e.type === 'dialogue') {
     panel(x + 14, y + 14, 112, h - 28, COLORS.ink, 2, '#b9c5c7');
-    const portrait = STYLES[e.key] || STYLES.captain;
+    const speaker = S.units.find(u => u.id === e.unitId);
+    const portrait = speaker ? styleOf(speaker) : STYLES[e.key] || STYLES.captain;
     ctx.save(); ctx.beginPath(); ctx.rect(x + 15, y + 15, 110, h - 30); ctx.clip();
     drawBattlePortrait(ctx, x+18, y+18, 104, h-36, portrait, { t: T, team:e.team }); ctx.restore();
     label(e.speaker, x + 148, y + 42, 21, e.team === 'enemy' ? '#c55a2d' : '#315a86'); label(e.text, x + 148, y + 84, 22, '#292520', 'left', w - 164);
@@ -2371,7 +2376,7 @@ function drawTitle() {
   drawArtBackdrop();
   const shade=ctx.createLinearGradient(0,0,0,VH);shade.addColorStop(0,'rgba(5,12,18,.18)');shade.addColorStop(.62,'rgba(5,12,18,.5)');shade.addColorStop(1,'rgba(5,8,14,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,VW,VH);
   drawTitleWeapons();
-  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.423', 24, 30, 16, COLORS.silver2);
+  label('삼국', VW / 2, mb(125,112), mb(118,104), COLORS.gold, 'center'); label('v0.1.426', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'rgba(255,211,77,.72)',2,'rgba(7,16,23,.88)');
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
   const by=py+110,bh=tb(68),saved=hasCampaign();button('title:new',370,by,260,bh,'새 원정',true,23,{primary:true,key:'Enter'});button('title:load',650,by,260,bh,saved?'원정 이어하기':'불러오기 · 저장 없음',false,20,{key:'L'});

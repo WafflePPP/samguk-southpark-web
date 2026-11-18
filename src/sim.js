@@ -451,7 +451,7 @@ const mitigate = (a, d) => a * a / (a + Math.max(0, d));   // 공격 a 가 방�
 const phys = (u, t, mul = 1) => Math.max(1, mitigate(combatStat(cur, u, 'atk') * combatStat(cur, u, 'ar') / 100 * mul * (0.85 + cur.rnd() * 0.3) * ftMul(u), combatStat(cur, t, 'df') * DEF_EFF * combatStat(cur, t, 'dr') / 100 * ftDef(t))) * DMG;
 function text(S, x, y, s, col, k = 'sys') { S.texts.push({ x, y, s, col, t: 1.0, k }); }   // k: dmg 피해량 / buff 회복·방어·회피·레벨업 등 효과 / sys 안내(항상 표시)
 function notice(S, team, text) { S.events.push({ type: 'notice', team, text }); }
-function dialogue(S, u, text) { S.events.push({ type: 'dialogue', team: u.team, key: u.key, speaker: u.name, text }); }
+function dialogue(S, u, text) { S.events.push({ type: 'dialogue', unitId: u.id, team: u.team, key: u.key, speaker: u.name, text }); }
 function buffFx(S, u, glyph, col) { S.fx.push({ kind: 'buff', glyph, x: u.x, y: u.y, r: u.r, col, t: 0.9, max: 0.9 }); }   // 버프·디버프·회복이 걸릴 때 유닛 위에 뜨는 이펙트 (glyph: atk ▲ / guard 방패 / down ▼ / heal +)
 // 범위 버프(오라, TITLE_EFFECT.aura): 범위에 들어오면 이펙트, 있는 동안은 u.auraOn[칭호] 표시. 능력치 계산(combatStat)과 같은 조건.
 const AURA_TITLES = Object.entries(TITLE_EFFECT).filter(([, t]) => t.aura);
@@ -614,7 +614,7 @@ function die(S, u, killer) {
     if (!event) { event = { type: 'casualties', team: 'player', lines: [] }; S.events.push(event); }
     event.lines.push(line);
   }
-  u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
+  u.dead = true; u.hp = 0; S.fx.push({ kind: 'dust', x: u.x, y: u.y, r: u.r, t: 0.7, max: 0.7 }, { kind: 'fall', unitId: u.id, x: u.x, y: u.y, r: u.r, style: u.style, face: u.face, ang: u.hitAng, t: 0.9, max: 0.9 }); release(S, u);
   const ai = u.army.units.indexOf(u); if (ai >= 0) u.army.units.splice(ai, 1); if (u.army.org && !u.army.reformT) u.army.reformT = S.t + LINE.reform;   // 명세 87: 1초 뒤 산 병사로 진형을 다시 짠다 (뒷줄이 앞으로)
   if (u.team === 'player') { S.stats.lost++; S.surrenderSlots++; } else S.stats.kills++;
   if (u.team === 'player' && !u.named) S.stats.soldierLost = (S.stats.soldierLost || 0) + 1;   // 일반 병사 전사: 팝업 없이 결과 화면에서 정리
