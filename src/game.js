@@ -862,7 +862,10 @@ function siegeCut(s, n, floor) {   // 도시 s 의 수비군 병사를 n 명까�
 // 맞닿은 적 도시 가운데 수비군이 가장 적은 곳을 턴마다 군단당 rate 명 줄인다(도시당 maxCorps 군단까지, 정원×floor 까지, 수도 면제). 군단당 군량 cost, 모자라면 그 군단은 쉰다. 끄는 값 on:false
 const PLAYER_SIEGE = { on: true, from: 3, rate: 2, maxCorps: 3, floor: 0.4, capital: false, cost: 2 };
 const guardCount = s => cityGuards.filter(g => g.home === s.id && g.active).reduce((n, g) => n + g.army.units.length, 0);
-const siegeTarget = corps => stageById(corps.at).links.map(stageById).filter(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'war' && (PLAYER_SIEGE.capital || !isDefenseCapital(s)) && guardCount(s) > Math.floor(guardCap(s) * PLAYER_SIEGE.floor)).sort((a, b) => guardCount(a) - guardCount(b) || a.id.localeCompare(b.id))[0];   // 맞닿은 적 도시 중 수비군이 가장 적은 곳
+const siegeCands = corps => stageById(corps.at).links.map(stageById).filter(s => s.owner === 'enemy' && s.faction && relationOf(s.faction).status === 'war' && (PLAYER_SIEGE.capital || !isDefenseCapital(s)));   // 포위할 수 있는 맞닿은 적 도시
+const siegeRoom = s => guardCount(s) > Math.floor(guardCap(s) * PLAYER_SIEGE.floor);   // 수비군을 더 줄일 수 있는가
+// 명세 92: corps.siege = 고른 도시 id | 'none'(포위 안 함) | 없음(자동). 고른 도시가 후보가 아니거나 수비 최저면 자동 — 수비군이 가장 적은 곳
+const siegeTarget = corps => { if (corps.siege === 'none') return undefined; const cs = siegeCands(corps).filter(siegeRoom); return cs.find(s => s.id === corps.siege) || cs.sort((a, b) => guardCount(a) - guardCount(b) || a.id.localeCompare(b.id))[0]; };
 const siegeInfo = c => { const t = c.units.some(Boolean) && PLAYER_SIEGE.on && siegeTarget(c); return !t ? '' : (c.hold || 0) >= PLAYER_SIEGE.from ? ` · ${t.name} 포위 중` : ` · ${t.name} 포위 준비 ${c.hold || 0}/${PLAYER_SIEGE.from}`; };   // 이동 창·오른쪽 패널에 포위 상태 표시
 const siegeMapInfo = s => { const cs = roster.filter(c => c.units.some(Boolean) && siegeTarget(c) === s); if (!cs.length) return ''; const active = cs.filter(c => (c.hold || 0) >= PLAYER_SIEGE.from); return active.length ? `포위 중 · 수비 ${guardCount(s)}` : `포위 준비 ${Math.max(...cs.map(c => c.hold || 0))}/${PLAYER_SIEGE.from}`; };
 function playerSiege() {
@@ -1225,7 +1228,7 @@ function endCampaignTurn() {
     const from = corps.at;
     if (corps.target) { const path = route(corps.at, corps.target); if (path.length < 2) corps.target = null; else { corps.prevAt = from; corps.at = path[1]; if (corps.at === corps.target) corps.target = null; } }
     corps.hold = from === corps.at ? (corps.hold || 0) + 1 : 0;   // 플레이어 포위: 움직이지 않은 턴 수
-    if (from !== corps.at) enterNeutralCity(corps, stageById(corps.at));
+    if (from !== corps.at) { corps.siege = null; enterNeutralCity(corps, stageById(corps.at)); }   // 옮기면 포위 선택은 자동으로
     if (from !== corps.at) campaign.movement.push({ text: `${corpsName(corps)} · ${stageById(from).name} → ${stageById(corps.at).name} · 1턴 이동`, name: corpsName(corps), commander: corps.units[0] && Sim.U[corps.units[0]] ? Sim.U[corps.units[0]].name : corpsName(corps), from, to: corps.at, team: 'player', corpsIndex: index });
   }));
   playerSiege();
@@ -2419,7 +2422,7 @@ function drawTitle() {
   const gold = ctx.createLinearGradient(0, titleY - 52, 0, titleY + 52);
   gold.addColorStop(0, '#fff3c4'); gold.addColorStop(.55, '#efcf83'); gold.addColorStop(1, '#b5844c');
   ctx.fillStyle = gold; ctx.fillText('삼국', VW / 2, titleY); ctx.restore();
-  label('v0.1.428', 24, 30, 16, COLORS.silver2);
+  label('v0.1.429', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'#ac8954',2,'rgba(13,23,28,.93)');
   ctx.strokeStyle = '#554b39'; ctx.lineWidth = 1; ctx.strokeRect(347,py+5,586,ph-10);
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
@@ -2826,16 +2829,30 @@ function drawResponseSelect() {
   button('campaign:response:abandon', x + w / 2 - mb(90, 130), fy, mb(180, 260), tb(36), encounter.invasion ? '기동군 철수' : '공격 포기', false, 16);
   if (pages > 1) { button('campaign:response:next', x + w - 40 - bw, fy, bw, tb(36), '▶', false, 18); label((campaign.responsePage + 1) + '/' + pages, x + w - 40, y + mb(38, 32), 15, COLORS.silver, 'right'); }
 }
+let siegePick = null;   // 명세 92: 이동 창 2단계 — 포위 도시를 고르는 군단 번호 (null 이면 군단 목록)
+const canSiege = c => PLAYER_SIEGE.on && c.units.some(Boolean) && !c.target && siegeCands(c).length > 0;
+const siegeShort = c => { const t = siegeTarget(c), hold = c.hold || 0; return c.siege === 'none' ? '포위 안 함' : !t ? '포위 선택' : `${c.siege === t.id ? '' : '자동 '}${t.name} ${hold >= PLAYER_SIEGE.from ? '포위 중' : `포위 ${hold}/${PLAYER_SIEGE.from}`}`; };
 function drawMoveSelect() {
   ctx.fillStyle = 'rgba(10,12,20,.62)'; ctx.fillRect(0, 0, VW, VH);
-  const N = listN(), x = mb(300, 100), w = mb(680, 1080), pitch = mb(46, 90), foot = mb(50, TOUCH + 10), bw = mb(100, 170), pages = Math.max(1, Math.ceil(roster.length / N)), rows = Math.min(N, roster.length), h = mobile ? 708 : Math.min(580, 174 + rows * pitch), y = mobile ? 6 : (VH - h) / 2;
+  if (siegePick != null && roster[siegePick]) return drawSiegeSelect(roster[siegePick]);
+  const N = listN(), pages = Math.max(1, Math.ceil(roster.length / N)); movePage = Math.max(0, Math.min(movePage, pages - 1));
+  const page = roster.slice(movePage * N, movePage * N + N), sw = page.some(canSiege) ? mb(170, 280) : 0;   // 포위 버튼 칸 (포위할 수 있는 군단이 있을 때만)
+  const w = mb(680 + sw, 1080), x = (VW - w) / 2, pitch = mb(46, 90), foot = mb(50, TOUCH + 10), bw = mb(100, 170), rows = Math.min(N, roster.length), h = mobile ? 708 : Math.min(580, 174 + rows * pitch), y = mobile ? 6 : (VH - h) / 2;
   panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
-  movePage = Math.max(0, Math.min(movePage, pages - 1));
-  const page = roster.slice(movePage * N, movePage * N + N);
   label('1. 이동할 군단 선택', x + w / 2, y + mb(40, 34), 25, COLORS.gold, 'center');
-  label('군단을 선택한 뒤 전략 지도에서 목적지를 선택합니다.', x + w / 2, y + mb(75, 70), 16, COLORS.silver, 'center', w - 40);
-  page.forEach((corps, row) => { const target = corps.target ? ` → ${stageById(corps.target).name}(${moveTurns(corps)}턴)` : ` · 대기${siegeInfo(corps)}`; button(`campaign:move:${movePage * N + row}`, x + 40, y + mb(105, 100) + row * pitch, w - 80, tb(38), `${corpsName(corps)}  ${stageById(corps.at).name}${target}  · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, campaign.corps === movePage * N + row, 16); });
+  label(sw ? '군단을 고른 뒤 지도에서 목적지를 선택합니다. 오른쪽 버튼으로 포위할 도시를 고릅니다.' : '군단을 선택한 뒤 전략 지도에서 목적지를 선택합니다.', x + w / 2, y + mb(75, 70), 16, COLORS.silver, 'center', w - 40);
+  page.forEach((corps, row) => { const i = movePage * N + row, ry = y + mb(105, 100) + row * pitch, target = corps.target ? ` → ${stageById(corps.target).name}(${moveTurns(corps)}턴)` : ' · 대기'; button(`campaign:move:${i}`, x + 40, ry, w - 80 - (sw ? sw + 10 : 0), tb(38), `${corpsName(corps)}  ${stageById(corps.at).name}${target}  · ${corps.units.filter(Boolean).length}/18명 · ⚔${corpsPow(corps)}`, campaign.corps === i, 16); if (sw && canSiege(corps)) button(`campaign:siege:${i}`, x + w - 40 - sw, ry, sw, tb(38), siegeShort(corps), false, 16); });
   button('campaign:move:close', x + w - 40 - bw, y + h - foot, bw, tb(36), '닫기', false, 16); if (pages > 1) { button('campaign:move:prev', x + 40, y + h - foot, bw, tb(36), '◀', false, 18); button('campaign:move:next', x + w - 50 - bw * 2, y + h - foot, bw, tb(36), '▶', false, 18); label(`${movePage + 1}/${pages}`, x + w / 2 - 40, y + h - foot + mb(18, TOUCH / 2), 14, COLORS.silver2, 'center'); }
+}
+function drawSiegeSelect(corps) {   // 명세 92: 이동 창 2단계 — 포위할 도시 선택 (도시 · 자동 · 포위 안 함). 맞닿은 도시는 최대 7곳 → 모바일 2열
+  const P = PLAYER_SIEGE, cs = siegeCands(corps), auto = siegeTarget({ ...corps, siege: null }), cols = mb(1, 2), pitch = mb(46, 90), foot = mb(50, TOUCH + 10), x = mb(300, 100), w = mb(680, 1080), cw = (w - 80 - (cols - 1) * 10) / cols, h = mobile ? 708 : 174 + Math.ceil(cs.length / cols) * pitch, y = mobile ? 6 : (VH - h) / 2, fy = y + h - foot, fw = mb(150, 300), bw = mb(100, 170);
+  panel(x, y, w, h, COLORS.gold, 3, 'rgba(8,20,25,.97)');
+  label('2. 포위할 도시 선택', x + w / 2, y + mb(40, 34), 25, COLORS.gold, 'center');
+  label(`${corpsName(corps)} · ${stageById(corps.at).name} — ${P.from}턴 머문 뒤 턴마다 수비 −${P.rate}명 · 군량 −${P.cost}`, x + w / 2, y + mb(75, 70), 16, COLORS.silver, 'center', w - 40);
+  cs.forEach((s, i) => { const owner = s.faction === INDEP ? '독립 ' + (INDEP_LORD[s.id] || '') : s.faction + '군'; button(`campaign:siege:set:${s.id}`, x + 40 + (i % cols) * (cw + 10), y + mb(105, 100) + Math.floor(i / cols) * pitch, cw, tb(38), `${s.name} · ${owner} · 수비 ${guardCount(s)}/${guardCap(s)}명${siegeRoom(s) ? '' : ' (최저)'}`, corps.siege === s.id, 16); });
+  button('campaign:siege:set:auto', x + 40, fy, fw, tb(36), auto ? `자동 (${auto.name})` : '자동', !corps.siege, 16);
+  button('campaign:siege:set:none', x + 50 + fw, fy, fw, tb(36), '포위 안 함', corps.siege === 'none', 16);
+  button('campaign:siege:back', x + w - 40 - bw, fy, bw, tb(36), '뒤로', false, 16);
 }
 const econNow = f => { const income = Math.round(factionIncome(f).total), upkeep = Math.round(factionUnits(f) * ECON.unit), decay = Math.floor(grainOf(f) * ECON.decay); return { income, upkeep, decay, net: income - upkeep - decay }; };   // net 은 예상 창고 손실 포함
 function drawGrainChip(x, y, w, h) {   // 군량 칩: 순수입 음수면 주황, 기근이면 적색. 누르면 상세 창
@@ -3572,7 +3589,15 @@ function uiClickCore(id) {
   if (id === 'campaign:diplomacy:pickpage:prev' || id === 'campaign:diplomacy:pickpage:next') { const pages = Math.max(1, Math.ceil(upliftPickItems(diplomacyView).length / mb(6, 3))); upliftPickPage = (upliftPickPage + (id.endsWith('next') ? 1 : pages - 1)) % pages; return; }
   if (id.startsWith('campaign:diplomacy:pick:')) { if (runUplift(diplomacyView, upliftSel, id.slice(24))) { upliftPick = false; upliftSel = null; } return; }
   if (/^campaign:diplomacy:(ally|truce|war)$/.test(id)) { const f = diplomacyView, r = proposeDiplomacy(f, id.split(':')[2]); if (r.blocked) { diplomacyView = null; showDiplomacyResult('외교 실패', [`${f}군과 지금은 그 선택을 할 수 없습니다.`, r.blocked], false); } return; }   // 성립·거절 팝업은 proposeDiplomacy 가 띄운다
-  if (id === 'campaign:move') { mapTool = null; moveSelectOpen = true; moveMode = 'corps'; movePage = Math.floor(campaign.corps / listN()); campaign.notice = '이동할 군단을 선택하세요.'; return; }
+  if (/^campaign:siege:\d+$/.test(id)) { if (roster[+id.slice(15)]) siegePick = +id.slice(15); return; }   // 명세 92: 포위 도시 선택 단계
+  if (id === 'campaign:siege:back') { siegePick = null; return; }
+  if (id.startsWith('campaign:siege:set:')) {
+    const corps = roster[siegePick], v = id.slice(19); siegePick = null; if (!corps) return;
+    corps.siege = v === 'auto' ? null : v; const s = stageById(v), t = siegeTarget(corps);
+    campaign.notice = `${corpsName(corps)}: ` + (v === 'none' ? '포위하지 않습니다.' : !t ? '포위할 도시가 없습니다.' : s && s !== t ? `${s.name}은 수비가 최저라 그동안 ${t.name}을 포위합니다.` : `${t.name} 포위${v === 'auto' ? '(자동)' : ''} · ${(corps.hold || 0) >= PLAYER_SIEGE.from ? '포위 중' : `준비 ${corps.hold || 0}/${PLAYER_SIEGE.from}턴`}`);
+    saveCampaign(); return;
+  }
+  if (id === 'campaign:move') { siegePick = null; mapTool = null; moveSelectOpen = true; moveMode = 'corps'; movePage = Math.floor(campaign.corps / listN()); campaign.notice = '이동할 군단을 선택하세요.'; return; }
   if (id === 'campaign:move:close') { moveSelectOpen = false; moveMode = 'corps'; return; }
   if (id === 'campaign:move:prev' || id === 'campaign:move:next') { const pages = Math.max(1, Math.ceil(roster.length / listN())), d = id.endsWith('next') ? 1 : -1; movePage = (movePage + d + pages) % pages; return; }
   if (/^campaign:move:\d+$/.test(id)) { const index = +id.slice(14), corps = roster[index]; if (!corps) return; if (!combatReadyCorps(corps)) { campaign.notice = '군단장이 없는 군단은 편성 전까지 이동할 수 없습니다.'; return; } campaign.corps = index; campaign.at = corps.at; campaign.destination = corps.target; moveMode = 'city'; moveSelectOpen = false; campaign.notice = `${corpsName(corps)}이 이동할 지역을 지도에서 선택하세요.`; return; }
@@ -3746,7 +3771,7 @@ addEventListener('keydown', e => {
   if (state === 'map' && stratPractice && (stratPractice.step === 0 || stratPractice.step === 7)) { if (e.key === 'Enter' || e.key === ' ') uiClick('spr:next'); return; }   // 실습 카드: 건너뛰기·Esc 없음
   if (state === 'map' && stratTutStep >= 0) { if (e.key === 'Escape') finishStratTut(); else if (e.key === 'ArrowLeft') stratTutNav('prev'); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) stratTutNav('next'); return; }
   if (state === 'map') { if (e.key.startsWith('Arrow')) mapKeys.add(e.key); else if (e.key === 'Home' && mapFree()) centerMap(); }
-  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (recruitView) recruitView = null; else if (trainView) trainView = null; else if (heroView) heroView = null; else if (aiRelationsOpen) aiRelationsOpen = false; else if (factionStatusOpen) factionStatusOpen = false; else if (moveSelectOpen) moveSelectOpen = false; else if (mapFree() && (mapTool || moveMode === 'city')) { mapTool = null; moveMode = 'corps'; } }   // 명세 80: 장수 → 관계 → 현황 → (모드 취소 / 이동 목록) 순
+  if (state === 'map') { if (saveSlotMode) { if (e.key === 'Escape') saveSlotMode = null; else if (/^[1-3]$/.test(e.key)) uiClick('save-slot:' + e.key); } else if (e.key === 'Escape') { if (recruitView) recruitView = null; else if (trainView) trainView = null; else if (heroView) heroView = null; else if (aiRelationsOpen) aiRelationsOpen = false; else if (factionStatusOpen) factionStatusOpen = false; else if (moveSelectOpen) { if (siegePick != null) siegePick = null; else moveSelectOpen = false; } else if (mapFree() && (mapTool || moveMode === 'city')) { mapTool = null; moveMode = 'corps'; } }   // 명세 80: 장수 → 관계 → 현황 → (모드 취소 / 이동 목록) 순
     else { const m = !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !/^(Arrow|Home|End|Page|Insert|Delete|Clear)/.test(e.key || '') && /^(?:Digit|Numpad)([1-9])$/.exec(e.code || ''); /* NumLock 꺼진 숫자패드(key=Arrow*)는 방향키로 취급 */ if (m && mapFree()) uiClick(STRAT_KEYS[+m[1] - 1]); } return; }   // 숫자 1~8: 전략 화면 버튼 (e.code 라 한글 IME·NumLock 무관, 팝업 중에는 꺼짐, 진행하기 키 없음)
   if (state === 'roster') { if (e.code === 'Escape') { if (rosterItemPick !== null) rosterItemPick = null; else uiClick('roster:back'); } return; }
   if (tutorialStep >= 0) { if (e.key === 'Escape') { if (!tutorialBattle) finishTutorial(); } else if (e.key === 'ArrowLeft') tutorialStep = Math.max(0, tutorialStep - 1); else if (['Enter', ' ', 'ArrowRight'].includes(e.key)) tutorialStep >= 4 ? finishTutorial() : tutorialStep++; return; }
