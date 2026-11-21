@@ -154,13 +154,20 @@ function drawHorse(g, x, y, r, f, coat, t, moving) {
 }
 
 const HERO_TRANSITIONS=new WeakMap();
-function connectHeroPose(u,pose,t,smooth=false,face=u.face) {
-  const key=pose.state+':'+battleDirection(face),old=HERO_TRANSITIONS.get(u),reset=!old||t<old.t||t-old.t>.5,moveSince=smooth&&pose.state==='move'?(reset||old.state!=='move'?t:old.moveSince??t):null,sample={...pose};
-  if(moveSince!=null)sample.walkFrame=Math.floor(Math.max(0,t-moveSince)*8)%4;
+function connectHeroPose(u,pose,t,face,walkRate) {
+  const key=pose.state,old=HERO_TRANSITIONS.get(u),reset=!old||t<old.t||t-old.t>.5,sample={...pose};
+  let walkPhase=0;
+  if(key==='move') {
+    if(!reset && old.state==='move') walkPhase=old.walkPhase+(t-old.t)*old.walkRate;
+    sample.walkFrame=Math.floor(walkPhase+1e-9)%4;
+    sample.stride=Math.sin(walkPhase*Math.PI/2);
+    sample.bob=Math.abs(sample.stride)*2;
+  }
   let layers;
-  if(reset)layers=[{key,pose:sample,face:u.face,weight:1}];
+  if(reset || (old.layers.length===1 && old.state===key && old.layers[0].key===key))
+    layers=[{key,pose:sample,face,weight:1}];
   else {
-    const mix=1-Math.exp(-Math.max(0,t-old.t)/(smooth ? .09 : .045));
+    const mix=1-Math.exp(-Math.max(0,t-old.t)/.09);
     layers=old.layers.map(l=>({...l,weight:l.weight*(1-mix)}));
     const same=layers.find(l=>l.key===key);
     if(same){same.pose=sample;same.face=u.face;same.weight+=mix;}
@@ -169,38 +176,35 @@ function connectHeroPose(u,pose,t,smooth=false,face=u.face) {
     const total=layers.reduce((n,l)=>n+l.weight,0);for(const l of layers)l.weight/=total;
   }
   for(const l of layers)l.face=face;   // 자세만 이어 붙이고, 이동 방향은 이전 이미지가 남지 않게 즉시 맞춘다.
-  HERO_TRANSITIONS.set(u,{t,layers,state:pose.state,moveSince});pose.layers=layers;return pose;
+  HERO_TRANSITIONS.set(u,{t,layers,state:pose.state,walkPhase,walkRate});pose.layers=layers;return pose;
 }
-// 화면만 보간하며 공격·피격 판정과 타이머는 변경하지 않는다.
-function heroPose(u, s, t) {
-  const enhanced=s.lubuMotion||s.caoMotion||s.liuMotion;
-  if (!u.named && !enhanced) return null;
-  const action = u.anim > 0 ? u.actionKind || 'attack' : '', duration = action === 'attack' || action === 'melee' ? 0.28 : 0.4;
-  const p = Math.max(0, Math.min(1, 1 - u.anim / duration)), kick = action ? (1 - p) ** 2 : 0;
-  const fleeing = u.order && ['retreat', 'flee'].includes(u.order.type);
-  const gait = u.moving ? Math.sin(t * (fleeing ? 14 : 10) + u.id) : 0;
-  const pose = { state: u.moving ? 'move' : 'idle', progress:p, walkFrame:Math.floor(t*8+(u.id||0)*.73)%4, angle: u.face + 0.9, reach: 0, lean: 0, bob: Math.abs(gait) * 2, stride: gait, pull: 0, glow: null, glowAlpha: 0.7 * kick, trail: kick, power:enhanced?(u.named?1.45:1.15):1, impact: Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))) };
-  if (action) {
-    if (action === 'cast' || action === 'heal' || action === 'bless') {
-      pose.state = action; pose.angle = u.face - 0.6 * kick; pose.reach = 3 * kick; pose.bob += 3 * kick; pose.glow = action === 'cast' ? '#b398ff' : '#7dff9a';
-    } else if (action === 'volley' || action === 'attack' && s.weapon === 'bow') {
-      pose.state = 'shoot'; pose.angle = u.face; pose.pull = 0.7 * kick; pose.reach = -3 * kick; pose.lean = -0.12 * Math.cos(u.face) * kick;
-    } else if (action === 'spin') {
-      pose.state = 'spin'; pose.angle = u.face + Math.PI * 2 * p; pose.lean = 0.12 * Math.sin(p * Math.PI * 2);
-    } else if (s.weapon === 'fan') {
-      pose.state = 'cast'; pose.angle = u.face - 0.35 * kick; pose.reach = 2 * kick; pose.bob += 2 * kick;
-    } else if (u.category === 'spear' || s.weapon === 'lance' || s.weapon === 'spear') {
-      pose.state = 'thrust'; pose.angle = u.face + 0.9 * (1 - kick); pose.reach = 12 * kick; pose.lean = 0.12 * Math.cos(u.face) * kick;
-    } else {
-      pose.state = 'slash'; pose.angle = u.face - 1.1 + 2 * p; pose.reach = 5 * kick; pose.lean = 0.16 * Math.cos(u.face) * kick;
-    }
-  }
-  if (u.dashQ && u.dashQ.length) { pose.state = 'dash'; pose.angle = u.face; pose.reach = 10; pose.lean = 0.22 * Math.cos(u.face); pose.bob = Math.abs(Math.sin(t * 24)) * 3; }
-  if (u.hitT > 0 || u.stun > 0 || u.knockQ && u.knockQ.length) { pose.state = u.hitState > 0 ? 'guard' : 'hurt'; pose.angle = u.face + (pose.state === 'guard' ? -0.5 : 1.5); pose.reach = -3; pose.glow = null; pose.lean = 0; }
-  pose.breath=Math.sin(t*2.2+(u.id||0))*.007;
-  // 한 칸을 이동하는 도중 입력/조준이 바뀌어도 보행은 실제 이동 방향을 따른다.
-  const face=pose.state==='move'&&u.mv&&(u.mv.nx!==u.tx||u.mv.ny!==u.ty)?Math.atan2(u.mv.ny-u.ty,u.mv.nx-u.tx):u.face;
-  pose.smooth=!!u.named;return connectHeroPose(u,pose,t,pose.smooth,face);
+// 같은 병종은 장수·병사와 세력에 관계없이 같은 동작을 선택한다.
+const CLASS_ANIMATIONS = {
+  sword:    { attack:'slash', thrust:'thrust', pike:'thrust' },
+  spear:    { attack:'thrust', sweep:'slash', spin:'slash', heavy:'slash' },
+  cavalry:  { attack:'thrust', sweep:'slash', spin:'slash', heavy:'slash' },
+  archer:   { attack:'shoot', melee:'slash' },
+  military: { attack:'cast', heal:'heal', bless:'heal' },
+};
+function heroPose(u, _style, t) {
+  const profile = CLASS_ANIMATIONS[u.category] || CLASS_ANIMATIONS.sword;
+  const action = u.anim > 0 ? u.actionKind || 'attack' : '';
+  const duration = action === 'attack' || action === 'melee' ? .28 : .4;
+  const progress = Math.max(0, Math.min(1, 1 - u.anim / duration));
+  const kick = action ? (1 - progress) ** 2 : 0;
+  const moving = u.moving || u.dashQ?.length > 0;
+  let state = action ? profile[action] || profile.attack : moving ? 'move' : 'idle';
+  if (u.hitT > 0 || u.stun > 0 || u.knockQ?.length) state = u.hitState > 0 ? 'guard' : 'hurt';
+  const walkRate = u.dashQ?.length || ['retreat','flee'].includes(u.order?.type) ? 10 : 8;
+  const pose = {
+    state, progress, smooth:true, trail:kick, power:1, walkFrame:0,
+    stride:0, bob:0, breath:Math.sin(t*2.2+(u.id||0))*.007,
+    angle:u.face, pull:state==='shoot' ? .7*kick : 0, reach:state==='thrust' ? 12*kick : 0,
+    impact:Math.max(0,Math.min(1,(u.hitT||0)/(u.hitDuration||.35))),
+  };
+  const face = state==='move' && u.mv && (u.mv.nx!==u.tx || u.mv.ny!==u.ty)
+    ? Math.atan2(u.mv.ny-u.ty,u.mv.nx-u.tx) : u.face;
+  return connectHeroPose(u,pose,t,face,walkRate);
 }
 
 // 로비·전략·상세도 전투와 같은 캐릭터 이미지를 사용한다.
@@ -453,23 +457,44 @@ function battleHeroMotion(pose,face,r) {
   m.x=Math.round(Math.cos(face)*reach*size);m.y=Math.round((m.y+Math.sin(face)*reach)*size);
   return m;
 }
-function drawBattleMeleeTrail(g,x,y,r,face,pose,horse=false) {
+// 장수 키는 이펙트에서만 참조한다. 몸체의 동작과 프레임에는 관여하지 않는다.
+const DEFAULT_HERO_EFFECT = {power:1.45,color:'#e8cd90'};
+const HERO_ANIMATION_EFFECTS = {
+  lubu:{power:1.45,color:'#ed866c'}, guan:{power:1.45,color:'#89d4ac'},
+  jang:{power:1.45,color:'#91bddf'},
+};
+function heroAnimationEffect(u) {
+  return u.named ? HERO_ANIMATION_EFFECTS[u.key] || DEFAULT_HERO_EFFECT : null;
+}
+function drawAnimationEffect(g,x,y,r,face,pose,horse,effect) {
+  drawBattleMeleeTrail(g,x,y,r,face,pose,horse,effect);
+  if(!effect || !pose?.trail || !['shoot','cast','heal'].includes(pose.state)) return;
+  const k=battleActionWeight(pose.progress);
+  if(k<=0) return;
+  const cx=Math.round(x+Math.cos(face)*r),cy=Math.round(y-r*(horse?2.15:1.7)+Math.sin(face)*r*.5);
+  const size=Math.round(2+4*k);
+  g.save(); g.globalAlpha*=k;
+  pixelLine(g,cx-size,cy,cx+size,cy,effect.color);
+  pixelLine(g,cx,cy-size,cx,cy+size,'#fff3cf');
+  g.restore();
+}
+function drawBattleMeleeTrail(g,x,y,r,face,pose,horse=false,effect) {
   if(!pose||!['thrust','slash'].includes(pose.state)||!(pose.trail>0))return;
-  const p=pose.progress||0,power=Math.max(1,pose.power||1),fade=battleActionWeight(p),cs=Math.cos(face),sn=Math.sin(face),side=cs<0?-1:1;
+  const p=pose.progress||0,power=effect?.power??1,accent=effect?.color??'#b0d9d4',fade=battleActionWeight(p),cs=Math.cos(face),sn=Math.sin(face),side=cs<0?-1:1;
   const point=(along,across)=>[x+cs*along-sn*across*side,y-r*(horse?2.15:1.7)+sn*along+cs*across*.65*side];
   const line=(a,b,col,w=1)=>{const aa=point(...a),bb=point(...b);pixelLine(g,...aa,...bb,col,w);};
   g.save();g.globalAlpha*=Math.min(.9,fade*1.6);
   if(pose.state==='thrust'){
     const tip=r*(2.8+(power-1)*1.1-p*.8);
     line([r*.5,0],[tip,0],'#fff3cf',2);
-    line([r*.7,-4],[tip-5,-2],'#b0d9d4');line([r*.7,4],[tip-5,2],'#b0d9d4');
+    line([r*.7,-4],[tip-5,-2],accent);line([r*.7,4],[tip-5,2],accent);
     line([tip-6,-4],[tip,0],'#fff3cf');line([tip,0],[tip-6,4],'#fff3cf');
     if(power>1.2){line([r*.4,-7],[tip-r*.35,-4],'#6c9da5');line([r*.4,7],[tip-r*.35,4],'#6c9da5');}
   }else{
     const end=-.8+p*2.6,start=end-1.8;
     for(let i=0;i<12;i++){
       const a=start+(end-start)*i/12,b=start+(end-start)*(i+1)/12;
-      const arcs=power>1.2?[[r*(2.7+(power-1)*.8),'#6c9da5',1],[r*(2.5+(power-1)*.6),'#b0d9d4',1],[r*(2.2+(power-1)*.45),'#fff3cf',2]]:[[r*2.5,'#b0d9d4',1],[r*2.2,'#fff3cf',2]];
+      const arcs=power>1.2?[[r*(2.7+(power-1)*.8),'#6c9da5',1],[r*(2.5+(power-1)*.6),accent,1],[r*(2.2+(power-1)*.45),'#fff3cf',2]]:[[r*2.5,accent,1],[r*2.2,'#fff3cf',2]];
       for(const [radius,col,width] of arcs)
         line([Math.cos(a)*radius,Math.sin(a)*radius],[Math.cos(b)*radius,Math.sin(b)*radius],col,width);
     }
@@ -496,22 +521,26 @@ function drawBattleBody(g,x,y,r,face,s,o={}) {
   let model=BATTLE_ART.models.get(key);if(!model)throw new Error('전투 이미지 누락: '+key);
   if(!BATTLE_ART.ready&&!model.idle){BATTLE_ART.want([key]);model=BATTLE_ART.models.get(BATTLE_FALLBACK_KEYS[enemy?'enemy':'player']);if(!model?.idle)return;}   // 아직 못 받은 모델(투항으로 편이 바뀐 장수 등)은 같은 편 일반 병사로 잠깐 대신 그린다
   if(model.directions&&model.idle){drawConnectedHero(g,x,y,r,face,s,o,model);return;}
-  const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,face,r):null,view=motion?motion.face:face,back=Math.sin(view)<-.25;
+  const pose=o.pose,phase=pose?.trail||0,motion=pose?battleHeroMotion(pose,pose.face??face,r):null,view=motion?motion.face:face,back=Math.sin(view)<-.25;
   const directional=!!model.directions,frame=directional?(pose&&['move','dash'].includes(pose.state)||!pose&&o.moving?pose?.walkFrame??Math.floor((o.t||0)*8)%4:phase>0?Math.min(3,Math.floor((pose.progress||0)*4)):0):motion?motion.frame:o.moving?Math.floor((o.t||0)*7)%2:phase>.4?1:0;
   const frames=directional?model.directions[battleDirection(view)]:back?(enemy&&model.enemyBack?model.enemyBack:model.back):(enemy&&model.enemy?model.enemy:model.frames);let image=frames[frame];
   if(o.flash){if(!image.flash){const white=document.createElement('canvas');white.width=image.width;white.height=image.height;white.footX=image.footX;white.footY=image.footY;white.bodyHeight=image.bodyHeight;const p=white.getContext('2d');p.drawImage(image,0,0);p.globalCompositeOperation='source-in';p.fillStyle='#fff4db';p.fillRect(0,0,white.width,white.height);image.flash=white;}image=image.flash;}
   const scale=battleSpriteHeight(r,s)/battleFrameHeight(image),h=image.height*scale,w=image.width*scale;g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+(motion?.x||0)),Math.round(y+(motion?motion.y:o.moving&&frame?-1:0)));if(motion?.turn)g.rotate(motion.turn);const sourceLeft=!back&&['ally_spear','enemy_spear','f_bai'].includes(key);if(!directional&&(Math.cos(view)<-.25)!==sourceLeft)g.scale(-1,1);
   g.drawImage(image,Math.round(-(image.footX??image.width/2)*h/image.height),-Math.round((image.footY??image.height)*h/image.height),Math.round(w),Math.round(h));g.restore();
-  drawBattleMeleeTrail(g,x,y,r,face,pose,!!s.horse);
+  drawAnimationEffect(g,x,y,r,face,pose,!!s.horse,o.effectStyle);
 }
 function drawConnectedHero(g,x,y,r,face,s,o,model) {
-  const layers=o.pose?.layers||[{pose:o.pose||{state:'idle'},face,weight:1}];
+  const layers=o.pose?.layers||[{pose:o.pose||{state:o.moving?'move':'idle'},face:o.pose?.face??face,weight:1}];
   const samples=layers.map(l=>{
     const p=l.pose,m=battleHeroMotion(p,l.face,r),d=battleDirection(m.face),idle=p.state==='idle'||model.reworked&&['guard','hurt','cast','heal','bless'].includes(p.state);
     const walking=['move','dash'].includes(p.state),f=walking?p.walkFrame??Math.floor((o.t||0)*8)%4:p.trail>0?Math.min(3,Math.floor((p.progress||0)*4)):0;
     let image=idle?model.idle[d]:model.directions[d][f],height=idle?model.idleHeight:model.directionHeight;
-    const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state,kind=model.attacks?.[action]?action:null;
+    const action=({dash:'thrust',spin:'slash',bless:'heal'})[p.state]||p.state;
+    // 궁기병 시트에 찌르기가 없으면 본인의 근접 프레임에 공통 전진 동작을 적용한다.
+    let kind=model.attacks?.[action]?action:null;
+    if(!kind && action==='thrust' && model.attacks?.slash) kind='slash';
+    if(!kind && action==='slash' && model.attacks?.thrust) kind='thrust';
     if(kind){const progress=p.state==='dash'?.25:p.progress||0,rest=progress<(p.smooth ? .2 : .12)||progress>(p.smooth ? .84 : .88);image=rest?model.idle[d]:model.attacks[kind][d][progress<.5?0:1];height=rest?model.idleHeight:model.attackHeight;}
     return {...l,m,image,height:height||battleFrameHeight(image)};
   });
@@ -522,7 +551,7 @@ function drawConnectedHero(g,x,y,r,face,s,o,model) {
   g.save();g.imageSmoothingEnabled=false;if(o.alpha!=null)g.globalAlpha*=o.alpha;
   g.translate(Math.round(x+motion.x),Math.round(y+motion.y));g.rotate(motion.turn);
   g.drawImage(image,Math.round(-(image.footX??image.width/2)*scale),-Math.round((image.footY??image.height)*scale*motion.stretch),Math.round(w),Math.round(h));
-  g.restore();drawBattleMeleeTrail(g,x,y,r,face,o.pose,!!s.horse);
+  g.restore();drawAnimationEffect(g,x,y,r,face,o.pose,!!s.horse,o.effectStyle);
 }
 if(typeof Image==='function')loadBattleArt();
 

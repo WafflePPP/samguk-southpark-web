@@ -1844,10 +1844,10 @@ function drawUnit(u) {
     if (marks.length) { ctx.save(); marks.forEach((m, i) => { ctx.globalAlpha = pulse; drawBattleRing(ctx,x,y+u.r*0.35,u.r*(1.6+i*0.28),u.r*(1.6+i*0.28)*0.55,m[1]); }); ctx.restore(); }
     const TA = (Sim.TITLE_EFFECT[u.subclass] || {}).aura && Sim.TITLE_EFFECT[u.subclass]; if (TA) { ctx.save(); ctx.globalAlpha = 0.16 + 0.06 * Math.sin(T * 3); drawBattleRing(ctx,x,y+u.r*0.35,Sim.AURA_RANGE,Sim.AURA_RANGE*0.55,TA.col,true); ctx.restore(); } }   // 무신(관우 등) 공격·화살·마법 방어 +20%, 간웅(조조) 전 능력 +10% 오라 범위
   const swing = u.anim > 0 ? -1.3 + 2.6 * (1 - u.anim / 0.28) : 0.9;
-  const k = Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))), mag = (u.hitMag || 1) * (u.hitState < 0 ? 1.25 : u.hitState > 0 ? 0.55 : 1), ds = Math.cos(u.hitAng) >= 0 ? 1 : -1, ap = !style.lubuMotion && !style.caoMotion && !style.liuMotion && !u.named && u.anim > 0 && u.range === 0 ? Math.sin((1 - u.anim / 0.28) * Math.PI) : 0;   // 상성 우세는 짧은 방어 반응, 불리는 강한 경직
-  const ox = Math.cos(u.hitAng) * 7 * mag * k + Math.sin(T * 100) * 2.5 * k + Math.cos(u.face) * 7 * ap, oy = Math.sin(u.hitAng) * 5 * mag * k + Math.sin(u.face) * 4 * ap;
+  const k = Math.max(0, Math.min(1, u.hitT / (u.hitDuration || 0.35))), mag = (u.hitMag || 1) * (u.hitState < 0 ? 1.25 : u.hitState > 0 ? 0.55 : 1), ds = Math.cos(u.hitAng) >= 0 ? 1 : -1;   // 상성 우세는 짧은 방어 반응, 불리는 강한 경직
+  const ox = Math.cos(u.hitAng) * 7 * mag * k + Math.sin(T * 100) * 2.5 * k, oy = Math.sin(u.hitAng) * 5 * mag * k;
   ctx.save(); ctx.translate(Math.round(ox), Math.round(oy));
-  drawBattleBody(ctx, x, y, BATTLE_UNIT_RADIUS, u.face, style, { team:u.team, pose: heroPose(u, style, S.t), flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4) });
+  drawBattleBody(ctx, x, y, BATTLE_UNIT_RADIUS, u.face, style, { team:u.team, pose: heroPose(u, style, S.t), effectStyle: heroAnimationEffect(u), flash: u.flash > 0, t: T + u.id, moving: u.moving, weaponAng: u.face + swing - ds * 0.9 * mag * k, weaponLen: u.r * (u.isLeader ? 4.4 : 3.4) });
   ctx.restore();
   const top = y - battleSpriteHeight(BATTLE_UNIT_RADIUS,style) - 6, w = u.r * 2.4;
   if (ally || u.hp < u.maxHp || u.isLeader) { bar(x - w / 2, top, w, 4, u.hp / u.maxHp, hpCol(u.hp / u.maxHp, ally ? COLORS.ally : COLORS.danger)); if (u.maxMp && ally) bar(x - w / 2, top + 5, w, 2, u.mp / u.maxMp, '#8a6aff'); const sk = u.special && Sim.SPECIAL[u.special]; if (sk) { const ready = u.spT <= 0, cy = top + (u.maxMp && ally ? 8 : 5); bar(x - w / 2, cy, w, 2.5, ready ? 1 : 1 - Math.max(0, u.spT) / sk.cd, ready ? COLORS.gold : '#c7822f'); } }   // 특수기(스킬) 쿨타임 바: 차오르는 중 주황, 준비되면 금색 가득
@@ -2432,7 +2432,7 @@ function drawTitle() {
   const gold = ctx.createLinearGradient(0, titleY - 52, 0, titleY + 52);
   gold.addColorStop(0, '#fff3c4'); gold.addColorStop(.55, '#efcf83'); gold.addColorStop(1, '#b5844c');
   ctx.fillStyle = gold; ctx.fillText('삼국', VW / 2, titleY); ctx.restore();
-  label('v0.1.431', 24, 30, 16, COLORS.silver2);
+  label('v0.1.432', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'#ac8954',2,'rgba(13,23,28,.93)');
   ctx.strokeStyle = '#554b39'; ctx.lineWidth = 1; ctx.strokeRect(347,py+5,586,ph-10);
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
