@@ -20,7 +20,7 @@ let S = null, terrain = null, state = 'title', T = 0, overAt = 0, paused = false
 // 명세84: 도시48·관문6 (12주). 명세73 의 북동부 18거점 좌표는 (+800,+200) 이동. [번호,id,이름,주,세력,x,y,지형,Lv,등급,양방향 연결].
 // 명세85: 소유는 191년 10월(삼국지14 PK「二袁の思惑」구도). 7세력 밖 군벌·공백지는 '독립'(INDEP) 도시, 여포 하비는 설계 타협.
 const STAGE_ROWS = [
-  [1,'chenliu','진류','연주','조조',1100,1050,'f',18,'상','hulao ye puyang xuchang handan dingtao qiao'],
+  [1,'chenliu','진류','연주','조조',1100,1050,'f',18,'상','hulao puyang xuchang handan dingtao qiao'],
   [2,'ye','업','기주','원소',1160,670,'f',22,'상','huguan puyang pingyuan zhongshan hejian handan'],
   [3,'puyang','복양','연주','독립',1230,900,'p',16,'상','pingyuan handan changyi'],
   [4,'xiaopei','소패','서주','독립',1430,1050,'p',8,'초','xiapi changyi dingtao'],
@@ -28,10 +28,10 @@ const STAGE_ROWS = [
   [6,'guangling','광릉','서주','독립',1750,1290,'w',20,'상','donghai'],
   [7,'xuchang','허창','예주','독립',1010,1230,'f',30,'최','runan qiao'],
   [8,'luoyang','낙양','사례','독립',760,1050,'f',17,'중','huguan hulao pingyang hangu'],
-  [9,'jinyang','진양','병주','장양',860,590,'m',11,'중','ji huguan shangdang pingyang'],
+  [9,'jinyang','진양','병주','장양',860,590,'m',11,'중','huguan shangdang pingyang'],
   [10,'huguan','호관','병주','장양',980,740,'g',10,'중','shangdang handan'],
   [11,'nanpi','남피','기주','원소',1400,600,'r',12,'중','ji beiping pingyuan hejian'],
-  [12,'pingyuan','평원','청주','유비',1370,770,'p',12,'중','beihai linzi jinan'],
+  [12,'pingyuan','평원','청주','유비',1370,770,'p',12,'중','linzi jinan'],
   [13,'beihai','북해','청주','독립',1640,890,'p',22,'상','linzi jinan langya'],
   [14,'ji','계','유주','독립',1320,400,'f',14,'중','beiping zhongshan zhuo yuyang'],
   [15,'beiping','북평','유주','공손찬',1520,460,'m',15,'중','xiangping yuyang'],
@@ -2432,7 +2432,7 @@ function drawTitle() {
   const gold = ctx.createLinearGradient(0, titleY - 52, 0, titleY + 52);
   gold.addColorStop(0, '#fff3c4'); gold.addColorStop(.55, '#efcf83'); gold.addColorStop(1, '#b5844c');
   ctx.fillStyle = gold; ctx.fillText('삼국', VW / 2, titleY); ctx.restore();
-  label('v0.1.430', 24, 30, 16, COLORS.silver2);
+  label('v0.1.431', 24, 30, 16, COLORS.silver2);
   const py=mb(215,198),ph=mb(280,306);panel(342,py,596,ph,'#ac8954',2,'rgba(13,23,28,.93)');
   ctx.strokeStyle = '#554b39'; ctx.lineWidth = 1; ctx.strokeRect(347,py+5,586,ph-10);
   label('원정 준비',VW/2,py+42,24,COLORS.gold,'center');label('새로운 세력으로 시작하거나 저장된 원정을 이어가세요.',VW/2,py+78,16,COLORS.silver2,'center',550);
@@ -2498,10 +2498,9 @@ function drawRelationPanel() {
 const MAP_VW = 1000, MAP_MINI = { x: 10, y: 10, w: 170, h: 118 };   // 월드 2160×1500 비율 유지
 // 원작 통로의 연결을 화면 좌표로 축약한다. 산길·황하 도하는 굽은 경유점으로 표시한다.
 const MAP_ROAD_BENDS = {   // 명세84 굽은 길 경유점(v0.1.400: x −440 이동)
-  'jinyang|ji': [[860,480],[1010,380],[1140,300],[1250,290]],   // 탁 북쪽으로 (탁 밑을 지나며 중산-탁 길과 엇갈리던 것)
   'huguan|luoyang': [[960,850],[830,940]],
   'ji|nanpi': [[1330,500]], 'nanpi|beiping': [[1470,570]],
-  'pingyuan|beihai': [[1440,690],[1590,680]], 'beihai|xiapi': [[1680,1000]],   // 평원-북해는 임치 북쪽으로 돌아 임치-제남 길과 엇갈리지 않는다. 업-진류는 직선(한단을 관통하던 경유점 삭제 — 업·한단·복양·진류가 서로 다 이어져 한단-복양과 한 번 엇갈리는 것은 피할 수 없다)
+  'beihai|xiapi': [[1680,1000]],   // 명세 94: 진양-계·업-진류·평원-북해 길을 지워 엇갈리거나 크게 도는 길이 없다
   'xiapi|guangling': [[1690,1210]],
 };
 function mapRoadPoints(a, b) {
